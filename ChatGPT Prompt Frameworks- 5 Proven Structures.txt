@@ -1,0 +1,82 @@
+ChatGPT Prompt Frameworks: 5 Proven Structures to Unlock Better AI Responses
+Introduction: Why Prompt Frameworks Matter
+
+Prompting is the art of communicating with AI. Whether you're crafting ad copy, building content strategies, or solving business problems, the way you structure your prompt determines the quality of the output. This guide introduces 5 ChatGPT prompt frameworks designed to help you write smarter, clearer, and more effective prompts.
+
+🧩 1. R-T-F Framework
+
+Structure:
+
+Role: Act as a [ROLE]
+
+Task: Create a [TASK]
+
+Format: Show as [FORMAT]
+
+Example Prompt:
+
+Use Case: Marketing campaigns, creative briefs, ad strategy
+
+🎯 2. T-A-G Framework
+
+Structure:
+
+Task: Define the [TASK]
+
+Action: State the [ACTION]
+
+Goal: Clarify the [GOAL]
+
+Example Prompt:
+
+Use Case: HR evaluations, performance reviews, team strategy
+
+🔄 3. B-A-B Framework
+
+Structure:
+
+Before: Explain the problem
+
+After: State the desired outcome
+
+Bridge: Ask for the solution
+
+Example Prompt:
+
+Use Case: Problem-solving, strategic planning, SEO optimization
+
+❤️ 4. C-A-R-E Framework
+
+Structure:
+
+Context: Provide background
+
+Action: Describe the task
+
+Result: Clarify the goal
+
+Example: Share a reference case
+
+Example Prompt:
+
+Use Case: Brand storytelling, campaign development, CSR marketing
+
+📈 5. R-I-S-E Framework
+
+Structure:
+
+Role: Define the expert role
+
+Input: Provide relevant data
+
+Steps: Ask for a process
+
+Expectation: Set a measurable goal
+
+Example Prompt:
+
+Use Case: Content strategy, editorial planning, audience engagement
+
+🧭 Final Thoughts: Structure = Success
+
+Prompting isn’t just about asking questions—it’s about strategic communication. These five frameworks help you guide ChatGPT with clarity and precision, whether you're building campaigns, solving problems, or creating content. Try them out and watch your AI outputs become smarter, sharper, and more actionable.

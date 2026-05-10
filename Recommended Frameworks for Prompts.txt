@@ -1,0 +1,48 @@
+Recommended Frameworks for Prompts:
+-------------------------------------------------------------------------------------------------------------------------------
+-------------------------------------------------------------------------------------------------------------------------------
+Use the RTCF framework to structure your descriptions for better accuracy and completeness
+
+Role - Assign a persona to the AI (e.g., Act as a process improvement specialist or You're a customer operations manager) to guide the perspective.
+
+Task - Specify the main goal (e.g., Create a flowchart showing our bug reporting workflow or Map out our support ticket lifecycle).
+
+Context - Provide background details (e.g., teams involved, channels, severity levels, or escalation procedures) to add depth.
+
+Format - Describe the desired structure (e.g., Show decision points for severity levels, parallel paths for different bug types, and include feedback loops).
+
+-------------------------------------------------------------------------------------------------------------------------------
+2-step prompting:
+
+Optimize the following instruction into a detailed, high-quality prompt that will make you produce the absolute best possible output. Only output the optimized prompt, nothing else.
+
+Task: [your casual one-sentence wish here]
+
+example:
+Create a complete, highly detailed JSON prompt that perfectly replicates every single visual element of the uploaded image (objects, clothing, hair, accessories, camera settings, environment, lighting, style, pose, everything). Then output one final optimized English meta-prompt of about 800 words that can recreate the image 1:1 in any text-to-image model.
+
+-------------------------------------------------------------------------------------------------------------------------------
+Model alignment reduces creativity, asking for a list then picking one mitigates this.
+
+-------------------------------------------------------------------------------------------------------------------------------
+Work gets better when it's reviewed after completion:
+"Look at this again with fresh eyes."
+You'll usually get startlingly good results with just that one sentence.
+LLMs do poorly when they have conflicting goals.
+Many folks I talk to find that adversarial review works best when you have a different model do the review.
+Even without a multi-provider setup, I find that I can get really good results by exploiting the models competitive nature.
+"Please ask two subagents to review this work. Tell them that whomever finds the largest number of serious issues gets five points."
+"Tell them that whomever finds the largest number of serious issues gets a cookie."
+You can push them a little harder by saying something like
+"I'll be disappointed if they don't find at least 16 significant problems in the work"
+
+-------------------------------------------------------------------------------------------------------------------------------
+Parallel calls:
+6 Gemini 2.5 Flash-Lite calls cost about the same as 1 Gemini 2.5 Flash call
+42 Gemini 2.5 Flash-Lite calls or 7 Gemini 2.5 Flash calls cost about the same as one Gemini 3 Pro Preview call
+
+-------------------------------------------------------------------------------------------------------------------------------
+https://www.deeplearning.ai/short-courses/chatgpt-prompt-engineering-for-developers/
+
+-------------------------------------------------------------------------------------------------------------------------------
+The style is best described as a vibrant, whimsical watercolor and ink illustration, heavily inspired by classic children's storybooks. It combines the fluidity and bright color blends of watercolors with the crisp, detailed line work of pen-and-ink drawings.
