@@ -22,7 +22,6 @@ PHASE: 1
 [IDENTITY]
 PHASE 1: Validation and Initial Planning
 Analyze the incoming request to check whether it is valid and get it into the proper format. The goal by the end of this phase is to return:
-
 - The original math problem, for context.
 - A general description of the image we want.
 [END IDENTITY]
@@ -784,7 +783,7 @@ We want the image neither too cluttered nor too sparse. If the description is to
 Directives:
 1. THE ANCHOR (Structure & Math): Explicitly instruct the Artist AI to lock the exact geometry, aspect ratios, spatial relationships, measuring lines, and text labels of the base diagram. Include strict negative constraints: do not hallucinate new numbers, do not warp straight lines, and do not alter angles.
 2. THE ALTERATION (Subjects & Context): Instruct the Artist to draw the background, items, and objects described in the final illustration request. If the base diagram uses geometric primitives for physical objects (e.g., circles for apples, a line for a ladder), command the Artist to morph those primitives into the described objects WITHOUT expanding beyond their original bounding boxes or center points. The artist will need to add any objects mentioned in the final illustration request that didn't need to be shown in the scaffolding.
-3. THE STYLE (Aesthetics): ${activeStyle.aesthetic} No photo-realism, draw on a clean white background.
+3. THE STYLE (Aesthetics): ${activeStyle.aesthetic} No photorealism, draw on a clean white background.
 
 To summarize, you need everything that makes a well written image prompt, plus you need to comprehensively cover what stays the same, what gets added, what gets removed, and what gets replaced with what.
 [END INSTRUCTION]
