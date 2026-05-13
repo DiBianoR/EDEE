@@ -587,14 +587,28 @@ You are the Technical Scaffolding Designer. Your job is to translate a rich, art
 Context: The overall system works in two passes. First, we use Python (Matplotlib) to draw a mathematically precise underlying 'skeleton' or 'scaffolding'. Second, we pass that scaffolding to an AI Image Generator to paint the final, beautiful illustration over the top of it.
 
 Your task is to design that first pass: the scaffolding.`,
-          "tasks": {
+          "tasks": {"inject_3d_constraints": {
+              "model_url": "no_model",
+              "instruction": "Apply 3D constraints.",
+              "result": `{"situational_directives": "[3D RENDERING CONSTRAINTS]:\\n- Analyze the scene for 3D logic. Ensure depth cues (shading, perspective) are defined.\\n- 3D objects should be opaque and shaded. Prefer solid objects to transparent skeletons unless the problem statement suggests otherwise.\\n- Generate objects at angles and positions suitable for viewing as examples. Important features of 3D objects must be visible, not facing away from the user.\\n- Ensure geometric shapes are at the right scale, angle, and realistic dimensions to denote the actual real-world object they represent. In other words, estimate the length, width, and height of a real example of the object, and ensure the aspect ratio in your code is similar."}`
+            },
+            "inject_primitives_constraints": {
+              "model_url": "no_model",
+              "instruction": "Apply primitive composition constraints.",
+              "result": `{"situational_directives": "[COMPOSITION & PRIMITIVE CONSTRAINTS]:\\n- Break down complex objects into geometric primitives (e.g., 'circles for cats', 'white rounded rectangles for sheep'). \\n- If an object can be modeled precisely by a few simple primitives, use them. If in doubt, fall back to circles to denote approximate size and location.\\n- Different classes of objects must be assigned distinctly different colors or different primitives.\\n- Placements (random, in a grid, etc.) and spacing must be reasonable and make sense with respect to the problem description. Ensure no unintentional overlaps. \\n- Think about real-world environments: A flock of geese might be in a V-shape; objects being compared for height should be side-by-side with their bases level."}`
+            },
+            "inject_multiple_constraints": {
+              "model_url": "no_model",
+              "instruction": "Apply both 3D and primitive constraints.",
+              "result": `{"situational_directives": "\$directives"}`
+            },
             "design_scaffolding": {
               "instruction": `\
 Analyze the 'Diagram Request'. Strip away all the artistic flair, textures, and complex subjects, and describe ONLY the geometric shapes, lines, labels, and spatial boundaries that Python needs to plot. Keep things simple.
 
 DIRECTIVES:
 1. Identify the Math: What counts, shapes, graphs, grids, lines, or angles are part of the problem and must be perfectly accurate? These must be plotted.
-2. Check for Situational Directives: Look at the most recent entries in your 'Project History'. If the system injected '[3D RENDERING CONSTRAINTS]' or '[COMPOSITION & PRIMITIVE CONSTRAINTS]', you MUST follow them implicitly when designing this scaffolding. If present, they supersede these general directives in case of conflict.
+2. Check for Situational Directives: Look at the most recent entries in your 'Project History'. If you previously injected '[3D RENDERING CONSTRAINTS]' or '[COMPOSITION & PRIMITIVE CONSTRAINTS]', you MUST follow them implicitly when designing this scaffolding. If present, they supersede these general directives in case of conflict.
 3. Abstract Complex Objects: If the request asks for a "farmer standing next to a tractor", you do not plot a farmer. If their precise positions/sizes etc. are part of the word problem, you should have situational directives to follow. If their positions do not need to be pixel perfect, you can leave them off, the artist will add them later. You generally do not need to draw objects that are not part of the math problem, the artist can handle them.
 4. Output Format: Provide a clear, structured blueprint of exactly what shapes to draw, where to place them relative to each other, and what colors/labels to use for the underlying Python plot. Do NOT write code.
 5. Keep it simple and elegant -> Precision, Clarity, Utility. The artist is very skilled and can add details later. You only need to show
