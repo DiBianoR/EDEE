@@ -1,4 +1,4 @@
-'"Main Workflow.json" filter=gemini' 
-'"Load Config Sub-workflow.json" filter=gemini' 
-'"Universal Agent Sub-Workflow.json" filter=gemini' 
-'"EDEE Global Error Handler.json" filter=gemini' 
+Main Workflow.json filter=gemini 
+Load Config Sub-workflow.json filter=gemini 
+Universal Agent Sub-Workflow.json filter=gemini 
+EDEE Global Error Handler.json filter=gemini 
