@@ -1,0 +1,229 @@
+{
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [
+        16,
+        0
+      ],
+      "id": "6d3f9c54-ba03-4df8-a6d4-28ee3d48c6e9",
+      "name": "Error Trigger"
+    },
+    {
+      "parameters": {
+        "jsCode": "const executionData = $input.first().json.execution;\nconst errorMessage = executionData?.error?.message || \"Unknown fatal pipeline error.\";\n\n// 1. Initialize fallback values\nlet recoveredData = {\n    job_id: \"UNKNOWN\",\n    original_query: \"[Could not recover original query due to early crash]\",\n    latest_description: \"[No description available]\",\n    history: new Array() \n};\n\n// 2. Safely deep-search the crash log to rescue our real payload\nfunction salvageData(obj) {\n    if (!obj || typeof obj !== 'object') return;\n    \n    if (obj.job_id && typeof obj.job_id === 'string' && recoveredData.job_id === \"UNKNOWN\") {\n        recoveredData.job_id = obj.job_id;\n    }\n    if (Array.isArray(obj.history) && obj.history.length > recoveredData.history.length) {\n        recoveredData.history = obj.history;\n    }\n    // Only overwrite our fallbacks if we find the real strings\n    if (obj.original_query && typeof obj.original_query === 'string' && recoveredData.original_query.startsWith(\"[\")) {\n        recoveredData.original_query = obj.original_query;\n    }\n    if (obj.latest_description && typeof obj.latest_description === 'string' && recoveredData.latest_description.startsWith(\"[\")) {\n        recoveredData.latest_description = obj.latest_description;\n    }\n    \n    // Dig deeper\n    Object.values(obj).forEach(salvageData);\n}\n\nsalvageData(executionData);\n\n// 3. Inject the crash as a standard history entry\nrecoveredData.history.push({\n    phase_id: \"SYSTEM\",\n    agent_id: \"n8n_engine\",\n    task_id: \"execution\",\n    task_instruction: \"Run pipeline nodes.\",\n    output: {\n        fatal_crash: true,\n        system_error_message: errorMessage\n    }\n});\n\n// 4. Output the normalized, crash-proof payload\nreturn {\n    json: recoveredData\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        208,
+        0
+      ],
+      "id": "1d2d1f31-8fde-40ad-9ba3-2aafa017cad0",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "b9c862f9-17c0-4923-968c-f57c35859a6e",
+              "name": "PHASE_ID",
+              "value": "-",
+              "type": "string"
+            },
+            {
+              "id": "385b162f-1005-4d8e-b94a-6be27224b7d3",
+              "name": "AGENT_ID",
+              "value": "error_handler",
+              "type": "string"
+            },
+            {
+              "id": "16b09845-a443-436c-bde4-b8bf509bc238",
+              "name": "TASK_ID",
+              "value": "report_fatal_error",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        784,
+        0
+      ],
+      "id": "e913c890-6868-47c7-ad97-135b2ab57dc7",
+      "name": "cfg5"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "EoempdQOCJuP6XAv",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/EoempdQOCJuP6XAv",
+          "cachedResultName": "Universal Agent Sub-Workflow"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        912,
+        0
+      ],
+      "id": "5c6f6ed5-8e3c-4878-a380-7f5a3bfdf6e7",
+      "name": "error_handler - report_fatal_error"
+    },
+    {
+      "parameters": {
+        "errorMessage": "={{ $json.error_message || \"Pipeline crashed, and the diagnostic agent could not be reached.\" }}"
+      },
+      "type": "n8n-nodes-base.stopAndError",
+      "typeVersion": 1,
+      "position": [
+        1040,
+        0
+      ],
+      "id": "f5d1f05e-0fa2-45d6-8f51-c318d888653f",
+      "name": "Error Message"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "4086eabe-e504-4d6c-904e-3e48a6dafb88",
+              "name": "api_key",
+              "value": "AIzaSyDwR1z7qvrr_8lH5ZcA5UmvAUaHi_DIhEs",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        400,
+        0
+      ],
+      "id": "99715893-50b0-4dcd-bd1f-5b328ac89d89",
+      "name": "Set API Key"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "OLSW0S08rnuUmERz",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/OLSW0S08rnuUmERz",
+          "cachedResultName": "Load Config Sub-workflow"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        592,
+        0
+      ],
+      "id": "8331d7ca-2f9c-419a-8975-ad2f96707db3",
+      "name": "Load Config"
+    }
+  ],
+  "connections": {
+    "Error Trigger": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Set API Key",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "cfg5": {
+      "main": [
+        [
+          {
+            "node": "error_handler - report_fatal_error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "error_handler - report_fatal_error": {
+      "main": [
+        [
+          {
+            "node": "Error Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set API Key": {
+      "main": [
+        [
+          {
+            "node": "Load Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Load Config": {
+      "main": [
+        [
+          {
+            "node": "cfg5",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "instanceId": "df2a3209410ed788eacffb4d1872acd7fcd84c9b8c68de9775fcdebdbc87d329"
+  }
+}

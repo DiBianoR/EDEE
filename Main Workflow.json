@@ -701,7 +701,7 @@
             {
               "id": "4086eabe-e504-4d6c-904e-3e48a6dafb88",
               "name": "api_key",
-              "value": "AIzaSyDwR1z7qvrr_8lH5ZcA5UmvAUaHi_DIhEs",
+              "value": "${GEMINI_API_KEY}",
               "type": "string"
             }
           ]
@@ -1837,6 +1837,12 @@
               "name": "coding_retry_count",
               "value": "={{ ($json.coding_retry_count || 0) + 1 }}",
               "type": "number"
+            },
+            {
+              "id": "491423ea-1b90-4040-b108-cce1dfe82bde",
+              "name": "execution_retry_count",
+              "value": "={{ ($json.execution_retry_count || 0) + 1 }}",
+              "type": "string"
             }
           ]
         },
@@ -2442,63 +2448,6 @@
     },
     {
       "parameters": {
-        "conditions": {
-          "options": {
-            "caseSensitive": true,
-            "leftValue": "",
-            "typeValidation": "strict",
-            "version": 2
-          },
-          "conditions": [
-            {
-              "id": "429e5a6a-cf5e-45c8-8f18-1cd08645b49e",
-              "leftValue": "={{ $('reviewer - syntax_check').item.json.debug_response.pass }}",
-              "rightValue": false,
-              "operator": {
-                "type": "boolean",
-                "operation": "true",
-                "singleValue": true
-              }
-            },
-            {
-              "id": "68414732-6150-4d2c-98db-257de408691b",
-              "leftValue": "={{ $('reviewer - logic_check').item.json.debug_response.pass }}",
-              "rightValue": false,
-              "operator": {
-                "type": "boolean",
-                "operation": "true",
-                "singleValue": true
-              }
-            }
-          ],
-          "combinator": "and"
-        },
-        "options": {}
-      },
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2.2,
-      "position": [
-        5040,
-        512
-      ],
-      "id": "4f2ed56b-bd26-493b-82c5-e80e60c5556d",
-      "name": "Code Review Passed?"
-    },
-    {
-      "parameters": {
-        "jsCode": "// === 📝 TEXT REVIEW ERROR INJECTOR ===\nconst INPUT_DATA = items[0].json;\nconst history = INPUT_DATA.history;\n\n// 1. Find the recent critiques in history\nconst syntaxReview = history.slice().reverse().find(h => h.task_id === 'syntax_check')?.output;\nconst logicReview = history.slice().reverse().find(h => h.task_id === 'logic_check')?.output;\n\nconst failures = [];\nif (syntaxReview && !syntaxReview.pass) failures.push(`[Syntax]: ${syntaxReview.critique}`);\nif (logicReview && !logicReview.pass) failures.push(`[Logic]: ${logicReview.critique}`);\n\n// 2. Inject into history so the Builder sees it on the next loop\nconst errorRecord = {\n    phase_id: \"3\",\n    agent_id: \"system\",\n    task_id: \"code_review_report\",\n    task_instruction: \"Aggregation of Code Review Failures\",\n    output: {\n        status: \"failed\",\n        reasoning: \"Code failed pre-execution review.\",\n        message: `*** CODE REVIEW FAILED ***\\nThe following issues must be fixed:\\n\\n${failures.join('\\n')}\\n\\nDIRECTIVE: Rewrite the Python code specifically to address these critiques.`\n    }\n};\n\nreturn [{\n    json: {\n        ...INPUT_DATA,\n        history: [...history, errorRecord]\n    }\n}];"
-      },
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        5264,
-        528
-      ],
-      "id": "4d9a163b-02e4-4c96-873e-9313700895b2",
-      "name": "Review Error Injector"
-    },
-    {
-      "parameters": {
         "assignments": {
           "assignments": [
             {
@@ -2516,8 +2465,8 @@
             {
               "id": "231160db-c780-4287-acad-7da6749b09e7",
               "name": "coding_retry_count",
-              "value": "0",
-              "type": "string"
+              "value": 0,
+              "type": "number"
             }
           ]
         },
@@ -4868,7 +4817,7 @@
           "assignments": [
             {
               "id": "f2f767ae-fed8-4164-9cd0-30e8621ac08f",
-              "name": "=retry_count",
+              "name": "retry_count",
               "value": "={{ $('cfg45').item.json.retry_count }}",
               "type": "number"
             }
@@ -5757,262 +5706,6 @@
     },
     {
       "parameters": {
-        "assignments": {
-          "assignments": [
-            {
-              "id": "b9c862f9-17c0-4923-968c-f57c35859a6e",
-              "name": "PHASE_ID",
-              "value": "",
-              "type": "string"
-            },
-            {
-              "id": "385b162f-1005-4d8e-b94a-6be27224b7d3",
-              "name": "AGENT_ID",
-              "value": "",
-              "type": "string"
-            },
-            {
-              "id": "16b09845-a443-436c-bde4-b8bf509bc238",
-              "name": "TASK_ID",
-              "value": "",
-              "type": "string"
-            },
-            {
-              "id": "5c7ad2ac-07ad-4f81-86fa-7a2dfa021265",
-              "name": "retry_count",
-              "value": "={{ ($json.retry_count || 0) + 1 }}",
-              "type": "number"
-            }
-          ]
-        },
-        "includeOtherFields": true,
-        "options": {}
-      },
-      "type": "n8n-nodes-base.set",
-      "typeVersion": 3.4,
-      "position": [
-        4000,
-        576
-      ],
-      "id": "30468f27-d343-49e7-9317-52aceb3ac783",
-      "name": "cfg52"
-    },
-    {
-      "parameters": {
-        "assignments": {
-          "assignments": [
-            {
-              "id": "b9c862f9-17c0-4923-968c-f57c35859a6e",
-              "name": "PHASE_ID",
-              "value": "-",
-              "type": "string"
-            },
-            {
-              "id": "385b162f-1005-4d8e-b94a-6be27224b7d3",
-              "name": "AGENT_ID",
-              "value": "error_handler",
-              "type": "string"
-            },
-            {
-              "id": "16b09845-a443-436c-bde4-b8bf509bc238",
-              "name": "TASK_ID",
-              "value": "report_error",
-              "type": "string"
-            },
-            {
-              "id": "d3f7287e-fd6e-436b-b458-f1065af7c170",
-              "name": "error",
-              "value": "=MaxRetriesExceeded",
-              "type": "string"
-            }
-          ]
-        },
-        "includeOtherFields": true,
-        "options": {}
-      },
-      "type": "n8n-nodes-base.set",
-      "typeVersion": 3.4,
-      "position": [
-        4448,
-        768
-      ],
-      "id": "38c32798-5b0c-44e7-94b1-23aa56456b64",
-      "name": "cfg53"
-    },
-    {
-      "parameters": {
-        "workflowId": {
-          "__rl": true,
-          "value": "EoempdQOCJuP6XAv",
-          "mode": "list",
-          "cachedResultUrl": "/workflow/EoempdQOCJuP6XAv",
-          "cachedResultName": "Universal Agent Sub-Workflow"
-        },
-        "workflowInputs": {
-          "mappingMode": "defineBelow",
-          "value": {},
-          "matchingColumns": [],
-          "schema": [],
-          "attemptToConvertTypes": false,
-          "convertFieldsToString": true
-        },
-        "options": {}
-      },
-      "type": "n8n-nodes-base.executeWorkflow",
-      "typeVersion": 1.3,
-      "position": [
-        4576,
-        768
-      ],
-      "id": "44a8001c-243e-437f-9143-45d6a7da4235",
-      "name": "error_handler - report_error2"
-    },
-    {
-      "parameters": {
-        "assignments": {
-          "assignments": [
-            {
-              "id": "f2f767ae-fed8-4164-9cd0-30e8621ac08f",
-              "name": "=retry_count",
-              "value": "={{ $('cfg52').item.json.retry_count }}",
-              "type": "number"
-            }
-          ]
-        },
-        "includeOtherFields": true,
-        "options": {}
-      },
-      "type": "n8n-nodes-base.set",
-      "typeVersion": 3.4,
-      "position": [
-        4400,
-        912
-      ],
-      "id": "aaa74694-8825-418a-bf81-ed9a7909c8b5",
-      "name": "retry_count2"
-    },
-    {
-      "parameters": {
-        "workflowId": {
-          "__rl": true,
-          "value": "EoempdQOCJuP6XAv",
-          "mode": "list",
-          "cachedResultUrl": "/workflow/EoempdQOCJuP6XAv",
-          "cachedResultName": "Universal Agent Sub-Workflow"
-        },
-        "workflowInputs": {
-          "mappingMode": "defineBelow",
-          "value": {},
-          "matchingColumns": [],
-          "schema": [],
-          "attemptToConvertTypes": false,
-          "convertFieldsToString": true
-        },
-        "options": {}
-      },
-      "type": "n8n-nodes-base.executeWorkflow",
-      "typeVersion": 1.3,
-      "position": [
-        4128,
-        576
-      ],
-      "id": "94fa6a31-6680-4701-8a29-feb5d9342823",
-      "name": "T/F RETRY agent1"
-    },
-    {
-      "parameters": {
-        "rules": {
-          "values": [
-            {
-              "conditions": {
-                "options": {
-                  "caseSensitive": true,
-                  "leftValue": "",
-                  "typeValidation": "strict",
-                  "version": 3
-                },
-                "conditions": [
-                  {
-                    "leftValue": "={{ $json.bool_var }}",
-                    "rightValue": "",
-                    "operator": {
-                      "type": "boolean",
-                      "operation": "true",
-                      "singleValue": true
-                    },
-                    "id": "cc878c39-9bc2-44f5-8b85-e4fa354b1910"
-                  }
-                ],
-                "combinator": "and"
-              },
-              "renameOutput": true,
-              "outputKey": "True"
-            },
-            {
-              "conditions": {
-                "options": {
-                  "caseSensitive": true,
-                  "leftValue": "",
-                  "typeValidation": "strict",
-                  "version": 3
-                },
-                "conditions": [
-                  {
-                    "id": "e95af3e8-62aa-4bd8-8cdd-c94b215bc7ca",
-                    "leftValue": "={{ $json.bool_var !== true && $('cfg52').item.json.retry_count >= 3 }}",
-                    "rightValue": 4,
-                    "operator": {
-                      "type": "boolean",
-                      "operation": "true",
-                      "singleValue": true
-                    }
-                  }
-                ],
-                "combinator": "and"
-              },
-              "renameOutput": true,
-              "outputKey": "MaxRetriesExceeded"
-            },
-            {
-              "conditions": {
-                "options": {
-                  "caseSensitive": true,
-                  "leftValue": "",
-                  "typeValidation": "strict",
-                  "version": 3
-                },
-                "conditions": [
-                  {
-                    "id": "8aefa716-1e2c-47a0-97b2-800eabf449cd",
-                    "leftValue": "={{ $json.bool_var !== true && $('cfg52').item.json.retry_count < 3 }}",
-                    "rightValue": "",
-                    "operator": {
-                      "type": "boolean",
-                      "operation": "true",
-                      "singleValue": true
-                    }
-                  }
-                ],
-                "combinator": "and"
-              },
-              "renameOutput": true,
-              "outputKey": "False"
-            }
-          ]
-        },
-        "options": {}
-      },
-      "type": "n8n-nodes-base.switch",
-      "typeVersion": 3.4,
-      "position": [
-        4304,
-        560
-      ],
-      "id": "ad163b36-cbb6-4aa6-bf8e-4edf25220bfa",
-      "name": "if bool_var2"
-    },
-    {
-      "parameters": {
         "rules": {
           "values": [
             {
@@ -6109,7 +5802,7 @@
           "assignments": [
             {
               "id": "f2f767ae-fed8-4164-9cd0-30e8621ac08f",
-              "name": "=coding_retry_count",
+              "name": "coding_retry_count",
               "value": "={{ $('cfg18').item.json.coding_retry_count }}",
               "type": "number"
             }
@@ -6121,8 +5814,8 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        4608,
-        288
+        4704,
+        368
       ],
       "id": "f84fdfca-7e9e-4a05-ab89-1802ed303798",
       "name": "retry_count3"
@@ -6152,7 +5845,7 @@
             {
               "id": "d3f7287e-fd6e-436b-b458-f1065af7c170",
               "name": "error",
-              "value": "=MaxRetriesExceeded",
+              "value": "MaxRetriesExceeded",
               "type": "string"
             }
           ]
@@ -6243,6 +5936,454 @@
       ],
       "id": "4f693fb5-8d84-4f82-acf1-63314207ef97",
       "name": "cfg inject constraints"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "b9c862f9-17c0-4923-968c-f57c35859a6e",
+              "name": "PHASE_ID",
+              "value": "-",
+              "type": "string"
+            },
+            {
+              "id": "385b162f-1005-4d8e-b94a-6be27224b7d3",
+              "name": "AGENT_ID",
+              "value": "error_expert",
+              "type": "string"
+            },
+            {
+              "id": "16b09845-a443-436c-bde4-b8bf509bc238",
+              "name": "TASK_ID",
+              "value": "troubleshoot",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -112,
+        2064
+      ],
+      "id": "1606db5e-7273-46aa-ba97-7834b874f552",
+      "name": "cfg35"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "EoempdQOCJuP6XAv",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/EoempdQOCJuP6XAv",
+          "cachedResultName": "Universal Agent Sub-Workflow"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        16,
+        2064
+      ],
+      "id": "08e4fe52-af52-4e81-8c43-5042739cacfe",
+      "name": "error_expert - troubleshoot"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "b9c862f9-17c0-4923-968c-f57c35859a6e",
+              "name": "PHASE_ID",
+              "value": "",
+              "type": "string"
+            },
+            {
+              "id": "385b162f-1005-4d8e-b94a-6be27224b7d3",
+              "name": "AGENT_ID",
+              "value": "",
+              "type": "string"
+            },
+            {
+              "id": "16b09845-a443-436c-bde4-b8bf509bc238",
+              "name": "TASK_ID",
+              "value": "",
+              "type": "string"
+            },
+            {
+              "id": "5c7ad2ac-07ad-4f81-86fa-7a2dfa021265",
+              "name": "retry_count",
+              "value": "={{ ($json.retry_count || 0) + 1 }}",
+              "type": "number"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        4000,
+        688
+      ],
+      "id": "80375ebd-939a-4130-8cba-47fc5b23b359",
+      "name": "cfg52"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "b9c862f9-17c0-4923-968c-f57c35859a6e",
+              "name": "PHASE_ID",
+              "value": "-",
+              "type": "string"
+            },
+            {
+              "id": "385b162f-1005-4d8e-b94a-6be27224b7d3",
+              "name": "AGENT_ID",
+              "value": "error_handler",
+              "type": "string"
+            },
+            {
+              "id": "16b09845-a443-436c-bde4-b8bf509bc238",
+              "name": "TASK_ID",
+              "value": "report_error",
+              "type": "string"
+            },
+            {
+              "id": "d3f7287e-fd6e-436b-b458-f1065af7c170",
+              "name": "error",
+              "value": "=MaxRetriesExceeded",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        4448,
+        880
+      ],
+      "id": "c08f748e-f168-4d49-969d-d8be04841282",
+      "name": "cfg53"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "EoempdQOCJuP6XAv",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/EoempdQOCJuP6XAv",
+          "cachedResultName": "Universal Agent Sub-Workflow"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        4576,
+        880
+      ],
+      "id": "787715bf-30b4-406d-a271-798791df534e",
+      "name": "error_handler - report_error2"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "f2f767ae-fed8-4164-9cd0-30e8621ac08f",
+              "name": "retry_count",
+              "value": "={{ $('cfg52').item.json.retry_count }}",
+              "type": "number"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        4400,
+        1024
+      ],
+      "id": "049abc74-094b-479d-abe1-dd749e8f1c01",
+      "name": "retry_count2"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "EoempdQOCJuP6XAv",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/EoempdQOCJuP6XAv",
+          "cachedResultName": "Universal Agent Sub-Workflow"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        4128,
+        688
+      ],
+      "id": "4cdd7d0a-94ed-47f3-8250-460b4da9e648",
+      "name": "T/F RETRY agent1"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.bool_var }}",
+                    "rightValue": "",
+                    "operator": {
+                      "type": "boolean",
+                      "operation": "true",
+                      "singleValue": true
+                    },
+                    "id": "cc878c39-9bc2-44f5-8b85-e4fa354b1910"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "True"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "e95af3e8-62aa-4bd8-8cdd-c94b215bc7ca",
+                    "leftValue": "={{ $json.bool_var !== true && $('cfg52').item.json.retry_count >= 3 }}",
+                    "rightValue": 4,
+                    "operator": {
+                      "type": "boolean",
+                      "operation": "true",
+                      "singleValue": true
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "MaxRetriesExceeded"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "8aefa716-1e2c-47a0-97b2-800eabf449cd",
+                    "leftValue": "={{ $json.bool_var !== true && $('cfg52').item.json.retry_count < 3 }}",
+                    "rightValue": "",
+                    "operator": {
+                      "type": "boolean",
+                      "operation": "true",
+                      "singleValue": true
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "False"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        4304,
+        672
+      ],
+      "id": "04d8e995-666e-4df3-b899-3d648dcd9f55",
+      "name": "if bool_var2"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "b9c862f9-17c0-4923-968c-f57c35859a6e",
+              "name": "PHASE_ID",
+              "value": "-",
+              "type": "string"
+            },
+            {
+              "id": "385b162f-1005-4d8e-b94a-6be27224b7d3",
+              "name": "AGENT_ID",
+              "value": "error_expert",
+              "type": "string"
+            },
+            {
+              "id": "16b09845-a443-436c-bde4-b8bf509bc238",
+              "name": "TASK_ID",
+              "value": "troubleshoot",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        4128,
+        1024
+      ],
+      "id": "6b899bb5-241a-417a-b1c7-3af6ce8cada9",
+      "name": "cfg55"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "EoempdQOCJuP6XAv",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/EoempdQOCJuP6XAv",
+          "cachedResultName": "Universal Agent Sub-Workflow"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        4256,
+        1024
+      ],
+      "id": "f7b225c1-f5c4-481d-8bac-64e5b2e417fd",
+      "name": "error_expert - troubleshoot1"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "b9c862f9-17c0-4923-968c-f57c35859a6e",
+              "name": "PHASE_ID",
+              "value": "-",
+              "type": "string"
+            },
+            {
+              "id": "385b162f-1005-4d8e-b94a-6be27224b7d3",
+              "name": "AGENT_ID",
+              "value": "error_expert",
+              "type": "string"
+            },
+            {
+              "id": "16b09845-a443-436c-bde4-b8bf509bc238",
+              "name": "TASK_ID",
+              "value": "troubleshoot",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        4448,
+        368
+      ],
+      "id": "c74312c8-dd8c-4f2f-b08b-d4e379fb8679",
+      "name": "cfg56"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "EoempdQOCJuP6XAv",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/EoempdQOCJuP6XAv",
+          "cachedResultName": "Universal Agent Sub-Workflow"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        4576,
+        368
+      ],
+      "id": "c05e33aa-ab76-4701-9256-41b21aa32342",
+      "name": "error_expert - troubleshoot2"
     }
   ],
   "connections": {
@@ -7000,23 +7141,6 @@
         ]
       ]
     },
-    "Code Review Passed?": {
-      "main": [
-        [],
-        [
-          {
-            "node": "Review Error Injector",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Review Error Injector": {
-      "main": [
-        []
-      ]
-    },
     "Hoist python_code": {
       "main": [
         [
@@ -7716,7 +7840,7 @@
         ],
         [
           {
-            "node": "retry_count1",
+            "node": "cfg35",
             "type": "main",
             "index": 0
           }
@@ -7879,6 +8003,104 @@
         ]
       ]
     },
+    "if bool_var3": {
+      "main": [
+        [
+          {
+            "node": "Hoist python_code",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "cfg54",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "cfg56",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "retry_count3": {
+      "main": [
+        [
+          {
+            "node": "cfg18",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "cfg54": {
+      "main": [
+        [
+          {
+            "node": "error_handler - report_error4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "no situational?": {
+      "main": [
+        [
+          {
+            "node": "cfg34",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "scaffolding_designer - inject_multiple_constraints",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "cfg inject constraints": {
+      "main": [
+        [
+          {
+            "node": "no situational?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "cfg35": {
+      "main": [
+        [
+          {
+            "node": "error_expert - troubleshoot",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "error_expert - troubleshoot": {
+      "main": [
+        [
+          {
+            "node": "retry_count1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
     "cfg52": {
       "main": [
         [
@@ -7935,6 +8157,28 @@
         ],
         [
           {
+            "node": "cfg55",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "cfg55": {
+      "main": [
+        [
+          {
+            "node": "error_expert - troubleshoot1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "error_expert - troubleshoot1": {
+      "main": [
+        [
+          {
             "node": "retry_count2",
             "type": "main",
             "index": 0
@@ -7942,76 +8186,22 @@
         ]
       ]
     },
-    "if bool_var3": {
+    "cfg56": {
       "main": [
         [
           {
-            "node": "Hoist python_code",
+            "node": "error_expert - troubleshoot2",
             "type": "main",
             "index": 0
           }
-        ],
-        [
-          {
-            "node": "cfg54",
-            "type": "main",
-            "index": 0
-          }
-        ],
+        ]
+      ]
+    },
+    "error_expert - troubleshoot2": {
+      "main": [
         [
           {
             "node": "retry_count3",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "retry_count3": {
-      "main": [
-        [
-          {
-            "node": "cfg18",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "cfg54": {
-      "main": [
-        [
-          {
-            "node": "error_handler - report_error4",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "no situational?": {
-      "main": [
-        [
-          {
-            "node": "cfg34",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "scaffolding_designer - inject_multiple_constraints",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "cfg inject constraints": {
-      "main": [
-        [
-          {
-            "node": "no situational?",
             "type": "main",
             "index": 0
           }
