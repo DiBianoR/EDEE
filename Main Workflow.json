@@ -701,7 +701,7 @@
             {
               "id": "4086eabe-e504-4d6c-904e-3e48a6dafb88",
               "name": "api_key",
-              "value": "AIzaTessseset",
+              "value": "<GEMINI_API_KEY_REDACTED>",
               "type": "string"
             }
           ]
