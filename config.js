@@ -1245,6 +1245,16 @@ Walk through the problem logically:
               }
             }
           }
+        },
+        "error_injector": {
+          "identity": "System utility for safely formatting and logging errors into the project history.",
+          "tasks": {
+            "log_error": {
+              "model_url": "no_model",
+              "instruction": "Record pipeline error into history.",
+              "result": `{"error_report": "*** \${error_type} ***\\n\\nDetails:\\n\${error_details}\\n\\nDIRECTIVE: Troubleshoot and fix this issue in the next iteration."}`
+            }
+          }
         }
       }
     }
