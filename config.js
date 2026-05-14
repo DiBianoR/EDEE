@@ -1044,13 +1044,14 @@ Review the outputs from the Image Verifier's tasks (Bias, Aesthetics, Safety, Ma
 DECISION LOGIC:
 - If ANY critical failure (Unsafe, Bias, Math Error, Severe Artifacts) is found, set 'final_pass' to FALSE.
 - If 'final_pass' is FALSE, provide a 'warning_message' and clear 'fix_instructions' for the previous Phase.
-- If minor issues only, you may pass with notes.`,
+- If minor issues only, you may pass the image, and just leave notes about the issues in your analysis.`,
               "history_scope": "phase",
               "schema": {
                 "type": "OBJECT",
                 "properties": {
-                  "summary_analysis": { "type": "STRING" },
+                  "summary_analysis": { "type": "STRING", "description": "Summarize, review, and analyze findings. Make a final decision." },
                   "final_pass": { "type": "BOOLEAN" },
+                  "notes": { "type": "STRING", "description": "Any notes on minor issues discussed in analysis." },
                   "warning_message": { "type": "STRING" },
                   "fix_instructions": { "type": "STRING", "description": "Specific feedback for the Image Planner/Artist to correct the issues." }
                 },
@@ -1252,7 +1253,7 @@ Walk through the problem logically:
             "log_error": {
               "model_url": "no_model",
               "instruction": "Record pipeline error into history.",
-              "result": `{"error_report": "*** \${error_type} ***\\n\\nDetails:\\n\${error_details}\\n\\nDIRECTIVE: Troubleshoot and fix this issue in the next iteration."}`
+              "result": `{"error_report": "\${error_text}"}`
             }
           }
         }

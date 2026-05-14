@@ -11,7 +11,7 @@ const fullHistory = INPUT_DATA.history || [];
 
 // Replaces ${VAR.PATH} placeholders with real values from the context object
 // Supports: ${Node Name:variable} OR ${variable} (from localContext)
-function resolveTemplate(templateStr) {
+function resolveTemplate(templateStr, isJsonTarget = false) {
     if (typeof templateStr !== 'string') return templateStr;
 
     return templateStr.replace(/\$\{([^}]+)\}/g, (match, path) => {
@@ -42,7 +42,12 @@ function resolveTemplate(templateStr) {
         }
 
         if (typeof value === 'object') return JSON.stringify(value, null, 2);
-        return String(value);
+        let valStr = String(value);
+        if (isJsonTarget) {
+            // Safely escapes \n, \r, \t, and " so it doesn't break your JSON
+            valStr = JSON.stringify(valStr).slice(1, -1);
+        }
+        return valStr;
     });
 }
 
@@ -156,7 +161,8 @@ if (model_url === "no_model") {
         throw new Error(`CONFIGURATION ERROR: Agent '${AGENT_ID}' (Task: '${TASK_ID}') has 'model_url':'no_model' but is missing 'result'.`);
     }
 
-    const resolvedResult = resolveTemplate(rawResult);
+    // Pass TRUE to safely escape quotes and newlines for the JSON parser
+    const resolvedResult = resolveTemplate(rawResult, true);
 
     // Try to auto-parse JSON if it looks like one
     if (typeof resolvedResult === 'string' && (resolvedResult.trim().startsWith('{') || resolvedResult.trim().startsWith('['))) {
