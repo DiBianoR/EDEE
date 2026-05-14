@@ -5818,12 +5818,11 @@
           "conditions": [
             {
               "id": "a5c1b38a-afe9-4d63-9f97-1627b37f34cd",
-              "leftValue": "task_id",
+              "leftValue": "={{ $json.TASK_ID }}",
               "rightValue": "skip",
               "operator": {
                 "type": "string",
-                "operation": "equals",
-                "name": "filter.operator.equals"
+                "operation": "equals"
               }
             }
           ],
@@ -6977,13 +6976,7 @@
     },
     "Mock Input": {
       "main": [
-        [
-          {
-            "node": "Set API Key",
-            "type": "main",
-            "index": 0
-          }
-        ]
+        []
       ]
     },
     "When clicking ‘Execute workflow’": {
@@ -8011,7 +8004,13 @@
     },
     "Set Job": {
       "main": [
-        []
+        [
+          {
+            "node": "Set API Key",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "Phase 6 - Output": {
