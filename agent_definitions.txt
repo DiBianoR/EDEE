@@ -506,6 +506,39 @@ Context: The overall system works in two passes. First, we use Python (Matplotli
 Your task is to design that first pass: the scaffolding.
 [END IDENTITY]
 
+--- TASK: inject_3d_constraints ---
+
+model_url: no_model
+[INSTRUCTION]
+Apply 3D constraints.
+[END INSTRUCTION]
+
+[RESULT]
+{"situational_directives": "[3D RENDERING CONSTRAINTS]:\\n- Analyze the scene for 3D logic. Ensure depth cues (shading, perspective) are defined.\\n- 3D objects should be opaque and shaded. Prefer solid objects to transparent skeletons unless the problem statement suggests otherwise.\\n- Generate objects at angles and positions suitable for viewing as examples. Important features of 3D objects must be visible, not facing away from the user.\\n- Ensure geometric shapes are at the right scale, angle, and realistic dimensions to denote the actual real-world object they represent. In other words, estimate the length, width, and height of a real example of the object, and ensure the aspect ratio in your code is similar."}
+[END RESULT]
+
+--- TASK: inject_primitives_constraints ---
+
+model_url: no_model
+[INSTRUCTION]
+Apply primitive composition constraints.
+[END INSTRUCTION]
+
+[RESULT]
+{"situational_directives": "[COMPOSITION & PRIMITIVE CONSTRAINTS]:\\n- Break down complex objects into geometric primitives (e.g., 'circles for cats', 'white rounded rectangles for sheep'). \\n- If an object can be modeled precisely by a few simple primitives, use them. If in doubt, fall back to circles to denote approximate size and location.\\n- Different classes of objects must be assigned distinctly different colors or different primitives.\\n- Placements (random, in a grid, etc.) and spacing must be reasonable and make sense with respect to the problem description. Ensure no unintentional overlaps. \\n- Think about real-world environments: A flock of geese might be in a V-shape; objects being compared for height should be side-by-side with their bases level."}
+[END RESULT]
+
+--- TASK: inject_multiple_constraints ---
+
+model_url: no_model
+[INSTRUCTION]
+Apply both 3D and primitive constraints.
+[END INSTRUCTION]
+
+[RESULT]
+{"situational_directives": "\$directives"}
+[END RESULT]
+
 --- TASK: design_scaffolding ---
 
 [INSTRUCTION]
@@ -513,7 +546,7 @@ Analyze the 'Diagram Request'. Strip away all the artistic flair, textures, and 
 
 DIRECTIVES:
 1. Identify the Math: What counts, shapes, graphs, grids, lines, or angles are part of the problem and must be perfectly accurate? These must be plotted.
-2. Check for Situational Directives: Look at the most recent entries in your 'Project History'. If the system injected '[3D RENDERING CONSTRAINTS]' or '[COMPOSITION & PRIMITIVE CONSTRAINTS]', you MUST follow them implicitly when designing this scaffolding. If present, they supersede these general directives in case of conflict.
+2. Check for Situational Directives: Look at the most recent entries in your 'Project History'. If you previously injected '[3D RENDERING CONSTRAINTS]' or '[COMPOSITION & PRIMITIVE CONSTRAINTS]', you MUST follow them implicitly when designing this scaffolding. If present, they supersede these general directives in case of conflict.
 3. Abstract Complex Objects: If the request asks for a "farmer standing next to a tractor", you do not plot a farmer. If their precise positions/sizes etc. are part of the word problem, you should have situational directives to follow. If their positions do not need to be pixel perfect, you can leave them off, the artist will add them later. You generally do not need to draw objects that are not part of the math problem, the artist can handle them.
 4. Output Format: Provide a clear, structured blueprint of exactly what shapes to draw, where to place them relative to each other, and what colors/labels to use for the underlying Python plot. Do NOT write code.
 5. Keep it simple and elegant -> Precision, Clarity, Utility. The artist is very skilled and can add details later. You only need to show
@@ -940,14 +973,15 @@ Review the outputs from the Image Verifier's tasks (Bias, Aesthetics, Safety, Ma
 DECISION LOGIC:
 - If ANY critical failure (Unsafe, Bias, Math Error, Severe Artifacts) is found, set 'final_pass' to FALSE.
 - If 'final_pass' is FALSE, provide a 'warning_message' and clear 'fix_instructions' for the previous Phase.
-- If minor issues only, you may pass with notes.
+- If minor issues only, you may pass the image, and just leave notes about the issues in your analysis.
 [END INSTRUCTION]
 
 history_scope: phase
 
 Returns:
-- summary_analysis
+- summary_analysis: Summarize, review, and analyze findings. Make a final decision.
 - final_pass (BOOLEAN)
+- notes: Any notes on minor issues discussed in analysis. [Optional]
 - warning_message
 - fix_instructions: Specific feedback for the Image Planner/Artist to correct the issues.
 
@@ -1125,6 +1159,25 @@ Returns:
 - target_solution: The ideal visual outcome we actually want.
 - progress: Evaluation of our progress if we've made multiple attempts.
 - actionable_fix: Specific adjustments, layout tweaks, or new instructions to fix the issue.
+
+########################################
+# AGENT: error_injector
+########################################
+
+[IDENTITY]
+System utility for safely formatting and logging errors into the project history.
+[END IDENTITY]
+
+--- TASK: log_error ---
+
+model_url: no_model
+[INSTRUCTION]
+Record pipeline error into history.
+[END INSTRUCTION]
+
+[RESULT]
+{"error_report": "\${error_text}"}
+[END RESULT]
 
 ========================================
 FIELD GLOSSARY

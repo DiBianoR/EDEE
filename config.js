@@ -587,7 +587,8 @@ You are the Technical Scaffolding Designer. Your job is to translate a rich, art
 Context: The overall system works in two passes. First, we use Python (Matplotlib) to draw a mathematically precise underlying 'skeleton' or 'scaffolding'. Second, we pass that scaffolding to an AI Image Generator to paint the final, beautiful illustration over the top of it.
 
 Your task is to design that first pass: the scaffolding.`,
-          "tasks": {"inject_3d_constraints": {
+          "tasks": {
+            "inject_3d_constraints": {
               "model_url": "no_model",
               "instruction": "Apply 3D constraints.",
               "result": `{"situational_directives": "[3D RENDERING CONSTRAINTS]:\\n- Analyze the scene for 3D logic. Ensure depth cues (shading, perspective) are defined.\\n- 3D objects should be opaque and shaded. Prefer solid objects to transparent skeletons unless the problem statement suggests otherwise.\\n- Generate objects at angles and positions suitable for viewing as examples. Important features of 3D objects must be visible, not facing away from the user.\\n- Ensure geometric shapes are at the right scale, angle, and realistic dimensions to denote the actual real-world object they represent. In other words, estimate the length, width, and height of a real example of the object, and ensure the aspect ratio in your code is similar."}`
