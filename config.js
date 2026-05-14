@@ -42,7 +42,7 @@ const activeStyle = styleLibrary[selectedStyle] || styleLibrary["casual_mobile"]
 const Gemini_3_1_Pro = "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-pro-preview:generateContent";
 const Gemini_3_Flash = "https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent";
 const Gemini_2_5_Pro = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent";
-const Gemini_3_1_Flash-Lite = "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite-preview:generateContent";
+const Gemini_3_1_Flash_Lite = "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite-preview:generateContent";
 const Gemini_2_5_Flash = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent";
 const Gemini_2_5_Flash_Lite = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent";
 
