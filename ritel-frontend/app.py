@@ -13,7 +13,7 @@ from google.cloud import firestore, storage
 from google.oauth2 import service_account
 
 # --- CONFIGURATION ---
-N8N_START_URL = os.environ.get("N8N_START_URL", "https://dibianor.app.n8n.cloud/webhook-test/generate-diagram")
+N8N_START_URL = os.environ.get("N8N_START_URL", "https://edee.app.n8n.cloud/webhook-test/generate-diagram")
 API_KEY = os.environ.get("API_KEY", "mathisfun") 
 MAX_TIMEOUT = 180  # 3 Minute Safety Timeout
 
