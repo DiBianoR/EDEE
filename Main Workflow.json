@@ -9,10 +9,10 @@
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
-        4496,
-        -496
+        1200,
+        1104
       ],
-      "id": "536de3bc-4446-4e28-b717-8b35cf153d8e",
+      "id": "9ae91cae-e840-4737-b043-f7f63c83e939",
       "name": "Sticky Note11"
     },
     {
@@ -24,10 +24,10 @@
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
-        5376,
-        -496
+        2080,
+        1104
       ],
-      "id": "379b213f-f2c1-4369-b30c-2964b8607791",
+      "id": "24329f8a-cd43-4ba9-8fb0-944ac97a1edf",
       "name": "Sticky Note10"
     },
     {
@@ -39,10 +39,10 @@
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
-        5008,
-        -496
+        1712,
+        1104
       ],
-      "id": "4a5a61df-75ed-469a-abde-1148a53cd360",
+      "id": "757c37e9-81c1-4247-9903-05b1fe2638a1",
       "name": "Sticky Note9"
     },
     {
@@ -54,10 +54,10 @@
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
-        4176,
-        -496
+        880,
+        1104
       ],
-      "id": "83e18900-8832-4992-941d-1bfdc447190a",
+      "id": "4b8561c5-4c49-4f96-b6ac-58a9639319a6",
       "name": "Sticky Note8"
     },
     {
@@ -69,10 +69,10 @@
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
-        1680,
-        -640
+        -1616,
+        960
       ],
-      "id": "836e006d-1cf9-428a-8cd3-f5385d9c42e4",
+      "id": "b5ba1041-2b34-4b42-a445-e31db3b77ab7",
       "name": "Sticky Note7"
     },
     {
@@ -84,10 +84,10 @@
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
-        1168,
-        -640
+        -2128,
+        960
       ],
-      "id": "e53a5cdc-5129-41c4-ad6b-b0b57dcab000",
+      "id": "3fbc420f-281a-4cb0-b700-de2ad93cbce5",
       "name": "Sticky Note6"
     },
     {
@@ -99,10 +99,10 @@
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
-        848,
-        -640
+        -2448,
+        960
       ],
-      "id": "77aef936-987f-4725-8b0d-4254b4ca68dd",
+      "id": "5349a1cf-818e-4a21-ab97-ea20a6b449a4",
       "name": "Sticky Note5"
     },
     {
@@ -114,10 +114,10 @@
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
-        -144,
-        -400
+        -3440,
+        1200
       ],
-      "id": "e506df9b-9490-4a7f-b9b9-3f40b0c63387",
+      "id": "10ed1e66-d100-484c-94da-68784c85f013",
       "name": "Sticky Note4"
     },
     {
@@ -129,10 +129,10 @@
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
-        -1056,
-        -400
+        -4352,
+        1200
       ],
-      "id": "c3b7368e-9a9f-41c3-baf6-8f55246dfe62",
+      "id": "1ba0196a-d583-4602-82ab-3a42e748933c",
       "name": "Sticky Note3"
     },
     {
@@ -212,10 +212,10 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        2512,
-        16
+        -784,
+        1616
       ],
-      "id": "88e2a985-c587-4d0b-82c1-745c04fe7377",
+      "id": "5e2c2907-7300-4ed5-8d17-629ecae292b8",
       "name": "Phase 2 - Output"
     },
     {
@@ -245,10 +245,10 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
-        1200,
-        -272
+        -2096,
+        1328
       ],
-      "id": "3ecf2113-629e-4fd4-9e5f-51da919a5d9d",
+      "id": "9788945e-6734-4cdf-9355-f9b0038adcca",
       "name": "If 3D Objects"
     },
     {
@@ -278,10 +278,10 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
-        1200,
-        112
+        -2096,
+        1712
       ],
-      "id": "a4e2c6c5-780d-49ce-b6b7-0348486154bc",
+      "id": "ed80f0df-b166-44ef-b981-6cd424ef4b52",
       "name": "If Arranged Objects"
     },
     {
@@ -311,10 +311,10 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
-        1200,
-        -80
+        -2096,
+        1520
       ],
-      "id": "58146982-72cf-4eec-959e-535f093f8cea",
+      "id": "56c728b8-e3ab-40f9-b4a2-6252f3865614",
       "name": "If Graphs"
     },
     {
@@ -376,10 +376,10 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        368,
-        16
+        -2928,
+        1616
       ],
-      "id": "b4ec76c1-296e-4630-87ee-9ce7e96d1447",
+      "id": "b3fb5298-081b-4730-9b6b-24167858d7b4",
       "name": "Problem Validation Agent - Output"
     },
     {
@@ -489,10 +489,10 @@
       "type": "n8n-nodes-base.switch",
       "typeVersion": 3.3,
       "position": [
-        -336,
-        -16
+        -3632,
+        1584
       ],
-      "id": "5fce49bd-8974-4faf-9db4-cbd81cd69c57",
+      "id": "4fdfab33-7c6f-483b-9587-4ed9f2dc082a",
       "name": "Problem Validation Agent - Switch"
     },
     {
@@ -504,10 +504,10 @@
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
-        -1280,
-        -272
+        -4576,
+        1328
       ],
-      "id": "5d780703-ba26-491f-a740-e2a6c01681eb",
+      "id": "9c17d5ec-af99-41bb-aec4-26925abfe32a",
       "name": "Sticky Note2"
     },
     {
@@ -519,10 +519,10 @@
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
-        2720,
-        -368
+        -576,
+        1232
       ],
-      "id": "689e230c-3bab-4661-af0b-0ebfec012cbe",
+      "id": "07eb63a0-2739-4c25-8ada-8a5b8f1c1ebb",
       "name": "Sticky Note1"
     },
     {
@@ -534,10 +534,10 @@
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
-        608,
-        -512
+        -2688,
+        1088
       ],
-      "id": "ee4c42a2-63bf-45f7-9986-0a7e443a17bb",
+      "id": "7eb98886-7ef7-4bb5-87b6-101861dc4169",
       "name": "Sticky Note"
     },
     {
@@ -550,15 +550,15 @@
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2.1,
       "position": [
-        -1808,
-        16
+        -5104,
+        1616
       ],
-      "id": "d86ff99f-de54-4481-8086-8045dcb3e7a4",
+      "id": "a29629b7-257f-4e7d-80fb-fd5bcffadfe1",
       "name": "API Trigger",
       "webhookId": "0b7aac70-d650-467c-b3a8-a68ad5738ac6",
       "credentials": {
         "httpHeaderAuth": {
-          "id": "8CFymTP81CqP4p51",
+          "id": "KnDtx5YwYaQhx2ar",
           "name": "RITEL Auth account"
         }
       }
@@ -570,10 +570,10 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        5200,
-        -80
+        1904,
+        1520
       ],
-      "id": "cc04b998-253c-43b4-9155-0b32d3210105",
+      "id": "bba77387-4acb-4c6b-ad83-e7a716cfde36",
       "name": "Prepare for Vision"
     },
     {
@@ -600,10 +600,10 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.3,
       "position": [
-        5008,
-        -176
+        1712,
+        1424
       ],
-      "id": "c61ad7c6-4fa0-41b6-878f-d8d323daccdb",
+      "id": "36e03438-996a-45a3-98a6-1c21c31e3ddb",
       "name": "Python Execution Node",
       "onError": "continueErrorOutput"
     },
@@ -616,10 +616,10 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        -1616,
-        -176
+        -4912,
+        1424
       ],
-      "id": "c4ce9c38-b677-40a6-a54f-d479960e697d",
+      "id": "dfd011ce-d070-4790-aded-3673b4e1eb8a",
       "name": "Mock Input"
     },
     {
@@ -627,10 +627,10 @@
       "type": "n8n-nodes-base.manualTrigger",
       "typeVersion": 1,
       "position": [
-        -1808,
-        -176
+        -5104,
+        1424
       ],
-      "id": "172a2b12-09e9-4f1c-94a7-4ef9b1d40005",
+      "id": "0370802c-b41f-4441-98d9-2fb9c503b853",
       "name": "When clicking ‘Execute workflow’"
     },
     {
@@ -642,10 +642,10 @@
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
-        4176,
-        -624
+        880,
+        976
       ],
-      "id": "2244dd1b-3b18-47b2-ad67-a1c255ba4326",
+      "id": "b53e1d15-8837-4afc-9405-3db31e114761",
       "name": "Sticky Note13"
     },
     {
@@ -666,10 +666,10 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        -1424,
-        16
+        -4720,
+        1616
       ],
-      "id": "99fa9847-a220-4b98-9f67-3973d3ed6a43",
+      "id": "b71dc54a-10e8-4b76-a2a3-2ec364225c8e",
       "name": "Set API Key"
     },
     {
@@ -679,10 +679,10 @@
       "type": "n8n-nodes-base.stopAndError",
       "typeVersion": 1,
       "position": [
-        3520,
-        192
+        224,
+        1792
       ],
-      "id": "a92096d7-30de-4ba0-8483-df9ace7810f2",
+      "id": "da43bee1-62fd-4534-ad87-5aff2dba320c",
       "name": "TODO: Primitives"
     },
     {
@@ -694,10 +694,10 @@
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
-        6304,
-        -272
+        3008,
+        1328
       ],
-      "id": "f77118c7-9f70-4235-b1bd-530dfd624380",
+      "id": "e9a1f58c-b0e5-4847-9689-c2d71ddf0135",
       "name": "Sticky Note14"
     },
     {
@@ -707,10 +707,10 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        7184,
-        -272
+        3888,
+        1328
       ],
-      "id": "7b6fdb55-ed1a-42df-9c3a-41870af38c9b",
+      "id": "2d5810f7-5642-4271-af5e-cfeb165f5415",
       "name": "View Image",
       "disabled": true
     },
@@ -723,10 +723,10 @@
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
-        7392,
-        -416
+        4096,
+        1184
       ],
-      "id": "a8a776ab-c179-4aab-b559-fdc173c55b88",
+      "id": "43e18c8a-44e5-4fd3-a4f2-47a54fe63a1d",
       "name": "Sticky Note15"
     },
     {
@@ -738,20 +738,20 @@
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
-        8672,
-        -128
+        5376,
+        1472
       ],
-      "id": "6fc72b54-0cc9-4807-a4b1-ccf3b09a15c3",
+      "id": "a58d56e9-1003-464f-9692-a1f35b980d8b",
       "name": "Sticky Note16"
     },
     {
       "parameters": {
         "workflowId": {
           "__rl": true,
-          "value": "OLSW0S08rnuUmERz",
+          "value": "59k24tT721u3gsni",
           "mode": "list",
-          "cachedResultUrl": "/workflow/OLSW0S08rnuUmERz",
-          "cachedResultName": "Load Config Sub-workflow"
+          "cachedResultUrl": "/workflow/59k24tT721u3gsni",
+          "cachedResultName": "EDEE — Load Config Sub-workflow"
         },
         "workflowInputs": {
           "mappingMode": "defineBelow",
@@ -766,10 +766,10 @@
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1.3,
       "position": [
-        -1232,
-        16
+        -4528,
+        1616
       ],
-      "id": "7ae80c19-e39f-48a1-a073-a1cb9ca66ff8",
+      "id": "b2e76cf8-781a-46b1-b6e7-035b8a581f6c",
       "name": "Load Phase 1 Config"
     },
     {
@@ -802,10 +802,10 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        -1216,
-        1520
+        -4512,
+        3120
       ],
-      "id": "eabb760c-d368-4f6a-8dd3-04896339d104",
+      "id": "dbc21fe2-2bd8-4399-b5dd-c03bf8fa50d4",
       "name": "cfg"
     },
     {
@@ -838,10 +838,10 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        -1040,
-        112
+        -4336,
+        1712
       ],
-      "id": "df9cbbd3-120d-4a00-84dc-66dc30c785c3",
+      "id": "ff8a9564-0d0a-49ac-865d-065a80c4bddf",
       "name": "cfg2"
     },
     {
@@ -874,10 +874,10 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        -1040,
-        -80
+        -4336,
+        1520
       ],
-      "id": "b7bfabe6-3cb6-441d-9c5d-cbc003f8da6c",
+      "id": "5e286cb9-f9e1-4342-beb2-5396b5579d8a",
       "name": "cfg1"
     },
     {
@@ -910,10 +910,10 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        -144,
-        -272
+        -3440,
+        1328
       ],
-      "id": "872328d3-0cb9-4780-8d48-312138fb4146",
+      "id": "6273622b-6e41-4edc-8cc5-9be91c182641",
       "name": "cfg3"
     },
     {
@@ -946,10 +946,10 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        -144,
-        -80
+        -3440,
+        1520
       ],
-      "id": "d9cf890b-0212-4203-9533-4defbbbc8c7e",
+      "id": "5be6cbd9-238c-475d-8980-5ad9da19a8a2",
       "name": "cfg4"
     },
     {
@@ -982,20 +982,20 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        -144,
-        304
+        -3440,
+        1904
       ],
-      "id": "93bdd628-d024-4ceb-b887-38efd4365deb",
+      "id": "fe03a8ba-15f7-485e-836f-1ed49d571a1d",
       "name": "cfg5"
     },
     {
       "parameters": {
         "workflowId": {
           "__rl": true,
-          "value": "OLSW0S08rnuUmERz",
+          "value": "59k24tT721u3gsni",
           "mode": "list",
-          "cachedResultUrl": "/workflow/OLSW0S08rnuUmERz",
-          "cachedResultName": "Load Config Sub-workflow"
+          "cachedResultUrl": "/workflow/59k24tT721u3gsni",
+          "cachedResultName": "EDEE — Load Config Sub-workflow"
         },
         "workflowInputs": {
           "mappingMode": "defineBelow",
@@ -1010,10 +1010,10 @@
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1.3,
       "position": [
-        656,
-        16
+        -2640,
+        1616
       ],
-      "id": "012c6346-135d-4cbd-8879-6540dbcad9c0",
+      "id": "8b7c722c-dfba-4ac3-8bdf-630e35dd6ecb",
       "name": "Load Phase 2 Config"
     },
     {
@@ -1046,10 +1046,10 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        848,
-        -464
+        -2448,
+        1136
       ],
-      "id": "6ff7751f-f813-447e-b352-febcf15ad5e9",
+      "id": "47d436bf-d47a-4f05-9cef-399f76fbdc5e",
       "name": "cfg6"
     },
     {
@@ -1082,10 +1082,10 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        848,
-        -272
+        -2448,
+        1328
       ],
-      "id": "0a1e75af-9225-4105-af96-3cead0ff3c05",
+      "id": "d8b04fad-f4b0-4d07-9d0a-8bbd17266a96",
       "name": "cfg7"
     },
     {
@@ -1118,10 +1118,10 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        848,
-        -80
+        -2448,
+        1520
       ],
-      "id": "69e33f08-6b38-46d0-805d-0c67ea3dbc40",
+      "id": "b5e41398-1bdb-451a-aacd-d993bbbcdf21",
       "name": "cfg8"
     },
     {
@@ -1154,10 +1154,10 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        848,
-        112
+        -2448,
+        1712
       ],
-      "id": "32f5e41e-1008-451d-95e5-bef89adb4aae",
+      "id": "e1b72d75-1f99-46ff-807f-1d444f8e1988",
       "name": "cfg9"
     },
     {
@@ -1190,10 +1190,10 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        848,
-        304
+        -2448,
+        1904
       ],
-      "id": "34d77236-2aa5-4c04-aa24-71a7bac16964",
+      "id": "3fdf19a6-d631-4ca6-b12a-88597b885029",
       "name": "cfg10"
     },
     {
@@ -1226,10 +1226,10 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        848,
-        496
+        -2448,
+        2096
       ],
-      "id": "9c4fa363-7abd-4ffc-922b-a4a350e38107",
+      "id": "2ec1250f-b8de-4883-8305-bd976ef884c7",
       "name": "cfg11"
     },
     {
@@ -1254,10 +1254,10 @@
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1.3,
       "position": [
-        976,
-        -272
+        -2320,
+        1328
       ],
-      "id": "5b6e4cc7-18e9-426e-ade1-6abfb5bee7d2",
+      "id": "8e51dfe2-bb84-4c05-8ad8-8662a0315ea2",
       "name": "dimension_expert - estimate_dimensions"
     },
     {
@@ -1282,10 +1282,10 @@
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1.3,
       "position": [
-        976,
-        -80
+        -2320,
+        1520
       ],
-      "id": "add81ba0-d0bb-4b22-8420-e33c587d9325",
+      "id": "8206bcf1-7856-4345-b3a2-2b8b52386bb4",
       "name": "layout_expert - plan_composition"
     },
     {
@@ -1310,10 +1310,10 @@
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1.3,
       "position": [
-        976,
-        112
+        -2320,
+        1712
       ],
-      "id": "3ea23b21-bf06-4ba1-879f-cbb9cc936be5",
+      "id": "02435137-14a2-4b9c-ac3f-3181b771e397",
       "name": "visual_director - plan_viewpoint"
     },
     {
@@ -1338,10 +1338,10 @@
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1.3,
       "position": [
-        976,
-        304
+        -2320,
+        1904
       ],
-      "id": "36ddbf16-dd97-41a1-b794-a651085c733d",
+      "id": "ff28190d-460c-4f78-970f-bd2d6026c1f7",
       "name": "markup_specialist - plan_markings"
     },
     {
@@ -1366,10 +1366,10 @@
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1.3,
       "position": [
-        976,
-        496
+        -2320,
+        2096
       ],
-      "id": "4a65f316-4b8f-41bb-9563-e7e4923cd0e1",
+      "id": "1c219553-406c-4825-81db-1220e2c6eea3",
       "name": "educator - enhance_clarity"
     },
     {
@@ -1402,10 +1402,10 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        1360,
-        -272
+        -1936,
+        1328
       ],
-      "id": "960291f9-8f7e-4f58-8e5e-6b8e791093a2",
+      "id": "ac992363-d0ed-4cc2-806f-6c0d92cc954f",
       "name": "cfg12"
     },
     {
@@ -1438,10 +1438,10 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        1360,
-        -80
+        -1936,
+        1520
       ],
-      "id": "ec99368f-6101-4533-9f30-4292d4513c9e",
+      "id": "a5664717-27ea-4c4c-ab9a-3e645f41b847",
       "name": "cfg13"
     },
     {
@@ -1474,10 +1474,10 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        1360,
-        112
+        -1936,
+        1712
       ],
-      "id": "33be7fcc-62ae-4889-927a-7f35b379a1cc",
+      "id": "49084237-671c-4317-8225-208c4d0bdcea",
       "name": "cfg14"
     },
     {
@@ -1502,10 +1502,10 @@
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1.3,
       "position": [
-        1488,
-        -272
+        -1808,
+        1328
       ],
-      "id": "49c381a9-467a-42aa-8be2-77bfc3bdfb83",
+      "id": "05099b33-d8fd-4844-a0ef-e755d594495d",
       "name": "3d_specialist - plan_3d"
     },
     {
@@ -1530,10 +1530,10 @@
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1.3,
       "position": [
-        1488,
-        -80
+        -1808,
+        1520
       ],
-      "id": "ad18d3e0-a68d-4aef-8fcc-32bf3dea9bac",
+      "id": "9f42c4b1-9ac2-492d-85db-48e639d5eeb6",
       "name": "data_viz_expert - plan_graph"
     },
     {
@@ -1566,10 +1566,10 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        1680,
-        16
+        -1616,
+        1616
       ],
-      "id": "988e1a6a-73cc-4e17-96be-adf55a2af752",
+      "id": "b2a21c94-6dcd-4add-98b6-2fd9adbafc11",
       "name": "cfg15"
     },
     {
@@ -1608,10 +1608,10 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        2000,
-        16
+        -1296,
+        1616
       ],
-      "id": "3aabce98-c64c-464f-8940-52a25acce31f",
+      "id": "5cf06359-e93f-44a2-831d-303ff0c5c538",
       "name": "cfg16"
     },
     {
@@ -1636,10 +1636,10 @@
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1.3,
       "position": [
-        2768,
-        16
+        -528,
+        1616
       ],
-      "id": "d39be8e1-6c0a-486a-bee0-096652f4524f",
+      "id": "185f2505-d501-45a3-ba9c-65bcf366a077",
       "name": "Load Phase 3 Config"
     },
     {
@@ -1672,10 +1672,10 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        2960,
-        16
+        -336,
+        1616
       ],
-      "id": "7525e0b6-8e35-4aa9-bf06-f6d02858b484",
+      "id": "b772df57-2ad8-423c-851b-15f23f3d4f77",
       "name": "cfg17"
     },
     {
@@ -1700,10 +1700,10 @@
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1.3,
       "position": [
-        3088,
-        16
+        -208,
+        1616
       ],
-      "id": "d4155886-af5b-4cc9-b176-9afcfe40cf5c",
+      "id": "428bbf4f-c091-40b1-9888-1d08d203b919",
       "name": "selector - choose_path"
     },
     {
@@ -1754,10 +1754,10 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        4176,
-        -272
+        880,
+        1328
       ],
-      "id": "7f3852af-81c1-4588-874f-2fde2b5dc336",
+      "id": "77910493-c6c5-44aa-9c13-3af1b388fcaf",
       "name": "cfg18"
     },
     {
@@ -1790,10 +1790,10 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        4176,
-        -80
+        880,
+        1520
       ],
-      "id": "327c7723-413d-4a07-9e5c-97a75cecd680",
+      "id": "88140d8e-f08d-4d51-b3d4-9b4be34fd501",
       "name": "cfg19"
     },
     {
@@ -1818,10 +1818,10 @@
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1.3,
       "position": [
-        4304,
-        -272
+        1008,
+        1328
       ],
-      "id": "18edf1cc-d1b2-4c90-943f-d4c6930a5d5e",
+      "id": "e65e6410-c1dd-4df6-8dce-59de141a44a0",
       "name": "architect - plan_logic"
     },
     {
@@ -1846,10 +1846,10 @@
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1.3,
       "position": [
-        4304,
-        -80
+        1008,
+        1520
       ],
-      "id": "da345a92-a64a-4332-863c-ad900d2c7a5f",
+      "id": "e008c410-2f51-48ed-9066-861ce4960dd5",
       "name": "builder - write_code",
       "retryOnFail": true
     },
@@ -1883,10 +1883,10 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        4496,
-        -368
+        1200,
+        1232
       ],
-      "id": "a405eba0-142b-41b9-b5b7-b96377befc69",
+      "id": "2d11b44d-9dce-440b-8bb8-75689b32c9f2",
       "name": "cfg20"
     },
     {
@@ -1919,10 +1919,10 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        4496,
-        -176
+        1200,
+        1424
       ],
-      "id": "e9680054-3ee8-447e-8d99-23299dca8fe6",
+      "id": "685e2f2f-23f9-4bd9-9850-d61ab6da9029",
       "name": "cfg21"
     },
     {
@@ -1947,10 +1947,10 @@
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1.3,
       "position": [
-        4624,
-        -176
+        1328,
+        1424
       ],
-      "id": "8322aa11-c603-45ac-a660-c1bf903a658e",
+      "id": "2d890a58-f4d9-469a-9950-ca904f053771",
       "name": "reviewer - logic_check"
     },
     {
@@ -1975,10 +1975,10 @@
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1.3,
       "position": [
-        4624,
-        -368
+        1328,
+        1232
       ],
-      "id": "2d671e77-0930-4882-808c-c155cbea9934",
+      "id": "9d345be5-ebdd-4c04-9a41-68dd6be066c9",
       "name": "reviewer - syntax_check"
     },
     {
@@ -2023,10 +2023,10 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        5392,
-        -368
+        2096,
+        1232
       ],
-      "id": "d008a5b2-b21f-4ea4-8a85-6d9c37305920",
+      "id": "8332d824-cf17-4ec5-aca0-ef1e2cf8c3d1",
       "name": "cfg22"
     },
     {
@@ -2071,10 +2071,10 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        5392,
-        16
+        2096,
+        1616
       ],
-      "id": "be0c6686-ff00-4091-94dd-85aabc8bc4db",
+      "id": "5eddc0bc-8b8d-45ce-bcc5-22d9d151f711",
       "name": "cfg23"
     },
     {
@@ -2119,10 +2119,10 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        5392,
-        208
+        2096,
+        1808
       ],
-      "id": "102f1d7f-a93e-4028-a08e-65bc942aa866",
+      "id": "d03782e7-4dc6-479a-a567-d26ced86ec77",
       "name": "cfg24"
     },
     {
@@ -2147,10 +2147,10 @@
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1.3,
       "position": [
-        5520,
-        -368
+        2224,
+        1232
       ],
-      "id": "1dcc2806-ef79-414c-806b-be3d35919238",
+      "id": "3052304a-e66f-4e70-8acd-9ab271e00735",
       "name": "inspector - verify_adherence"
     },
     {
@@ -2175,10 +2175,10 @@
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1.3,
       "position": [
-        5520,
-        208
+        2224,
+        1808
       ],
-      "id": "23a33c9c-8912-4802-a500-7fb63112c4e9",
+      "id": "10448c52-b2d9-4871-8e90-88dfe0dd3ded",
       "name": "inspector - detect_artifacts"
     },
     {
@@ -2203,10 +2203,10 @@
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1.3,
       "position": [
-        5520,
-        16
+        2224,
+        1616
       ],
-      "id": "0db8c251-ef61-4750-87e7-95ea5bbf99f1",
+      "id": "cf93e8b0-9ad0-4fce-93ea-a7daf09c6bf6",
       "name": "inspector - check_overlaps"
     },
     {
@@ -2286,10 +2286,10 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        6096,
-        -80
+        2800,
+        1520
       ],
-      "id": "09974c74-73c1-4222-a1da-58e6a0e93eec",
+      "id": "03a635ae-e655-4b28-aa78-44857fcdc2ec",
       "name": "Phase 3 - Output"
     },
     {
@@ -2314,10 +2314,10 @@
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1.3,
       "position": [
-        6352,
-        -80
+        3056,
+        1520
       ],
-      "id": "4bee9c0d-ddbe-49a5-ae20-c294d4c0ee1d",
+      "id": "1c6de18a-9f15-4a9a-adbd-515d56bbdd6d",
       "name": "Load Phase 4 Config"
     },
     {
@@ -2342,10 +2342,10 @@
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1.3,
       "position": [
-        7440,
-        -80
+        4144,
+        1520
       ],
-      "id": "c2595f8f-c3ff-402b-af59-ceb835402a72",
+      "id": "d563fdd9-3b93-4a77-8e6d-41fbd2a548a9",
       "name": "Load Phase 5 Config"
     },
     {
@@ -2372,10 +2372,10 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        4816,
-        -176
+        1520,
+        1424
       ],
-      "id": "d37a4217-80b8-4808-af96-c6ebe9abea8b",
+      "id": "4ef49fa7-d634-4169-9d40-6213a7cf1c84",
       "name": "Hoist python_code"
     },
     {
@@ -2426,10 +2426,10 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        6544,
-        -80
+        3248,
+        1520
       ],
-      "id": "83428bbd-4d29-4f74-b604-c696acefab8b",
+      "id": "dfaf1210-3344-494b-9801-b5604a4ebe0f",
       "name": "cfg25"
     },
     {
@@ -2454,10 +2454,10 @@
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1.3,
       "position": [
-        6672,
-        -80
+        3376,
+        1520
       ],
-      "id": "b60dff69-0421-40ed-a8f2-06c1369c695c",
+      "id": "221fb4a6-a6cf-49d0-9038-6d6c19082564",
       "name": "image_planner - plan_finishing",
       "retryOnFail": true
     },
@@ -2521,10 +2521,10 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        6864,
-        -80
+        3568,
+        1520
       ],
-      "id": "15d74c6b-db50-4839-996c-88eaf223a4ff",
+      "id": "73091f21-e1d6-4706-94be-2af9d202d532",
       "name": "cfg26"
     },
     {
@@ -2549,10 +2549,10 @@
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1.3,
       "position": [
-        6992,
-        -80
+        3696,
+        1520
       ],
-      "id": "e32ef0a9-66d0-411b-9311-cb288d051e62",
+      "id": "2229d48c-0e6a-4456-8799-892d614009ac",
       "name": "artist - render_final",
       "retryOnFail": true,
       "maxTries": 2
@@ -2566,10 +2566,10 @@
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
-        6544,
-        -400
+        3248,
+        1200
       ],
-      "id": "f0d8c1f1-fb8b-436b-ae68-efbf44692f97",
+      "id": "aaa1daa4-7274-44d0-b4a7-1555d9fa4ee3",
       "name": "Sticky Note12"
     },
     {
@@ -2581,10 +2581,10 @@
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
-        6864,
-        -400
+        3568,
+        1200
       ],
-      "id": "9635cc20-e695-44aa-ae4a-1059f62d1134",
+      "id": "58fc2624-9f64-4976-9bee-eff4b67e8bc4",
       "name": "Sticky Note17"
     },
     {
@@ -2652,10 +2652,10 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        7184,
-        -80
+        3888,
+        1520
       ],
-      "id": "da92540c-728e-48f6-a37b-eddc1cbb94ce",
+      "id": "a363e7e9-799b-473e-9c34-790310c92b70",
       "name": "Phase 4 - Output"
     },
     {
@@ -2700,10 +2700,10 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        7632,
-        -368
+        4336,
+        1232
       ],
-      "id": "e22aedf7-d8bf-43ef-8929-7252ad1d69be",
+      "id": "322be238-5c16-4599-8093-d43b711248c4",
       "name": "cfg27"
     },
     {
@@ -2748,10 +2748,10 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        7632,
-        -176
+        4336,
+        1424
       ],
-      "id": "f4b6fbd0-d4e8-4cd4-8371-c782ac39820b",
+      "id": "13bbbc6f-d2cc-4747-8d76-16741bfe1f44",
       "name": "cfg28"
     },
     {
@@ -2796,10 +2796,10 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        7632,
-        16
+        4336,
+        1616
       ],
-      "id": "afcf3c2c-43f0-4418-b4d9-3703baa5c32c",
+      "id": "f25e7c40-82b8-4fe5-b0a9-b936a8411df0",
       "name": "cfg29"
     },
     {
@@ -2850,10 +2850,10 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        7632,
-        208
+        4336,
+        1808
       ],
-      "id": "f9771462-80bd-4253-a24c-6d4d38fed23a",
+      "id": "57296b59-a476-48fc-8486-2ae2a87fd45f",
       "name": "cfg30"
     },
     {
@@ -2886,10 +2886,10 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        7952,
-        -80
+        4656,
+        1520
       ],
-      "id": "6ac4b5ac-dece-4463-b7c3-388170b39728",
+      "id": "13690925-f370-4b9a-a6b8-7fa9ae0b831b",
       "name": "cfg31"
     },
     {
@@ -2914,10 +2914,10 @@
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1.3,
       "position": [
-        8720,
-        -80
+        5424,
+        1520
       ],
-      "id": "cbfc95e0-3714-4d2d-adb2-bb08aeda6fab",
+      "id": "64f1c193-f80c-4670-a176-81b5bbd006da",
       "name": "Load Phase 6 Config"
     },
     {
@@ -2942,10 +2942,10 @@
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1.3,
       "position": [
-        8080,
-        -80
+        4784,
+        1520
       ],
-      "id": "e671cacf-28ae-4d9c-b42d-4d3ad02a0f39",
+      "id": "337c79e0-3933-4a1e-9763-9f9d17fc26b8",
       "name": "issue_aggregator - aggregate_feedback"
     },
     {
@@ -2970,10 +2970,10 @@
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1.3,
       "position": [
-        7760,
-        -368
+        4464,
+        1232
       ],
-      "id": "2962f024-0400-4ad2-aa32-3a8e35fabf8a",
+      "id": "5827be93-8ad8-420f-9540-656bf9e5c128",
       "name": "image_verifier - review_bias"
     },
     {
@@ -2998,10 +2998,10 @@
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1.3,
       "position": [
-        7760,
-        -176
+        4464,
+        1424
       ],
-      "id": "cbec695f-99c9-49b7-a761-87ae1e25657e",
+      "id": "42a45f22-5886-4d34-bd78-7b540606552a",
       "name": "image_verifier - review_aesthetics"
     },
     {
@@ -3026,10 +3026,10 @@
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1.3,
       "position": [
-        7760,
-        16
+        4464,
+        1616
       ],
-      "id": "7833fec2-2b7c-4434-a33b-d5fdbaebe162",
+      "id": "f46877fc-dc9a-4690-b571-11187ca6525d",
       "name": "image_verifier - review_safety"
     },
     {
@@ -3054,10 +3054,10 @@
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1.3,
       "position": [
-        7760,
-        208
+        4464,
+        1808
       ],
-      "id": "1557d195-70cf-4120-a14e-b5dd2f68f1de",
+      "id": "b614e915-365b-47f4-ab8e-25f9df736dec",
       "name": "image_verifier3 - review_math"
     },
     {
@@ -3082,10 +3082,10 @@
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1.3,
       "position": [
-        -912,
-        -80
+        -4208,
+        1520
       ],
-      "id": "7d9cb02e-8413-4ea6-989f-65f839c6d8ef",
+      "id": "884fb344-0ae2-4ab9-b89e-ff79eb2bb083",
       "name": "problem_validation - extract_math"
     },
     {
@@ -3110,10 +3110,10 @@
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1.3,
       "position": [
-        -912,
-        112
+        -4208,
+        1712
       ],
-      "id": "378ce4ea-d2e8-4747-b34b-ace0b2c15122",
+      "id": "8ae9740f-90e8-4d83-816d-88dc71c17049",
       "name": "problem_validation - extract_visual"
     },
     {
@@ -3125,10 +3125,10 @@
       "type": "n8n-nodes-base.merge",
       "typeVersion": 3.2,
       "position": [
-        -720,
-        16
+        -4016,
+        1616
       ],
-      "id": "15dfd39a-cbeb-4fc2-bb08-b0fb17747492",
+      "id": "a3a01f51-2ca4-40e5-abfc-8bc15bbec403",
       "name": "problem_validation - Merge"
     },
     {
@@ -3138,10 +3138,10 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -528,
-        16
+        -3824,
+        1616
       ],
-      "id": "1d5f0a75-3449-4c63-944f-fa6a56c47827",
+      "id": "f07479ae-baff-43b6-b39b-09cb5466ecd0",
       "name": "problem_validation - Logic Router"
     },
     {
@@ -3166,10 +3166,10 @@
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1.3,
       "position": [
-        -16,
-        -272
+        -3312,
+        1328
       ],
-      "id": "e7f65588-3d31-4c4d-bd73-7c17ab5abf77",
+      "id": "04007f68-0808-4adc-8dd8-03588e01dd10",
       "name": "problem_validation - check_conflict"
     },
     {
@@ -3181,10 +3181,10 @@
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
-        7632,
-        -544
+        4336,
+        1056
       ],
-      "id": "dfc976a9-8d48-41bc-a14d-1c0d95e1574c",
+      "id": "c40db919-ba86-44f2-aa7d-966469e6a326",
       "name": "Sticky Note18"
     },
     {
@@ -3196,10 +3196,10 @@
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
-        7952,
-        -544
+        4656,
+        1056
       ],
-      "id": "2a0db4e7-d5f8-4a94-84c7-5484b1189aff",
+      "id": "09b57901-a515-4eb7-8b7d-ce06f4598cb9",
       "name": "Sticky Note19"
     },
     {
@@ -3232,10 +3232,10 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        1168,
-        -464
+        -2128,
+        1136
       ],
-      "id": "cf4e8a28-c12c-49a5-b90a-874952ab6ca2",
+      "id": "674586ec-b7e2-47d6-bf4c-aebcb454ee73",
       "name": "cfg32"
     },
     {
@@ -3260,10 +3260,10 @@
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1.3,
       "position": [
-        976,
-        -464
+        -2320,
+        1136
       ],
-      "id": "6edd4951-9d6b-4582-b478-560740544566",
+      "id": "c04a6b71-3bfb-43c3-9a76-0f7066a50895",
       "name": "image_detail_planner - review_request"
     },
     {
@@ -3288,10 +3288,10 @@
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1.3,
       "position": [
-        1808,
-        16
+        -1488,
+        1616
       ],
-      "id": "6c0ea3ba-2d62-424e-81d3-db048d425d59",
+      "id": "c6e574b1-3040-442e-b004-daa84d566de4",
       "name": "image_detail_planner - merge_plans"
     },
     {
@@ -3316,10 +3316,10 @@
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1.3,
       "position": [
-        2128,
-        16
+        -1168,
+        1616
       ],
-      "id": "a92b828b-9e8e-4596-8011-27657389a893",
+      "id": "d5a0d3c4-17e6-41fb-b1f6-2217c66b00f3",
       "name": "image_detail_planner - review_description"
     },
     {
@@ -3344,10 +3344,10 @@
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1.3,
       "position": [
-        1296,
-        -464
+        -2000,
+        1136
       ],
-      "id": "dea16822-b8f6-4f7f-abc9-3f37e1ded1c9",
+      "id": "6f9dc907-4e88-487c-acdd-7ebe1abefa96",
       "name": "image_detail_planner - situational_planning"
     },
     {
@@ -3372,10 +3372,10 @@
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1.3,
       "position": [
-        -16,
-        -80
+        -3312,
+        1520
       ],
-      "id": "7736334e-1165-4ed3-9a14-a9491ce73ad2",
+      "id": "d5905467-800e-468c-b107-d1acb19b397a",
       "name": "image_description - propose_diagram"
     },
     {
@@ -3400,10 +3400,10 @@
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1.3,
       "position": [
-        1488,
-        112
+        -1808,
+        1712
       ],
-      "id": "e6a41575-583d-4261-a745-21a398c04115",
+      "id": "7aef52a9-cbb1-440c-82f9-a37ed2dc3059",
       "name": "arrangement_planner - plan_object_arrangement"
     },
     {
@@ -3436,10 +3436,10 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        1360,
-        304
+        -1936,
+        1904
       ],
-      "id": "21520746-8a31-4d62-aebc-dbcee15aa240",
+      "id": "540fddf3-c039-46e8-9037-0c6b77d102ae",
       "name": "cfg33"
     },
     {
@@ -3464,10 +3464,10 @@
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1.3,
       "position": [
-        1488,
-        304
+        -1808,
+        1904
       ],
-      "id": "f14a2f78-ad23-4fbd-9e5d-d24f7cbdfa94",
+      "id": "6730069f-c152-4f9d-b941-e1f86e608103",
       "name": "artistic_planner - artistic_planning"
     },
     {
@@ -3498,10 +3498,10 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.3,
       "position": [
-        1200,
-        304
+        -2096,
+        1904
       ],
-      "id": "1ebcf02d-b0ea-40ff-8ab2-28ff2078c8d8",
+      "id": "e0ae9fcc-750a-4686-9dea-84f6e8cc47b7",
       "name": "If Artistic Planning"
     },
     {
@@ -3534,10 +3534,10 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        3536,
-        -80
+        240,
+        1520
       ],
-      "id": "aca9f7aa-fa31-4f9f-9008-5a4f3124ad9d",
+      "id": "0766b1b4-7cfb-4b95-9544-167a5d2f22ae",
       "name": "cfg34"
     },
     {
@@ -3562,10 +3562,10 @@
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1.3,
       "position": [
-        3664,
-        -80
+        368,
+        1520
       ],
-      "id": "5739a580-9601-4a3e-80ba-d77943d150aa",
+      "id": "c206d4dd-7326-4bb4-a142-7fcdb44a48ba",
       "name": "scaffolding_designer - design_scaffolding"
     },
     {
@@ -3577,10 +3577,10 @@
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
-        3536,
-        -496
+        240,
+        1104
       ],
-      "id": "870cd169-02d2-4d8e-bca1-8da55ea99d4e",
+      "id": "e26a241f-66e1-4729-87e6-7dbd3da90501",
       "name": "Sticky Note20"
     },
     {
@@ -3613,10 +3613,10 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        3296,
-        -1600
+        0,
+        0
       ],
-      "id": "a8883ad5-6748-41ff-b78d-54c4fd171527",
+      "id": "5332a75b-e276-40e3-87db-c4417998571e",
       "name": "cfg36"
     },
     {
@@ -3641,10 +3641,10 @@
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1.3,
       "position": [
-        3424,
-        -1600
+        128,
+        0
       ],
-      "id": "9609c34a-48e7-4417-a902-0e57cd7d6f82",
+      "id": "8742fc07-c959-4aef-83de-086807433564",
       "name": "inspector - detect_error_loops"
     },
     {
@@ -3675,10 +3675,10 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.3,
       "position": [
-        3552,
-        -1600
+        256,
+        0
       ],
-      "id": "b7a38c9b-f06d-482d-9c97-2957d00c3104",
+      "id": "2e78eb25-26ea-454e-b731-ce29ece987fe",
       "name": "If in error loop"
     },
     {
@@ -3723,10 +3723,10 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        5392,
-        -176
+        2096,
+        1424
       ],
-      "id": "240e8f12-7ec6-414d-9e0b-d492a703744f",
+      "id": "d6c8e374-2e7e-413f-86fa-7d62b2508410",
       "name": "cfg37"
     },
     {
@@ -3751,10 +3751,10 @@
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1.3,
       "position": [
-        5520,
-        -176
+        2224,
+        1424
       ],
-      "id": "510841ed-4554-4bf9-a88d-cf6921af9c00",
+      "id": "8adb0966-d213-450d-8da8-b4556e515672",
       "name": "inspector - verify_perspective"
     },
     {
@@ -3766,10 +3766,10 @@
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
-        2960,
-        -496
+        -336,
+        1104
       ],
-      "id": "a34d4e94-e73e-46ed-bdfb-05e70fd063ed",
+      "id": "b2d63d67-991e-4567-9a2f-4ded4412d3a7",
       "name": "Sticky Note21"
     },
     {
@@ -3802,10 +3802,10 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        8912,
-        -80
+        5616,
+        1520
       ],
-      "id": "0232bafb-cf55-45e0-be2e-40736925ff95",
+      "id": "8b40ba79-2fcb-4b40-ab22-067ae0020e5f",
       "name": "cfg38"
     },
     {
@@ -3838,10 +3838,10 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        9232,
-        -80
+        5936,
+        1520
       ],
-      "id": "c9cf2463-7c0d-4344-9be4-1912dd641aa4",
+      "id": "7e1c30df-fd3e-40d9-a072-82e7154ad173",
       "name": "cfg39"
     },
     {
@@ -3866,10 +3866,10 @@
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1.3,
       "position": [
-        9040,
-        -80
+        5744,
+        1520
       ],
-      "id": "3163a040-25fc-4e79-9dea-d21669f2e969",
+      "id": "546757d2-3cde-4300-9939-4371f567c939",
       "name": "final_reporter - generate_user_message"
     },
     {
@@ -3894,10 +3894,10 @@
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1.3,
       "position": [
-        9360,
-        -80
+        6064,
+        1520
       ],
-      "id": "21f5d25a-6ab2-4233-8c97-36fd95358fe3",
+      "id": "b96298e4-0970-445a-9840-49fc8d987cb6",
       "name": "final_reporter - generate_archival_report"
     },
     {
@@ -3959,10 +3959,10 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        8464,
-        -80
+        5168,
+        1520
       ],
-      "id": "b37c996f-23e0-44e7-a758-ac1451abe4c1",
+      "id": "2a814474-5bc5-4fe9-bd78-08712d98503d",
       "name": "Phase 5 - Output"
     },
     {
@@ -3995,10 +3995,10 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        -1616,
-        16
+        -4912,
+        1616
       ],
-      "id": "4b79bbc0-e784-4a66-ba03-fbe1086274f5",
+      "id": "4bb11114-6989-4181-b348-e414d05c429e",
       "name": "Set Job"
     },
     {
@@ -4084,10 +4084,10 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        9536,
-        -80
+        6240,
+        1520
       ],
-      "id": "3f71a0ae-e2c8-49f7-91cb-ed155713ed4a",
+      "id": "8fead4cc-b813-4744-bffd-dd88dfa45376",
       "name": "Phase 6 - Output"
     },
     {
@@ -4097,10 +4097,10 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        9744,
-        -80
+        6448,
+        1520
       ],
-      "id": "c5ed359b-67a7-4108-9583-ec5a951d0849",
+      "id": "bc8a17a2-5b72-417d-8017-3a7c4e754dbd",
       "name": "Send Final Broadcast"
     },
     {
@@ -4131,10 +4131,10 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.3,
       "position": [
-        112,
-        -272
+        -3184,
+        1328
       ],
-      "id": "187d6354-de6e-44ad-9891-7ee9a3ae8810",
+      "id": "14d90db7-d13d-483f-bb81-d6f4699caa61",
       "name": "valid"
     },
     {
@@ -4167,10 +4167,10 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        240,
-        -464
+        -3056,
+        1136
       ],
-      "id": "2db5ee89-df60-4ffa-ba3f-2566aba04d85",
+      "id": "41756199-c83e-4e7a-8f08-2699dc5e9817",
       "name": "cfg40"
     },
     {
@@ -4215,10 +4215,10 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        240,
-        -272
+        -3056,
+        1328
       ],
-      "id": "31d2d3f1-1291-45d0-a82c-2f53dbf37829",
+      "id": "27421c8f-c4bc-43d5-981c-d5d16832a689",
       "name": "cfg41"
     },
     {
@@ -4243,10 +4243,10 @@
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1.3,
       "position": [
-        368,
-        -272
+        -2928,
+        1328
       ],
-      "id": "f8075051-6dfc-4334-b746-dc527aae5100",
+      "id": "40352226-41dd-4627-bd1e-40de9a7b5dc3",
       "name": "problem_validation - format_ready_branch"
     },
     {
@@ -4285,10 +4285,10 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        112,
-        -80
+        -3184,
+        1520
       ],
-      "id": "bf38ceb5-ae93-46e0-8ff8-2e62bd1bbc44",
+      "id": "441fa5fa-2017-4250-a41e-9abe4f08feb8",
       "name": "cfg42"
     },
     {
@@ -4327,10 +4327,10 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        -144,
-        112
+        -3440,
+        1712
       ],
-      "id": "4b4db3e5-7b22-4979-a3fa-ff9b959c69ea",
+      "id": "86d8dca6-1c80-4fc3-8d5e-fb3ef9bfff69",
       "name": "cfg43"
     },
     {
@@ -4355,10 +4355,10 @@
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1.3,
       "position": [
-        240,
-        -80
+        -3056,
+        1520
       ],
-      "id": "5ba038e9-0719-4a19-ab4c-41e78c23670e",
+      "id": "1ef42bb3-4bb9-427a-b6be-3231f2182f03",
       "name": "problem_validation - format_math_only_branch"
     },
     {
@@ -4383,10 +4383,10 @@
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1.3,
       "position": [
-        -16,
-        112
+        -3312,
+        1712
       ],
-      "id": "6943aac2-4c7e-4326-b07d-dd204982ce37",
+      "id": "bbaf9b8c-d875-4bed-9d31-0e61288880d7",
       "name": "problem_validation - format_visual_only_branch"
     },
     {
@@ -4411,10 +4411,10 @@
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1.3,
       "position": [
-        -16,
-        304
+        -3312,
+        1904
       ],
-      "id": "09b2fce9-30ac-4f85-9da0-af3693aecd5f",
+      "id": "be608ed4-6697-452c-9678-dfdb5b9ebc0a",
       "name": "error_handler - report_unknown_error1"
     },
     {
@@ -4453,10 +4453,10 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        2448,
-        208
+        -848,
+        1808
       ],
-      "id": "811dada0-cba7-4ecc-b6c9-b79a89bb3b0c",
+      "id": "32f88fb8-4902-4b90-b4b5-045cb06ff08e",
       "name": "cfg44"
     },
     {
@@ -4545,10 +4545,10 @@
       "type": "n8n-nodes-base.switch",
       "typeVersion": 3.4,
       "position": [
-        2304,
-        0
+        -992,
+        1600
       ],
-      "id": "ac58cb99-ccd9-467f-a58a-ca231b6b1707",
+      "id": "a3e7556d-15d3-43e3-997a-fe6948df2ac8",
       "name": "If Ready for code"
     },
     {
@@ -4569,10 +4569,10 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        2400,
-        352
+        -896,
+        1952
       ],
-      "id": "2ff058ab-c8e9-4d46-96c2-be6c9cf6b285",
+      "id": "19596135-7d09-4232-89a7-fa4b27eaa6f7",
       "name": "retry_count"
     },
     {
@@ -4597,10 +4597,10 @@
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1.3,
       "position": [
-        -1088,
-        1520
+        -4384,
+        3120
       ],
-      "id": "6007b380-a510-4999-81c3-676b0ed2cbc8",
+      "id": "ae4bb491-f94a-4096-9d21-cec67d128cc4",
       "name": "universal agent"
     },
     {
@@ -4639,10 +4639,10 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        -240,
-        1728
+        -3536,
+        3328
       ],
-      "id": "07fe8562-2ba4-45e5-bdaf-018f9a0f4205",
+      "id": "9fc70192-4627-4c09-b147-8ffaa8b7ae2d",
       "name": "cfg45"
     },
     {
@@ -4681,10 +4681,10 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        208,
-        1920
+        -3088,
+        3520
       ],
-      "id": "cfbb442b-6703-4ffa-973e-d868ef8e248e",
+      "id": "f1101c0f-489c-4f8a-9c3f-8bdf1a12342c",
       "name": "cfg46"
     },
     {
@@ -4709,10 +4709,10 @@
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1.3,
       "position": [
-        336,
-        1920
+        -2960,
+        3520
       ],
-      "id": "0db1f1d8-9f2b-40e9-9c65-70b325496b53",
+      "id": "33c72819-5b09-4c1b-93e5-a567d08bf7c8",
       "name": "error_handler - report_error1"
     },
     {
@@ -4733,10 +4733,10 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        160,
-        2064
+        -3136,
+        3664
       ],
-      "id": "4b9f8490-e751-4669-bf78-1e78b699eeab",
+      "id": "355b4640-882c-473f-ae0b-39c81852e8ef",
       "name": "retry_count1"
     },
     {
@@ -4761,10 +4761,10 @@
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1.3,
       "position": [
-        -112,
-        1728
+        -3408,
+        3328
       ],
-      "id": "7fa8edd6-40b8-49c9-82e9-0e03ea3063e6",
+      "id": "bb00c42f-0da1-4c72-964e-ddf24a690e08",
       "name": "T/F RETRY agent"
     },
     {
@@ -4853,10 +4853,10 @@
       "type": "n8n-nodes-base.switch",
       "typeVersion": 3.4,
       "position": [
-        64,
-        1712
+        -3232,
+        3312
       ],
-      "id": "5f8874c0-1852-4e3f-bf3f-495414097243",
+      "id": "79b0095e-75e6-4a70-8d01-ca035941fa90",
       "name": "if bool_var"
     },
     {
@@ -4895,10 +4895,10 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        -736,
-        1536
+        -4032,
+        3136
       ],
-      "id": "74007563-5e80-47b6-8231-d465dba84963",
+      "id": "c15fdfe3-0606-4e4e-a9f5-8abd8ec0fa96",
       "name": "cfg47"
     },
     {
@@ -4923,10 +4923,10 @@
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1.3,
       "position": [
-        368,
-        -464
+        -2928,
+        1136
       ],
-      "id": "67ffbf20-112f-4ede-bc21-f402ed63a416",
+      "id": "e8c0ecff-7055-4828-a003-f970da7cb545",
       "name": "error_handler - report_unknown_error3"
     },
     {
@@ -4959,10 +4959,10 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        -736,
-        1760
+        -4032,
+        3360
       ],
-      "id": "7919694c-2fe4-4f75-b580-42af1ebb3675",
+      "id": "47345181-dba2-4f8b-b9b9-ce0837820327",
       "name": "cfg48"
     },
     {
@@ -4987,10 +4987,10 @@
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1.3,
       "position": [
-        -608,
-        1760
+        -3904,
+        3360
       ],
-      "id": "2d86a068-870c-4b31-ac0b-a8978d9cd7a3",
+      "id": "a6fd264e-fdbf-42e5-a877-f4fe37da2f71",
       "name": "error_handler - report_unknown_error"
     },
     {
@@ -5015,10 +5015,10 @@
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1.3,
       "position": [
-        2576,
-        208
+        -720,
+        1808
       ],
-      "id": "b62043ce-18dd-40c2-b8e4-2f905341d479",
+      "id": "080989d5-1f86-4280-af75-065a2a975290",
       "name": "error_handler - report_error3"
     },
     {
@@ -5043,10 +5043,10 @@
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1.3,
       "position": [
-        -608,
-        1536
+        -3904,
+        3136
       ],
-      "id": "ad319b16-647b-44a6-9783-978a65fdd815",
+      "id": "9ba40f01-9a8d-40dc-b096-61943d69f732",
       "name": "error_handler - report_error"
     },
     {
@@ -5079,10 +5079,10 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        -240,
-        1520
+        -3536,
+        3120
       ],
-      "id": "e6b1df39-e61b-49a1-86ae-c6902c88036d",
+      "id": "02aff1c8-beff-4835-bc6f-a5913938bd0a",
       "name": "cfg49"
     },
     {
@@ -5107,10 +5107,10 @@
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1.3,
       "position": [
-        -112,
-        1520
+        -3408,
+        3120
       ],
-      "id": "647a1706-7219-4227-97aa-a673c9f36812",
+      "id": "302af1e0-19e4-40fc-9a3c-d17dcd1be8b3",
       "name": "T/F agent"
     },
     {
@@ -5141,10 +5141,10 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.3,
       "position": [
-        16,
-        1520
+        -3280,
+        3120
       ],
-      "id": "b1eb13f5-4618-4346-a1cb-174080c43fe6",
+      "id": "80a99f8d-8332-47c2-8ad9-abec4103e717",
       "name": "if bool_var1"
     },
     {
@@ -5177,10 +5177,10 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        -240,
-        2400
+        -3536,
+        4000
       ],
-      "id": "5af718e4-6a68-449f-8978-f4a4efe8ec17",
+      "id": "8696e086-5057-4ac3-a58d-930b7a62af4f",
       "name": "cfg50"
     },
     {
@@ -5205,10 +5205,10 @@
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1.3,
       "position": [
-        -112,
-        2400
+        -3408,
+        4000
       ],
-      "id": "818ed726-9315-4015-a97c-85dd335e31dd",
+      "id": "9246c8a0-398c-4836-92f2-3d919088c480",
       "name": "CASE(enum) agent"
     },
     {
@@ -5296,10 +5296,10 @@
       "type": "n8n-nodes-base.switch",
       "typeVersion": 3.3,
       "position": [
-        3248,
-        0
+        -48,
+        1600
       ],
-      "id": "cc60a074-eb7b-43f2-b8d2-17d93f38c408",
+      "id": "f8571f1f-5371-454a-b84c-b1fa78e1ff59",
       "name": "Route Workflow3"
     },
     {
@@ -5387,10 +5387,10 @@
       "type": "n8n-nodes-base.switch",
       "typeVersion": 3.3,
       "position": [
-        48,
-        2384
+        -3248,
+        3984
       ],
-      "id": "dfed545d-d1a1-48dc-9f42-337129573256",
+      "id": "9cc89f99-f287-4102-9233-41c89a759b50",
       "name": "Route Workflow (enum_var)"
     },
     {
@@ -5423,10 +5423,10 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        -224,
-        2704
+        -3520,
+        4304
       ],
-      "id": "d63aa933-7707-42b4-9884-eb11f4ff070a",
+      "id": "1114278a-c732-4129-8d3e-0c8907fac327",
       "name": "cfg51"
     },
     {
@@ -5451,10 +5451,10 @@
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1.3,
       "position": [
-        -96,
-        2704
+        -3392,
+        4304
       ],
-      "id": "8f821ed2-464c-41ea-abdc-5dab68fb0822",
+      "id": "1d29c61f-4085-4859-a9ba-87640c5aca7d",
       "name": "CASE(enum) agent1"
     },
     {
@@ -5464,10 +5464,10 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        80,
-        2704
+        -3216,
+        4304
       ],
-      "id": "fd3e768d-5b30-4e59-b96f-8bf3bf0c26f5",
+      "id": "cc885667-95f5-4b31-8454-dbe141641821",
       "name": "task picker"
     },
     {
@@ -5492,10 +5492,10 @@
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1.3,
       "position": [
-        208,
-        2704
+        -3088,
+        4304
       ],
-      "id": "d5f879d5-eea8-4b4e-83c6-e0308e47cd34",
+      "id": "e3118c11-fa0c-4d55-9a6c-9dbd0e5db3db",
       "name": "chosen task"
     },
     {
@@ -5505,10 +5505,10 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -1216,
-        1728
+        -4512,
+        3328
       ],
-      "id": "4979c6e0-50cd-415b-9766-b35af3b78ab0",
+      "id": "1f5949f7-ee76-458e-8585-5b28376d09ca",
       "name": "task picker1"
     },
     {
@@ -5533,10 +5533,10 @@
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1.3,
       "position": [
-        -1088,
-        1728
+        -4384,
+        3328
       ],
-      "id": "47a6148e-e9ef-4f13-90e5-9e25605e5b1d",
+      "id": "e4ad3256-26d4-4f12-9542-922baf205232",
       "name": "chosen task1"
     },
     {
@@ -5561,10 +5561,10 @@
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1.3,
       "position": [
-        -1088,
-        1936
+        -4384,
+        3536
       ],
-      "id": "81ba8a26-00a5-4ca6-9cef-801ba19c1bd5",
+      "id": "238cffe4-2b2e-4f6d-89a5-5ee4f54fda36",
       "name": "chosen task2"
     },
     {
@@ -5574,10 +5574,10 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -1216,
-        1936
+        -4512,
+        3536
       ],
-      "id": "3e3914ce-795e-4f47-9be9-25cc85eeed6b",
+      "id": "86d84590-ec7b-4afa-a818-b0619f3f3422",
       "name": "complex conditional"
     },
     {
@@ -5602,10 +5602,10 @@
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1.3,
       "position": [
-        3680,
-        -288
+        384,
+        1312
       ],
-      "id": "4ed78222-de65-4aa3-9b83-a4d82046d550",
+      "id": "233d6b5e-e811-44e1-b337-fa29a3533a13",
       "name": "scaffolding_designer - inject_multiple_constraints"
     },
     {
@@ -5694,10 +5694,10 @@
       "type": "n8n-nodes-base.switch",
       "typeVersion": 3.4,
       "position": [
-        4480,
-        112
+        1184,
+        1712
       ],
-      "id": "4f60fa24-5ee8-41b6-a489-4b7abe145f6a",
+      "id": "196271ce-abcd-486b-8b7d-3ff0ccafe250",
       "name": "if bool_var3"
     },
     {
@@ -5730,10 +5730,10 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        4704,
-        368
+        1408,
+        1968
       ],
-      "id": "f84fdfca-7e9e-4a05-ab89-1802ed303798",
+      "id": "2d72342f-fcbd-4f5a-a3d4-f48f3ac5859c",
       "name": "retry_count3"
     },
     {
@@ -5772,10 +5772,10 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        4688,
-        144
+        1392,
+        1744
       ],
-      "id": "d55b5e15-accf-4684-85d8-58ba9c9ac7a0",
+      "id": "c2dd8778-a83b-4f8b-8eb9-beb0b9ca1499",
       "name": "cfg54"
     },
     {
@@ -5800,10 +5800,10 @@
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1.3,
       "position": [
-        4816,
-        144
+        1520,
+        1744
       ],
-      "id": "6c17ee54-4603-4d8b-b22b-efb8ba4a23b2",
+      "id": "e6a96d1a-899e-4af3-8ded-d19c5717e1b8",
       "name": "error_handler - report_error4"
     },
     {
@@ -5833,10 +5833,10 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.3,
       "position": [
-        3536,
-        -288
+        240,
+        1312
       ],
-      "id": "6c554d1b-f7ca-4cc8-b74d-5f9b282c2d31",
+      "id": "9fda15a4-baeb-4d12-bcfe-203f85a22088",
       "name": "no situational?"
     },
     {
@@ -5846,10 +5846,10 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        3392,
-        -288
+        96,
+        1312
       ],
-      "id": "4f693fb5-8d84-4f82-acf1-63314207ef97",
+      "id": "8dc541f2-348a-4251-a87e-e0feb521b0aa",
       "name": "cfg inject constraints"
     },
     {
@@ -5882,10 +5882,10 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        -112,
-        2064
+        -3408,
+        3664
       ],
-      "id": "1606db5e-7273-46aa-ba97-7834b874f552",
+      "id": "2b977cc8-d84f-4e0e-b89e-294863034fde",
       "name": "cfg35"
     },
     {
@@ -5910,10 +5910,10 @@
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1.3,
       "position": [
-        16,
-        2064
+        -3280,
+        3664
       ],
-      "id": "08e4fe52-af52-4e81-8c43-5042739cacfe",
+      "id": "e4183e01-ffad-4e65-9ccc-67eb8b6a5ab3",
       "name": "error_expert - troubleshoot"
     },
     {
@@ -5952,10 +5952,10 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        6016,
-        240
+        2720,
+        1840
       ],
-      "id": "c08f748e-f168-4d49-969d-d8be04841282",
+      "id": "86d49d5c-94f9-4fab-850c-8f01b4c052c0",
       "name": "cfg53"
     },
     {
@@ -5980,10 +5980,10 @@
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1.3,
       "position": [
-        6144,
-        240
+        2848,
+        1840
       ],
-      "id": "787715bf-30b4-406d-a271-798791df534e",
+      "id": "bb23b1d7-75d9-46b3-a6fd-ec93949833f6",
       "name": "error_handler - report_error2"
     },
     {
@@ -6016,10 +6016,10 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        5968,
-        384
+        2672,
+        1984
       ],
-      "id": "049abc74-094b-479d-abe1-dd749e8f1c01",
+      "id": "87b79ebb-202d-4ff0-b7fc-40c629daf586",
       "name": "retry_count2"
     },
     {
@@ -6064,10 +6064,10 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        5696,
-        384
+        2400,
+        1984
       ],
-      "id": "6b899bb5-241a-417a-b1c7-3af6ce8cada9",
+      "id": "f7ca077b-8dc4-4a97-b901-1c185259d523",
       "name": "cfg55"
     },
     {
@@ -6100,10 +6100,10 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        4448,
-        368
+        1152,
+        1968
       ],
-      "id": "c74312c8-dd8c-4f2f-b08b-d4e379fb8679",
+      "id": "976f9f33-c309-421e-86a1-c7a3b280c9a2",
       "name": "cfg56"
     },
     {
@@ -6128,10 +6128,10 @@
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1.3,
       "position": [
-        4576,
-        368
+        1280,
+        1968
       ],
-      "id": "c05e33aa-ab76-4701-9256-41b21aa32342",
+      "id": "06a6842f-f139-439c-9ae5-c538e669d70e",
       "name": "error_expert - troubleshoot2"
     },
     {
@@ -6156,10 +6156,10 @@
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1.3,
       "position": [
-        5136,
-        64
+        1840,
+        1664
       ],
-      "id": "8e35c5ec-c38e-448c-bea9-1c213f95f64a",
+      "id": "e794c589-0106-403b-b9a4-c9526e443887",
       "name": "error_injector - log_error"
     },
     {
@@ -6169,10 +6169,10 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        5008,
-        64
+        1712,
+        1664
       ],
-      "id": "e1a55f58-08c1-4272-931a-9ec8ca1e9044",
+      "id": "15f90d36-e3be-498e-bc25-b30a004c5b03",
       "name": "cfg57"
     },
     {
@@ -6211,10 +6211,10 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        5280,
-        464
+        1984,
+        2064
       ],
-      "id": "c82ff508-6f07-40d1-a71e-2919ecd8eab7",
+      "id": "23472111-3af0-4dd9-b4c1-ccf98f50f0d2",
       "name": "cfg58"
     },
     {
@@ -6239,10 +6239,10 @@
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1.3,
       "position": [
-        5408,
-        464
+        2112,
+        2064
       ],
-      "id": "a8ee91ed-ca8d-4fb2-95b5-5a9979cd7059",
+      "id": "2bc33529-1f98-4305-9123-47edd76af2dc",
       "name": "error_handler - report_error5"
     },
     {
@@ -6275,10 +6275,10 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        5232,
-        608
+        1936,
+        2208
       ],
-      "id": "bfb86b9c-2747-4998-a558-17c2833c47ae",
+      "id": "ad151a5d-c76c-4736-910e-b715697fc767",
       "name": "retry_count4"
     },
     {
@@ -6342,10 +6342,10 @@
       "type": "n8n-nodes-base.switch",
       "typeVersion": 3.4,
       "position": [
-        5136,
-        256
+        1840,
+        1856
       ],
-      "id": "d0f837b8-175a-42d6-923a-799f556fb0b2",
+      "id": "db6cca51-68ce-4d8b-9ed8-c94f8311302c",
       "name": "if bool_var4"
     },
     {
@@ -6378,10 +6378,10 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        4960,
-        608
+        1664,
+        2208
       ],
-      "id": "a2052eb0-b1e3-4c9a-8469-90c34b558404",
+      "id": "4e80a392-5628-4f32-8147-0d3beb351c41",
       "name": "cfg59"
     },
     {
@@ -6406,10 +6406,10 @@
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1.3,
       "position": [
-        5088,
-        608
+        1792,
+        2208
       ],
-      "id": "7ae3177e-7d7c-4d64-88c5-459cc2db933c",
+      "id": "105ef38b-2c95-4684-a225-3e9860914249",
       "name": "error_expert - troubleshoot3"
     },
     {
@@ -6498,10 +6498,10 @@
       "type": "n8n-nodes-base.switch",
       "typeVersion": 3.4,
       "position": [
-        5872,
-        32
+        2576,
+        1632
       ],
-      "id": "04d8e995-666e-4df3-b899-3d648dcd9f55",
+      "id": "8a6810a5-e39e-49b5-82f6-2f7b73cbbb7d",
       "name": "inspections passed?"
     },
     {
@@ -6528,10 +6528,10 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        5744,
-        48
+        2448,
+        1648
       ],
-      "id": "e73a342c-380f-4c2a-9496-a3631188a6b2",
+      "id": "ec7f090d-0649-4d20-9a22-60bc1e2c7749",
       "name": "cfg52"
     },
     {
@@ -6556,10 +6556,10 @@
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1.3,
       "position": [
-        5824,
-        384
+        2528,
+        1984
       ],
-      "id": "f7b225c1-f5c4-481d-8bac-64e5b2e417fd",
+      "id": "c42fbb02-79e2-479c-a606-8a2a091e46ab",
       "name": "error_expert - troubleshoot_visual"
     },
     {
@@ -6598,10 +6598,10 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        8400,
-        112
+        5104,
+        1712
       ],
-      "id": "e74b7b96-50c7-493f-a471-2138b5a8d9c5",
+      "id": "1249ed58-e074-4532-9c2b-bacf31a801bf",
       "name": "cfg61"
     },
     {
@@ -6626,10 +6626,10 @@
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1.3,
       "position": [
-        8528,
-        112
+        5232,
+        1712
       ],
-      "id": "0b76fe7c-1dcf-471b-a916-f54b3a05ed08",
+      "id": "43b651de-2499-499c-9965-b417f33bee1c",
       "name": "error_handler - report_error6"
     },
     {
@@ -6650,10 +6650,10 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        8352,
-        256
+        5056,
+        1856
       ],
-      "id": "94de5ba4-41b5-4086-96df-635681e3acb1",
+      "id": "c63cf974-f578-49e9-ac35-884b67978920",
       "name": "retry_count5"
     },
     {
@@ -6698,10 +6698,10 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        8080,
-        256
+        4784,
+        1856
       ],
-      "id": "f49bb9f5-fa1e-440d-af76-9346c1c0680b",
+      "id": "0edd52a6-52f8-49a1-9a56-d8bbb543236a",
       "name": "cfg62"
     },
     {
@@ -6726,10 +6726,10 @@
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1.3,
       "position": [
-        8208,
-        256
+        4912,
+        1856
       ],
-      "id": "accd7036-4c08-47a2-a525-6d978b911fba",
+      "id": "0e96d350-cddd-4fa0-9166-7e432a7f00cc",
       "name": "error_expert - troubleshoot_visual1"
     },
     {
@@ -6818,10 +6818,10 @@
       "type": "n8n-nodes-base.switch",
       "typeVersion": 3.4,
       "position": [
-        8256,
-        -96
+        4960,
+        1504
       ],
-      "id": "97771651-83db-49c1-b9ca-9cc635bbe010",
+      "id": "313b7b75-d0a7-49ae-bca7-f1c3ff5fe360",
       "name": "if final_pass"
     }
   ],
@@ -6974,11 +6974,6 @@
         ]
       ]
     },
-    "Mock Input": {
-      "main": [
-        []
-      ]
-    },
     "When clicking ‘Execute workflow’": {
       "main": [
         [
@@ -6999,11 +6994,6 @@
             "index": 0
           }
         ]
-      ]
-    },
-    "View Image": {
-      "main": [
-        []
       ]
     },
     "Load Phase 1 Config": {
@@ -8251,11 +8241,6 @@
         ]
       ]
     },
-    "error_handler - report_error3": {
-      "main": [
-        []
-      ]
-    },
     "cfg49": {
       "main": [
         [
@@ -8315,8 +8300,7 @@
             "type": "main",
             "index": 0
           }
-        ],
-        []
+        ]
       ]
     },
     "cfg51": {
@@ -8742,6 +8726,6 @@
   "pinData": {},
   "meta": {
     "templateCredsSetupCompleted": true,
-    "instanceId": "df2a3209410ed788eacffb4d1872acd7fcd84c9b8c68de9775fcdebdbc87d329"
+    "instanceId": "050d7f5d3593566ffe36464e2179832d9e4aa282cb8a519a27bd68446dae16b9"
   }
 }
