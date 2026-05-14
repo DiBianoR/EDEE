@@ -44,11 +44,19 @@ if "is_running" not in st.session_state:
 # Added trigger state for the button callback
 if "trigger_job" not in st.session_state:
     st.session_state.trigger_job = False
+if "carousel_idx" not in st.session_state:
+    st.session_state.carousel_idx = 1  # Default to 1 (the final image)
 
-# --- CALLBACK FUNCTION ---
+# --- CALLBACK FUNCTIONS ---
 def start_job_callback():
     st.session_state.is_running = True
     st.session_state.trigger_job = True
+
+def prev_image():
+    st.session_state.carousel_idx -= 1
+
+def next_image():
+    st.session_state.carousel_idx += 1
 
 # --- AGGRESSIVE CSS FOR TIGHT LAYOUT ---
 st.markdown("""
@@ -281,6 +289,37 @@ if st.session_state.job_id:
                 
                 if state.get("status") == "completed":
                     status_ui.success("✅ Generation Complete!")
+                    # --- CAROUSEL UI ---
+                    # We know we have these two images saved in the bucket
+                    job_id = state.get("job_id")
+                    available_images = [
+                        {"path": f"{job_id}/scaffolding.png", "label": "Phase 2: Scaffolding Blueprint"},
+                        {"path": f"{job_id}/final_illustration.png", "label": "Phase 6: Final Artwork"}
+                    ]
+
+                    # Safety check to ensure the index stays within bounds
+                    st.session_state.carousel_idx = max(0,
+                                                        min(st.session_state.carousel_idx, len(available_images) - 1))
+                    current_img = available_images[st.session_state.carousel_idx]
+
+                    # Render the active image (this instantly overwrites whatever draw_ui_state put there)
+                    try:
+                        img_bytes = bucket.blob(current_img["path"]).download_as_bytes()
+                        image_ui.image(img_bytes, caption=current_img["label"], use_container_width=True)
+                    except Exception:
+                        image_ui.error("Image not found in storage.")
+
+                        # Render Carousel Navigation Buttons (Subtle design)
+                        col1, col2, col3, col4 = st.columns([4, 1, 1, 4])
+
+                        with col2:
+                            st.button("❮", on_click=prev_image, disabled=(st.session_state.carousel_idx == 0),
+                                      use_container_width=True)
+                        with col3:
+                            st.button("❯", on_click=next_image,
+                                      disabled=(st.session_state.carousel_idx == len(available_images) - 1),
+                                      use_container_width=True)
+                    # --- END CAROUSEL UI ---
                     if "user_message" in state:
                         with notes_ui.container():
                             st.markdown("### 📝 Notes")
