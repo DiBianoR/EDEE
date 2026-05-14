@@ -156,12 +156,13 @@ def draw_ui_state(state, last_log_index, log_content):
     if state.get("status") not in ["completed", "failed"]:
         agent_ui.markdown(f"**Phase {phase}** | 🤖 `{agent_name} - {task_name}`")
 
-    # Image Rendering directly from the bucket
-    image_to_show = None
-    if state.get("status") == "completed":
-        image_to_show = f"{state.get('job_id')}/final_illustration.png"
-    elif state.get("status") not in ["failed", "completed"]:
-        image_to_show = f"{state.get('job_id')}/latest.png"
+        # Image Rendering directly from the bucket
+        image_to_show = None
+        if state.get("status") == "completed":
+            image_to_show = f"{state.get('job_id')}/final_illustration.png"
+        else:
+            # Default to latest.png for running, troubleshooting, AND failed states
+            image_to_show = f"{state.get('job_id')}/latest.png"
 
     if image_to_show:
         try:
