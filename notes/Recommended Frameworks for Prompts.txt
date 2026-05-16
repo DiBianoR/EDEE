@@ -1,0 +1,102 @@
+Recommended Frameworks for Prompts:
+-------------------------------------------------------------------------------------------------------------------------------
+-------------------------------------------------------------------------------------------------------------------------------
+Use the RTCF framework to structure your descriptions for better accuracy and completeness
+
+Role - Assign a persona to the AI (e.g., Act as a process improvement specialist or You're a customer operations manager) to guide the perspective.
+
+Task - Specify the main goal (e.g., Create a flowchart showing our bug reporting workflow or Map out our support ticket lifecycle).
+
+Context - Provide background details (e.g., teams involved, channels, severity levels, or escalation procedures) to add depth.
+
+Format - Describe the desired structure (e.g., Show decision points for severity levels, parallel paths for different bug types, and include feedback loops).
+
+-------------------------------------------------------------------------------------------------------------------------------
+2-step prompting:
+
+Optimize the following instruction into a detailed, high-quality prompt that will make you produce the absolute best possible output. Only output the optimized prompt, nothing else.
+
+Task: [your casual one-sentence wish here]
+
+example:
+Create a complete, highly detailed JSON prompt that perfectly replicates every single visual element of the uploaded image (objects, clothing, hair, accessories, camera settings, environment, lighting, style, pose, everything). Then output one final optimized English meta-prompt of about 800 words that can recreate the image 1:1 in any text-to-image model.
+
+-------------------------------------------------------------------------------------------------------------------------------
+Model alignment reduces creativity, asking for a list then picking one mitigates this.
+
+-------------------------------------------------------------------------------------------------------------------------------
+Work gets better when it's reviewed after completion:
+"Look at this again with fresh eyes."
+You'll usually get startlingly good results with just that one sentence.
+LLMs do poorly when they have conflicting goals.
+Many folks I talk to find that adversarial review works best when you have a different model do the review.
+Even without a multi-provider setup, I find that I can get really good results by exploiting the models competitive nature.
+"Please ask two subagents to review this work. Tell them that whomever finds the largest number of serious issues gets five points."
+"Tell them that whomever finds the largest number of serious issues gets a cookie."
+You can push them a little harder by saying something like
+"I'll be disappointed if they don't find at least 16 significant problems in the work"
+
+-------------------------------------------------------------------------------------------------------------------------------
+Parallel calls:
+6 Gemini 2.5 Flash-Lite calls cost about the same as 1 Gemini 2.5 Flash call
+42 Gemini 2.5 Flash-Lite calls or 7 Gemini 2.5 Flash calls cost about the same as one Gemini 3 Pro Preview call
+
+-------------------------------------------------------------------------------------------------------------------------------
+https://www.deeplearning.ai/short-courses/chatgpt-prompt-engineering-for-developers/
+
+-------------------------------------------------------------------------------------------------------------------------------
+The style is best described as a vibrant, whimsical watercolor and ink illustration, heavily inspired by classic children's storybooks. It combines the fluidity and bright color blends of watercolors with the crisp, detailed line work of pen-and-ink drawings.
+
+-------------------------------------------------------------------------------------------------------------------------------
+GEMINI EXAMPLE:
+Refining the Core Structure
+
+I'm focusing on the core structure, the diamond shape. I want to produce a cleaned-up version of the repeating elements. I will concentrate on the fidelity of the shapes. I am in the process of generating the high-resolution version.
+
+Detailing the Elements
+
+I'm now generating the artwork, concentrating on distinct elements. I'm building high-resolution depictions of the diamond and its sections. I am currently working on the light side, refining the goddess, light, and "Seed of Life". My focus is on achieving a crisp, detailed rendition while preserving the symmetry. I'm adding details to the dark side.
+
+Cleaning the Composition
+
+I am now generating a cleaned-up, higher-resolution version, preserving all the original elements. I'm focusing on refining the figures, particularly their facial details and the small elements. I am also working on the textures and patterns on the side fields. I have identified some elements which need further refining. The process of generating is ongoing.
+
+Enhancing Figure Fidelity
+
+I am now working on re-rendering the figures with greater definition. My primary focus is on producing sharper facial details for both the goddess and the male figure, as well as refining the objects they interact with. I'm also addressing artifacts in the fractal and celestial elements. Edges and borders are under consideration as well.
+
+Generating the Structure
+
+I am now generating the high-resolution version. I'm focused on rendering the facets and cleaning up the figure details. The facial features, the central figures, the celestial elements and the edge tears are being rendered. I'm currently working to re-render the edge tears. The text at the bottom is being typeset.
+
+Generating the Final Details
+
+I'm now generating a high-resolution version, meticulously focusing on each element for clarity. The diamond structure and its facets are taking shape with increased sharpness. I'm focusing on the goddess and male figures. The celestial elements, and edge details are rendered with care. The text is typeset precisely, with fonts matching the original artwork. The process is nearing completion.
+
+Generating the Composition
+
+I'm now generating the initial high-resolution version, meticulously focusing on each element's clarity. The diamond structure and its facets are defined. The goddess and male figures are in focus. I'm also working on the celestial elements and edge details. The text at the bottom is being typeset precisely.
+
+Generating the Resolution
+
+I'm now generating a hyper-high-resolution version of the art. I am concentrating on the structure of the diamond. I'm focusing on sharp lines, distinct gradients, and clear figure details. I'm re-rendering the facets with clean lines.
+
+Refining Initial Execution
+
+I've reviewed the first attempt, noting that key elements weren't precisely preserved as instructed. The prior render required adjustments to maintain the original figures and text exactly. I'm focusing the next generation to be a precise copy with the updated aspects.
+
+Revising Preservation Details
+
+I have identified specific deviations in the prior run. I will re-render the image to preserve the existing text and figures exactly as they were, focusing on the figure within the top sphere. I will also make corrections to a typo in the signature. I'll make sure to sharpen and preserve the figures and existing patterns. The re-rendering will include pristine, clean lines to achieve the desired effect.
+
+Ensuring Exact Replication
+
+I found the most recent render still didn't meet the preservation criteria. The figure in the top sphere was altered, and there's a typo in the signature. The image will be re-generated to include open arms for the figure in the top sphere and update the signature to "© JONATHON EARL BOWSER." I'm also restoring the original pose and cleaning up distortions in the diamond and its facets. I'll sharpen the figures, maintain the circular cell patterns, and refine the fractal network.
+
+Reviewing image details
+
+I've examined the recent image, noting the model's improvements in noise reduction and detail preservation. The figures appear distinct now. There's been progress on correcting the patterns, but I've found a minor typo in the copyright text.
+
+Analyzing copyright correction
+
+I've checked the image. The model addressed earlier issues with composition and detail, cleaning up patterns, but I've found an error in the copyright text ('JONATHON' instead of 'JONATHON EARL'). I think that given the quality of the image, the user should be shown this image.
