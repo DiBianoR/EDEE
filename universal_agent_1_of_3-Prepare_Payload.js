@@ -106,10 +106,16 @@ ${historySection}
 ${resolveTemplate(taskConfig.instruction)}
 `.trim();
 
+// === 🎯 MODEL CAPABILITY IDENTIFICATION ===
+const modelType = taskConfig.model_type || agentConfig.model_type || "text"; // Supports "text", "view_img", "img2img"
+const isImageGen = (modelType === "img2img");
+const outputType = isImageGen ? "image_blob" : "json";
+
 // === 🖼️ IMAGE HANDLING ===
 let parts = [{ text: userPrompt }];
 
-if (taskConfig.view_image === true) {
+// Automatically attach image if the selected model type requires vision/image context
+if (modelType === "view_img" || modelType === "img2img") {
     let imgData = null;
     let imgMime = null;
 
@@ -122,7 +128,7 @@ if (taskConfig.view_image === true) {
         } catch (e) {
             throw new Error(`IMAGE ERROR: 'image_source' was set to '${taskConfig.image_source}', but that node execution could not be found.`);
         }
-    } 
+    }
     // 2. Fallback: Try fetching from immediate input
     else {
         imgData = INPUT_DATA.base64_img_string;
@@ -131,7 +137,7 @@ if (taskConfig.view_image === true) {
 
     // 3. VALIDATION: Fail if blind
     if (!imgData || !imgMime) {
-        throw new Error(`CONFIGURATION ERROR: Agent '${AGENT_ID}' (Task: '${TASK_ID}') requires 'view_image: true', but no 'base64_img_string' was found in input context or specified 'image_source'.`);
+        throw new Error(`CONFIGURATION ERROR: Agent '${AGENT_ID}' (Task: '${TASK_ID}') has model_type '${modelType}', but no 'base64_img_string' was found in input context or specified 'image_source'.`);
     }
 
     // 4. Attach Image
@@ -143,22 +149,23 @@ if (taskConfig.view_image === true) {
     });
 }
 
-// === 🎯 MODEL SELECTION ===
-// Logic: Task Specific > Agent Specific > Global Default
-const model_url = taskConfig.model_url || agentConfig.model_url || CONFIG.default_model_url;
-const outputType = taskConfig.output_type || "json";
+// === 🏎️ TIER CAPPING & ROUTING LOGIC ===
+let requestedTier = taskConfig.model_tier || agentConfig.model_tier ||
+                    (isImageGen ? CONFIG.default_image_tier : CONFIG.default_text_tier);
 
 // Output containers
+let model_url;
 let aiResult;
 let requestBody = {};
 let skipApi = false;
 
 // === ⚡ CHECK FOR NO_MODEL MODE ===
-if (model_url === "no_model") {
+if (requestedTier === "no_model") {
     skipApi = true;
+    model_url = "no_model";
     const rawResult = taskConfig.result;
     if (rawResult === undefined) {
-        throw new Error(`CONFIGURATION ERROR: Agent '${AGENT_ID}' (Task: '${TASK_ID}') has 'model_url':'no_model' but is missing 'result'.`);
+        throw new Error(`CONFIGURATION ERROR: Agent '${AGENT_ID}' (Task: '${TASK_ID}') requested tier 'no_model' but is missing 'result'.`);
     }
 
     // Pass TRUE to safely escape quotes and newlines for the JSON parser
@@ -178,6 +185,28 @@ if (model_url === "no_model") {
     requestBody = { mode: "no_model", result_template: rawResult };
 
 } else {
+    // === 🏎️ TIER CAPPING LOGIC ===
+    const tierRanks = { "fast": 1, "medium": 2, "slow": 3 };
+    const maxTier = isImageGen ? (CONFIG.maximum_image_tier || "slow") : (CONFIG.maximum_text_tier || "slow");
+
+    // If the requested tier is higher (slower/more expensive) than the maximum allowed, downgrade it.
+    if (tierRanks[requestedTier] && tierRanks[maxTier] && tierRanks[requestedTier] > tierRanks[maxTier]) {
+        requestedTier = maxTier;
+    }
+
+    // === 🌐 DYNAMIC URL RESOLUTION ===
+    const provider = CONFIG.active_provider || "google";
+
+    // Map granular model_type ("text", "view_img") to the registry's core categories ("text", "image")
+    const registryCategory = isImageGen ? "image" : "text";
+
+    try {
+        model_url = CONFIG.model_registry[provider][registryCategory][requestedTier];
+        if (!model_url) throw new Error("URL resolved to undefined.");
+    } catch (e) {
+        throw new Error(`ROUTING ERROR: Failed to resolve Model URL. Provider: '${provider}', Type: '${modelType}' (Mapped to '${registryCategory}'), Tier: '${requestedTier}'.`);
+    }
+
     // === 🚀 CONSTRUCT REQUEST (STANDARD) ===
     requestBody = {
         contents: [{ parts: parts }],

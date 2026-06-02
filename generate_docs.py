@@ -175,8 +175,12 @@ def validate_and_format(config):
     out = ["=== EDEE AGENT DEFINITIONS ===\n\n"]
 
     # --- ROOT LEVEL ---
-    allowed_root = {'api_key', 'job_id', 'enable_gui_logging', 'gui_webhook_url', 'default_model_url',
-                    'default_context_template', 'global_task_explanation', 'phases'}
+    allowed_root = {
+        'api_key', 'job_id', 'enable_gui_logging', 'gui_webhook_url',
+        'active_provider', 'model_registry',
+        'default_text_tier', 'default_image_tier', 'maximum_text_tier', 'maximum_image_tier',
+        'default_context_template', 'global_task_explanation', 'phases'
+    }
     required_root = {'phases'}
 
     for req in required_root:
@@ -214,7 +218,7 @@ def validate_and_format(config):
             out.append(
                 f"########################################\n# AGENT: {a_id}\n########################################\n\n")
 
-            allowed_agent = {'identity', 'model_url', 'context_override', 'tasks'}
+            allowed_agent = {'identity', 'model_tier', 'model_type', 'context_override', 'tasks'}
             if 'tasks' not in a_data:
                 raise ValueError(f"CRITICAL: Agent '{a_id}' missing required field: 'tasks'")
 
@@ -224,8 +228,11 @@ def validate_and_format(config):
 
                 if ak in ['identity', 'context_override']:
                     out.append(f"[{ak.upper()}]\n{av}\n[END {ak.upper()}]\n\n")
-                elif ak == 'model_url':
-                    out.append(f"model_url: {av}\n\n")
+                elif ak in ['model_tier', 'model_type']:
+                    out.append(f"{ak}: {av}\n")
+
+            if 'model_tier' in a_data or 'model_type' in a_data:
+                out.append("\n")
 
             # --- TASKS LEVEL ---
             tasks = a_data.get('tasks', {})
@@ -241,23 +248,21 @@ def validate_and_format(config):
                 for tk, tv in t_data.items():
                     if tk in multiline_keys:
                         out.append(f"[{tk.upper()}]\n{tv}\n[END {tk.upper()}]\n\n")
-                    elif tk == 'view_image':
-                        out.append(f"view_image: true\n") if tv else None
                     elif tk == 'terminal_mode':
                         status = tv.get('status', 'failed')
                         msg = tv.get('message_field', '')
                         out.append(f"Terminal Mode:\n- Status: {status}\n- Message Field: {msg}\n\n")
-                    elif tk not in ['schema', 'output_type']:
-                        # Generic free-form fallback (history_scope, model_url, custom fields)
+                    elif tk not in ['schema']:
+                        # Generic free-form fallback (history_scope, model_tier, model_type, custom fields)
                         # Ensure we stringify booleans/lists appropriately
                         val_str = str(tv).lower() if isinstance(tv, bool) else str(tv)
                         out.append(f"{tk}: {val_str}\n")
 
-                # Handle Returns (Schema vs Image Blob)
-                out_type = t_data.get('output_type')
+                # Handle Returns (Schema vs Image Blob based on model_type)
+                m_type = t_data.get('model_type', a_data.get('model_type', 'text'))
                 schema = t_data.get('schema', {})
 
-                if out_type == 'image_blob':
+                if m_type == 'img2img':
                     out.append("\nReturns:\n- <IMAGE>\n\n")
                 elif schema and schema.get('properties'):
                     props = schema.get('properties', {})
@@ -302,14 +307,13 @@ INSTRUCTION FIELDS
 - identity: System instructions defining the agent's persona, rules, and core objectives. These are combined (Global + Phase + Agent) before execution.
 - instruction: The specific prompt or command for the LLM to execute a particular task.
 - context_override: Replaces the default `original_query` context template for a Phase, Agent, or Task. Used to inject different parts of the user input or history.
-- result: Used only when `model_url: "no_model"`. Defines a hardcoded string or JSON structure to return, bypassing the LLM. Supports `${}` variable injection.
+- result: Used only when `model_tier: "no_model"`. Defines a hardcoded string or JSON structure to return, bypassing the LLM. Supports `${}` variable injection.
 
 CONFIGURATION FIELDS
 --------------------
-- model_url: Specifies which LLM API endpoint to use (e.g., `Gemini_3_Pro`). Overrides the global `default_model_url`. If set to `"no_model"`, the task bypasses the API completely.
+- model_tier: Specifies the speed/cost tier ("fast", "medium", "slow"). If set to `"no_model"`, the task bypasses the API completely.
+- model_type: Defines the capability required ("text", "view_img", "img2img"). This automatically triggers image attachment and sets the expected output formats (e.g. "img2img" expects an image blob).
 - history_scope: Determines how much previous log context the LLM sees. Options: `"agent"` (sees only its own previous iterations - DEFAULT), `"phase"` (sees all history from current phase), `"global"` (sees entire run history), or `"none"`.
-- view_image: (Boolean) If true, the pipeline attaches the most recently generated or explicitly referenced image base64 string to the prompt payload. (Default: false)
-- output_type: Defines the expected response format. Defaults to `"json"`. Can be set to `"image_blob"` for image generation tasks to properly parse binary payloads.
 - terminal_mode: If present, instructs the Universal Agent to cleanly halt the pipeline. Contains `status` (e.g., `"failed"`) and `message_field` (the specific JSON key in the AI's response to broadcast to the UI webhook).
 - schema: Defines the strict JSON structure the LLM must return via `response_schema`. (Translated in this file into the "Returns:" lists).
 """

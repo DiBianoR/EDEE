@@ -38,39 +38,68 @@ const styleLibrary = {
 const selectedStyle = items[0].json.style_preference || "casual_mobile";
 const activeStyle = styleLibrary[selectedStyle] || styleLibrary["casual_mobile"];
 
-// Text to Text(best to worst reasoning):
-const Gemini_3_1_Pro = "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-pro-preview:generateContent";
-const Gemini_3_Flash = "https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent";
-const Gemini_2_5_Pro = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent";
-const Gemini_3_1_Flash_Lite = "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite-preview:generateContent";
-const Gemini_2_5_Flash = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent";
-const Gemini_2_5_Flash_Lite = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent";
-
-// Image to Text, Image to Image
-// The following Gemini models support the ability to generate images in addition to text, and can view images:
-const Gemini_3_1_Flash_Image = "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-image-preview:generateContent";
-const Gemini_3_Pro_Image = "https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-image-preview:generateContent";
-const Gemini_2_5_Flash_Image = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent";
-
-// Text to Image, *Image to Image
-// *usually prefer Gemini Image over Imagen for img2img: https://docs.cloud.google.com/vertex-ai/generative-ai/docs/image/overview
-const Imagen4_ultra = "https://us-central1-aiplatform.googleapis.com/v1/projects/{PROJECT_ID}/locations/us-central1/publishers/google/models/imagen-4.0-ultra-generate-001:predict"
-const Imagen4_standard = "https://us-central1-aiplatform.googleapis.com/v1/projects/{PROJECT_ID}/locations/us-central1/publishers/google/models/imagen-4.0-generate-001:predict"
-const Imagen4_fast = "https://us-central1-aiplatform.googleapis.com/v1/projects/{PROJECT_ID}/locations/us-central1/publishers/google/models/imagen-4.0-fast-generate-001:predict"
+// === 🧠 MODEL REGISTRY ===
+// This centralizes all URLs based on Provider -> Type -> Tier
+const modelRegistry = {
+  "google": {
+    "text": {
+      "slow": "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-pro-preview:generateContent",
+      "medium": "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent",
+      "fast": "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent"
+    },
+    "view_img": {
+      "slow": "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-pro-preview:generateContent",
+      "medium": "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent",
+      "fast": "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent"
+    },
+    "img2img": {
+      "slow": "https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-image:generateContent",
+      "medium": "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-image:generateContent",
+      "fast": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent"
+    }
+  },
+  "openai": {
+    "text": {
+      "slow": "https://api.openai.com/v1/chat/completions", // e.g. gpt-4o
+      "medium": "https://api.openai.com/v1/chat/completions", // e.g. gpt-4o-mini
+      "fast": "https://api.openai.com/v1/chat/completions"    // e.g. gpt-3.5-turbo (legacy)
+    },
+    "view_img": {
+      "slow": "https://api.openai.com/v1/chat/completions", // e.g. gpt-4o
+      "medium": "https://api.openai.com/v1/chat/completions", // e.g. gpt-4o-mini
+      "fast": "https://api.openai.com/v1/chat/completions"    // e.g. gpt-3.5-turbo (legacy)
+    },
+    "img2img": {
+      "slow": "https://api.openai.com/v1/images/generations", // e.g. dall-e-3
+      "medium": "https://api.openai.com/v1/images/generations", // e.g. dall-e-2
+      "fast": "https://api.openai.com/v1/images/generations"
+    }
+  }
+};
 
 const config = {
-  // === 🔑 API KEY ===
+  // === 🔑 API SETTINGS ===
   "api_key": items[0].json.api_key,
+
+  // === ⚙️ PROVIDER & MODEL ROUTING ===
+  // In the future, you can pass this in from Streamlit just like the style_preference
+  "active_provider": items[0].json.provider_preference || "google",
+  "model_registry": modelRegistry, // Inject the registry into config so downstream nodes can access it
+
+  // Default tiers if an agent doesn't specify one
+  "default_text_tier": "medium",
+  "default_image_tier": "medium",
+
+  // Allow the caller to toggle a speedup (caps the highest allowed tier)
+  "maximum_text_tier": items[0].json.max_text_tier || "slow",
+  "maximum_image_tier": items[0].json.max_image_tier || "slow",
 
   //  === JOB ID ===
   "job_id": items[0].json.job_id,
-  
+
   // === 📡 GUI BROADCAST SETTINGS ===
   "enable_gui_logging": true,
   "gui_webhook_url": "https://ritel-state-manager-194521282716.us-south1.run.app/update-state",
-  
-  // === 🧠 DEFAULT MODEL ===
-  "default_model_url": Gemini_3_Flash,
 
   // === 📝 DEFAULT CONTEXT TEMPLATE ===
   // Universal Agent will use this if no override is found in Phase/Agent/Task.
@@ -168,17 +197,17 @@ Only mark INVALID if it is factually impossible to draw both.`,
               }
             },
             "format_ready_branch": {
-              "model_url": "no_model",
+              "model_tier": "no_model",
               "instruction": "Format the payload for the 'ready' branch (both math and visual present).",
               "result": `{"problem": "\${math_text}", "description": "\${visual_text}"}`
             },
             "format_math_only_branch": {
-              "model_url": "no_model",
+              "model_tier": "no_model",
               "instruction": "Format the payload for the 'math_only' branch.",
               "result": `{"problem": "\${math_text}", "description": "\${description}"}`
             },
             "format_visual_only_branch": {
-              "model_url": "no_model",
+              "model_tier": "no_model",
               "instruction": "Format the payload for the 'visual_only' branch. Inject the missing math problem placeholder.",
               "result": `{"problem": "No problem given, do your best without, use common sense.", "description": "\${visual_text}"}`
             }
@@ -219,14 +248,15 @@ PHASE 2: Description Refinement
 Focus: Transforming a general image description into an complete, detailed, unambiguous visual description.
 By the end of this phase we should have a refined, detailed description ready for an artist to actually draw.`,
       "agents": {
-        
+
         // Manager: Image Detail Planner
         "image_detail_planner": {
-          "model_url": Gemini_2_5_Pro,
+          "model_tier": "slow",
+          "model_type": "text",
           "identity": `\
 You are the image detail planner. You manage the task of transforming a general image description into an complete, detailed, unambiguous visual description.
 
-Context: The overall system works in two passes. First, we use Python (Matplotlib) to draw a mathematically precise underlying 'skeleton' or 'scaffolding'. Second, we pass that scaffolding to an AI Image Generator to paint the final, beautiful illustration over the top of it. 
+Context: The overall system works in two passes. First, we use Python (Matplotlib) to draw a mathematically precise underlying 'skeleton' or 'scaffolding'. Second, we pass that scaffolding to an AI Image Generator to paint the final, beautiful illustration over the top of it.
 
 Your task is to describe that second pass: the final result, including technical details, [basic] artistic details, or both, as warranted. You don't need to figure out things like medium, style or aesthetic, the artist will handle that, but a general description of the scene, including objects not mentioned in the problem, if any.
 
@@ -239,17 +269,17 @@ Look at the Original Query and the latest Diagram Request. Decide whether your i
               "schema": {
                 "type": "OBJECT",
                 "properties": {
-                  "reasoning": { 
-                    "type": "STRING", 
-                    "description": "Analyze the query and request. Explain why technical precision, artistic illustration, or both are required." 
+                  "reasoning": {
+                    "type": "STRING",
+                    "description": "Analyze the query and request. Explain why technical precision, artistic illustration, or both are required."
                   },
-                  "requires_technical": { 
-                    "type": "BOOLEAN", 
-                    "description": "True if the image needs precise measurements, graphs, charts, geometry, or exact object counts." 
+                  "requires_technical": {
+                    "type": "BOOLEAN",
+                    "description": "True if the image needs precise measurements, graphs, charts, geometry, or exact object counts."
                   },
-                  "requires_artistic": { 
-                    "type": "BOOLEAN", 
-                    "description": "True if the image needs detailed illustrations, real-world objects, or aesthetic decorations." 
+                  "requires_artistic": {
+                    "type": "BOOLEAN",
+                    "description": "True if the image needs detailed illustrations, real-world objects, or aesthetic decorations."
                   }
                 },
                 "required": ["reasoning", "requires_technical", "requires_artistic"]
@@ -268,27 +298,27 @@ Determine if we need to do any case-specific planning:
               "schema": {
                 "type": "OBJECT",
                 "properties": {
-                  "reasoning": { 
-                    "type": "STRING", 
-                    "description": "Step-by-step analysis evaluating the presence of 3D features, graphs, and complex arranged objects." 
+                  "reasoning": {
+                    "type": "STRING",
+                    "description": "Step-by-step analysis evaluating the presence of 3D features, graphs, and complex arranged objects."
                   },
-                  "needs_3d_planning": { 
-                    "type": "BOOLEAN", 
-                    "description": "True if the diagram involves 3D solids, isometric views, or 3D features." 
+                  "needs_3d_planning": {
+                    "type": "BOOLEAN",
+                    "description": "True if the diagram involves 3D solids, isometric views, or 3D features."
                   },
-                  "needs_graph_planning": { 
-                    "type": "BOOLEAN", 
-                    "description": "True if the request involves plotting data, coordinate planes, or mathematical graphs." 
+                  "needs_graph_planning": {
+                    "type": "BOOLEAN",
+                    "description": "True if the request involves plotting data, coordinate planes, or mathematical graphs."
                   },
-                  "needs_arrangement_planning": { 
-                    "type": "BOOLEAN", 
+                  "needs_arrangement_planning": {
+                    "type": "BOOLEAN",
                     "description": "True if there are specific counts, sizes, or arrangements of complex real-world objects that we'll need ControlNets or context preserving Image-to-Image generation for."
                   }
                 },
                 "required": [
-                  "reasoning", 
-                  "needs_3d_planning", 
-                  "needs_graph_planning", 
+                  "reasoning",
+                  "needs_3d_planning",
+                  "needs_graph_planning",
                   "needs_arrangement_planning"
                 ]
               }
@@ -551,7 +581,7 @@ Focus: Transforming visual descriptions into python code, then generating a base
 In this phase we will plan and draw the underlying diagram, containing figures, simple shapes, lines, text labels, and any other things requiring exact measurements for mathematical accuracy. The diagram will act as a skeleton/scaffolding for an artist to overlay the final image on in a later phase, at that point illustrations of complex objects can be added in. In this phase we will either not add them yet, or if the "primitive planner" agent is called, call a preliminary image gen function to render simple object pngs that we can place into the diagram with our python code. Even in the latter case, an artist will do a final pass and overlay the final illustration over the initial diagram.
 At the end of this phase, we should have a finished diagram, or in the case where we generated a lot of png primitives, a rough image.`,
       "agents": {
-        
+
         // AGENT: WORKFLOW SELECTOR (The Router)
         "selector": {
           "identity": `\
@@ -589,17 +619,17 @@ Context: The overall system works in two passes. First, we use Python (Matplotli
 Your task is to design that first pass: the scaffolding.`,
           "tasks": {
             "inject_3d_constraints": {
-              "model_url": "no_model",
+              "model_tier": "no_model",
               "instruction": "Apply 3D constraints.",
               "result": `{"situational_directives": "[3D RENDERING CONSTRAINTS]:\\n- Analyze the scene for 3D logic. Ensure depth cues (shading, perspective) are defined.\\n- 3D objects should be opaque and shaded. Prefer solid objects to transparent skeletons unless the problem statement suggests otherwise.\\n- Generate objects at angles and positions suitable for viewing as examples. Important features of 3D objects must be visible, not facing away from the user.\\n- Ensure geometric shapes are at the right scale, angle, and realistic dimensions to denote the actual real-world object they represent. In other words, estimate the length, width, and height of a real example of the object, and ensure the aspect ratio in your code is similar."}`
             },
             "inject_primitives_constraints": {
-              "model_url": "no_model",
+              "model_tier": "no_model",
               "instruction": "Apply primitive composition constraints.",
               "result": `{"situational_directives": "[COMPOSITION & PRIMITIVE CONSTRAINTS]:\\n- Break down complex objects into geometric primitives (e.g., 'circles for cats', 'white rounded rectangles for sheep'). \\n- If an object can be modeled precisely by a few simple primitives, use them. If in doubt, fall back to circles to denote approximate size and location.\\n- Different classes of objects must be assigned distinctly different colors or different primitives.\\n- Placements (random, in a grid, etc.) and spacing must be reasonable and make sense with respect to the problem description. Ensure no unintentional overlaps. \\n- Think about real-world environments: A flock of geese might be in a V-shape; objects being compared for height should be side-by-side with their bases level."}`
             },
             "inject_multiple_constraints": {
-              "model_url": "no_model",
+              "model_tier": "no_model",
               "instruction": "Apply both 3D and primitive constraints.",
               "result": `{"situational_directives": "\$directives"}`
             },
@@ -638,7 +668,7 @@ Your general objectives are:
 - don't generate unnecessary axes, grids, skeletons, or weird markings. 3d objects should be opaque and  shaded, or avoided in favor of 2d where possible.
 - if instructed to add words, numbers, or other necessary markings, you can add them
 - generate the objects at such angles and positions as to be suitable for viewing as examples. for example significant[to the problem] features of 3d objects need to be visible, not facing away from the user
-- we prefer solid objects to transparent skeletons(see example below), unless the problem statement suggests 
+- we prefer solid objects to transparent skeletons(see example below), unless the problem statement suggests
   otherwise.
 - don't use any obscure libraries
 - make sure the dimensions are correct in the diagram, and it is not stretched or squashed. Also make sure the edges aren't cut off in the figure, the limits(xmin, xmax, ymin, ymax, etc.) need to be a bit larger than the object.
@@ -670,7 +700,8 @@ Analyze the 'Original Query', 'Diagram Request', and especially the 'scaffolding
 
         // AGENT: THE BUILDER (Programmer)
         "builder": {
-          "model_url": Gemini_3_1_Pro, // use more advanced agent to write code
+          "model_tier": "slow",
+          "model_type": "text", // use more advanced agent to write code
           "identity": `\
 You are the Senior Python Developer. You write clean, executable code.`,
           "tasks": {
@@ -688,7 +719,7 @@ STRICT CONSTRAINTS:
 7. SCOPE RESTRICTION: Your code runs in an exec() environment where helper functions cannot access global variables or top-level imports. Therefore, for any helper function you write:
   You MUST pass all script-level objects (like ax, fig, or color variables) into the function as arguments.
   You MUST place any required module imports (e.g., import matplotlib.patches as patches) directly inside the function body.`,
-              "history_scope": "phase", 
+              "history_scope": "phase",
               "schema": {
                 "type": "OBJECT",
                 "properties": {
@@ -751,14 +782,14 @@ CHECKS:
 
         // AGENT: THE INSPECTOR (Vision / Diagram Review)
         "inspector": {
-          "model_url": Gemini_3_1_Pro, // Override model for better vision
+          "model_tier": "slow",
+          "model_type": "view_img", // Override model for better vision
           "identity": `\
 You are the QA Vision Analyst. You check carefully for visual artifacts, if you see in history a QA check done by you failed and correction has already been attempted once, you'll only reject for serious issues on the second pass.`,
           "tasks": {
-            
+
             // TASK 1: ADHERENCE CHECK
             "verify_adherence": {
-              "view_image": true,
               "instruction": `\
 Compare the rendered image against the 'Diagram Request'.
 CHECKS:
@@ -781,9 +812,8 @@ CHECKS:
               }
             },
 
-            // TASK 2: 
+            // TASK 2:
             "verify_perspective": {
-              "view_image": true,
               "instruction": `\
 Detect and troubleshoot problems with 3d perspective:
 - Is a fundamentally 2d problem drawn in 3d? Unless the image request specifically asked you to do this, you should probably go back and rewrite your code.
@@ -803,7 +833,6 @@ Detect and troubleshoot problems with 3d perspective:
 
             // TASK 3: OVERLAP/CLUTTER CHECK
             "check_overlaps": {
-              "view_image": true,
               "instruction": `\
 Analyze the text labels and object placement.
 CHECKS:
@@ -824,7 +853,6 @@ CHECKS:
 
             // TASK 4: ARTIFACT/GLITCH CHECK
             "detect_artifacts": {
-              "view_image": true,
               "instruction": `\
 Check for technical rendering failures.
 CHECKS:
@@ -860,7 +888,7 @@ By the end of this phase we should have a finished illustration, which could be
 2. a mostly transformed version with many objects/backgrounds added & only geometries preserved
 3. an entirely new image(if no diagram was used)`,
       "agents": {
-        
+
         // 1. IMAGE PLANNER (The Art Director)
         "image_planner": {
           "context_override": `\
@@ -871,10 +899,10 @@ Base Diagram Requested & Drawn: \${scaffolding_blueprint}
 Final Illustration Requested: \${latest_description}`,
           "identity": `\
 You are the Art Director. You convert technical descriptions into artistic prompts.`,
-          "model_url": Gemini_3_1_Pro, // Using advanced model
+          "model_tier": "slow",
+          "model_type": "view_img", // Using advanced model
           "tasks": {
             "plan_finishing": {
-              "view_image": true, // Look at the base diagram
               "instruction": `\
 Review the 'Base Diagram', both the prompt and the actual image.
 
@@ -919,11 +947,10 @@ Final Illustration Requested: \${latest_description}
 Detailed Image Prompt: \${image_prompt}`,
           "identity": `\
 You are the Illustrator Engine.`,
-          "model_url": Gemini_3_Pro_Image, // Using the advanced model
+          "model_tier": "slow",
+          "model_type": "img2img", // Using the advanced model
           "tasks": {
             "render_final": {
-              "view_image": true, // The Base Diagram is the Control Image
-              "output_type": "image_blob", // <--- NEW: EXPECT BINARY OUTPUT
               "instruction": `\
 Transform the provided Base Diagram into a final illustration.
 
@@ -953,13 +980,13 @@ Focus: Final quality assurance, ensuring the illustration is biased-free, aesthe
 
         // 1. IMAGE VERIFICATION AGENT (The Auditor)
         "image_verifier": {
-          "model_url": Gemini_3_1_Pro, // Override for high-fidelity vision checking
+          "model_tier": "medium",
+          "model_type": "view_img", // Override for high-fidelity vision checking
           "identity": `\
 You are the Lead Visual Quality Assurance Officer. Your job is to strictly audit educational illustrations against specific safety, quality, and accuracy metrics.`,
           "tasks": {
             // Task 1: Cultural Bias Check
             "review_bias": {
-              "view_image": true,
               "instruction": `\
 Analyze the image for cultural bias or stereotypes. Ensure diverse representation if people are present, and avoid stereotypical depictions of roles or environments. Ensure the content is neutral and inclusive.`,
               "history_scope": "phase",
@@ -975,7 +1002,6 @@ Analyze the image for cultural bias or stereotypes. Ensure diverse representatio
             },
             // Task 2: Aesthetics Check
             "review_aesthetics": {
-              "view_image": true,
               "instruction": `\
 Evaluate visual appeal. Check for color cohesion, composition balance, clarity of the main subject, and absence of generated artifacts (glitches, blur, distortion).`,
               "history_scope": "phase",
@@ -991,7 +1017,6 @@ Evaluate visual appeal. Check for color cohesion, composition balance, clarity o
             },
             // Task 3: Developmental Safety Check
             "review_safety": {
-              "view_image": true,
               "instruction": `\
 Ensure the image is child-safe and developmentally appropriate for K-12 students. Check for any frightening elements, violence, or inappropriate themes.`,
               "history_scope": "phase",
@@ -1011,8 +1036,7 @@ Ensure the image is child-safe and developmentally appropriate for K-12 students
 Original Query: ${items[0].json.original_query}
 Math Problem: \${problem}
 Diagram Request: \${latest_description}`,
-              "model_url": Gemini_3_1_Pro,  //  use better model for technical question
-              "view_image": true,
+              "model_tier": "slow", // use better model for technical question
               "instruction": `\
 Verify mathematical precision.
 - Does the illustration accurately represent the geometry/graph described in the original request?
@@ -1079,8 +1103,8 @@ You are the Final Output and Reporting Agent. You act as the bridge between the 
           "tasks": {
             "generate_user_message": {
               "instruction": `\
-Review the entire project history and determine the final outcome of the user's request. 
-Draft a message directly to the user. 
+Review the entire project history and determine the final outcome of the user's request.
+Draft a message directly to the user.
 - If the generation was successful, present the diagram enthusiastically and briefly explain the visual/educational choices made.
 - If the generation failed (e.g., caught in an error loop, failed strict QA, or had conflicting instructions), explain clearly and politely what went wrong.
 - If the user's directions caused difficulty, gently explain how(whether or not the generation was successful).
@@ -1132,7 +1156,7 @@ You are the Diagnostics and Communication Agent. Your job is to review the compl
               "instruction": `\
 Error Hint: \${error}
 An error has triggered a pipeline termination.
-Review the entire 'Project History' to understand what happened. 
+Review the entire 'Project History' to understand what happened.
 1. Identify exactly where and why the process failed (e.g., validation rejection, python coding errors, rendering glitches, correction loop between agents fails repeatedly, etc.). 'Error Hint' may give some additional insight.
 2. Draft a clear, polite, and simple explanation for the user. Do NOT use overly technical jargon (e.g., avoid mentioning 'JSON parsing', 'base64', 'Cloud Run', or 'API endpoints'). Instead, explain the *concept* of what failed (e.g., "We couldn't quite figure out the geometry for the math problem," or "Our digital artist got stuck trying to arrange the objects").
 3. If applicable based on the failure, give the user a helpful tip on how they might adjust their prompt to succeed next time.
@@ -1154,7 +1178,7 @@ Review the entire 'Project History' to understand what happened.
             "report_unknown_error": {
               "instruction": `\
 A critical error or unrecoverable loop has occurred, and the pipeline has been aborted.
-Review the entire 'Project History' to understand what happened. 
+Review the entire 'Project History' to understand what happened.
 1. Identify exactly where and why the process failed (e.g., validation rejection, python coding errors, rendering glitches, correction loop between agents fails repeatedly, etc.).
 2. Draft a clear, polite, and simple explanation for the user. Do NOT use overly technical jargon (e.g., avoid mentioning 'JSON parsing', 'base64', 'Cloud Run', or 'API endpoints'). Instead, explain the *concept* of what failed (e.g., "We couldn't quite figure out the geometry for the math problem," or "Our digital artist got stuck trying to arrange the objects").
 3. If applicable based on the failure, give the user a helpful tip on how they might adjust their prompt to succeed next time.
@@ -1189,7 +1213,7 @@ Walk through the problem logically:
 2. DIAGNOSIS: Why is that wrong? Can you figure out the root cause of the failure?
 3. TARGET: What is the correct behavior or output we actually need?
 4. PROGRESS: evaluate the pipeline's progress
-  - Are we repeating the exact same error multiple times? 
+  - Are we repeating the exact same error multiple times?
   - If we are stuck in a loop and no progress is being made, maybe it's time to change the paradigm, or change the approach.
   - Are our directions fundamentally flawed; do they make sense?
 5. FIX: Provide clear, actionable steps or code adjustments to fix it in the next attempt.`,
@@ -1204,16 +1228,16 @@ Walk through the problem logically:
                   "actionable_fix": { "type": "STRING", "description": "Specific adjustments or new instructions to fix the issue." }
                 },
                 "required": [
-                  "error_observation", 
-                  "error_diagnosis", 
-                  "target_solution", 
-                  "progress", 
+                  "error_observation",
+                  "error_diagnosis",
+                  "target_solution",
+                  "progress",
                   "actionable_fix"
                 ]
               }
             },
-			"troubleshoot_visual": {
-              "view_image": true,
+          "troubleshoot_visual": {
+              "model_type": "view_img",
               "instruction": `\
 A recent image generation or visual review step has failed. Your job is to act as the lead visual diagnostic engineer.
 Review the provided image and the recent 'Project History' to troubleshoot the failure before we attempt a retry.
@@ -1223,7 +1247,7 @@ Walk through the problem logically:
 2. DIAGNOSIS: Why is that wrong? Can you figure out the root cause of the visual failure?
 3. TARGET: What is the correct visual behavior or output we actually need?
 4. PROGRESS: evaluate the pipeline's progress
-  - Are we repeating the exact same visual error multiple times? 
+  - Are we repeating the exact same visual error multiple times?
   - If we are stuck in a loop and no progress is being made, maybe it's time to change the paradigm, or change the approach.
   - Are our visual directions fundamentally flawed; do they make sense?
 5. FIX: Provide clear, actionable steps, layout adjustments, or new prompt instructions to fix it in the next attempt.`,
@@ -1238,10 +1262,10 @@ Walk through the problem logically:
                   "actionable_fix": { "type": "STRING", "description": "Specific adjustments, layout tweaks, or new instructions to fix the issue." }
                 },
                 "required": [
-                  "visual_observation", 
-                  "error_diagnosis", 
-                  "target_solution", 
-                  "progress", 
+                  "visual_observation",
+                  "error_diagnosis",
+                  "target_solution",
+                  "progress",
                   "actionable_fix"
                 ]
               }
@@ -1252,7 +1276,7 @@ Walk through the problem logically:
           "identity": "System utility for safely formatting and logging errors into the project history.",
           "tasks": {
             "log_error": {
-              "model_url": "no_model",
+              "model_tier": "no_model",
               "instruction": "Record pipeline error into history.",
               "result": `{"error_report": "\${error_text}"}`
             }
@@ -1260,7 +1284,7 @@ Walk through the problem logically:
         }
       }
     }
-  
+
   }
 };
 
