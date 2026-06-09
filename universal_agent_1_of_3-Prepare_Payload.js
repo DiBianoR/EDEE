@@ -197,14 +197,14 @@ if (requestedTier === "no_model") {
     // === 🌐 DYNAMIC URL RESOLUTION ===
     const provider = CONFIG.active_provider || "google";
 
-    // Map granular model_type ("text", "view_img") to the registry's core categories ("text", "image")
-    const registryCategory = isImageGen ? "image" : "text";
+    // Use the exact model_type ("text", "view_img", "img2img") to find the URL in the registry
+    const registryCategory = modelType;
 
     try {
         model_url = CONFIG.model_registry[provider][registryCategory][requestedTier];
         if (!model_url) throw new Error("URL resolved to undefined.");
     } catch (e) {
-        throw new Error(`ROUTING ERROR: Failed to resolve Model URL. Provider: '${provider}', Type: '${modelType}' (Mapped to '${registryCategory}'), Tier: '${requestedTier}'.`);
+        throw new Error(`ROUTING ERROR: Failed to resolve Model URL. Provider: '${provider}', Category: '${registryCategory}', Tier: '${requestedTier}'.`);
     }
 
     // === 🚀 CONSTRUCT REQUEST (STANDARD) ===

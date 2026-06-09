@@ -81,7 +81,17 @@ async def update_state(request: Request):
             scaff_path = f"{job_id}/scaffolding.png"
             scaff_blob = bucket.blob(scaff_path)
             scaff_blob.upload_from_string(scaff_data, content_type=scaff_mime)
-        
+
+        # Additional copy of history to bucket (On completion)
+        history_data = top_level_data.get("history")
+        if history_data:
+            history_path = f"{job_id}/history.json"
+            history_blob = bucket.blob(history_path)
+            history_blob.upload_from_string(
+                json.dumps(history_data, indent=2),
+                content_type="application/json"
+            )
+
         # 4. Append thought log to Firestore array
         if log_entry:
             top_level_data["logs"] = firestore.ArrayUnion([log_entry])
