@@ -139,10 +139,10 @@ const config = {
   "model_registry": modelRegistry, // Inject the registry into config so downstream nodes can access it
 
   // Default tiers if an agent doesn't specify one
-  "default_text_tier": "medium",
+  "default_text_tier": "fast",
   "default_image_tier": "medium",
 
-  // Allow the caller to toggle a speedup (caps the highest allowed tier)
+  // Allow the caller to toggle a speedup (caps the slowest allowed tier)
   "maximum_text_tier": items[0].json.max_text_tier || "slow",
   "maximum_image_tier": items[0].json.max_image_tier || "slow",
 
