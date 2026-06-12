@@ -232,7 +232,7 @@ return [{
         _output_type: outputType,
         _skip_api: skipApi,
         _no_model_result: aiResult,
-        _task_instruction: taskConfig.instruction,
+        _task_instruction: resolveTemplate(taskConfig.instruction),
         _phase_id: PHASE_ID,
         _agent_id: AGENT_ID,
         _task_id: TASK_ID,

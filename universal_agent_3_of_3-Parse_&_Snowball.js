@@ -29,10 +29,11 @@ let aiResult;
 let finalImageBase64 = null;
 
 // === 📦 PARSE RESPONSE ===
+const content = typeof response === 'string' ? JSON.parse(response) : response;
+
 if (outputType === "image_blob") {
-    const content = typeof response === 'string' ? JSON.parse(response) : response;
     const part = content?.candidates?.[0]?.content?.parts?.[0];
-    
+
     const inlineData = part?.inlineData || part?.inline_data;
     if (inlineData?.data) {
         finalImageBase64 = inlineData.data;
@@ -40,15 +41,14 @@ if (outputType === "image_blob") {
     } else {
         let rawDump = part?.text || JSON.stringify(content);
         if (rawDump && rawDump.length > 500) rawDump = rawDump.substring(0, 500) + "...";
-        aiResult = { 
-            status: "error", 
-            message: "No image found in response", 
+        aiResult = {
+            status: "error",
+            message: "No image found in response",
             raw_text: rawDump
         };
     }
 } else {
     // Standard JSON Response
-    const content = typeof response === 'string' ? JSON.parse(response) : response;
     if (content?.candidates && content.candidates[0]) {
         const rawText = content.candidates[0].content.parts[0].text;
         const cleanText = rawText.replace(/```json\n?|\n?```/g, "");
@@ -68,8 +68,7 @@ const stepRecord = {
   phase_id: PHASE_ID,
   agent_id: AGENT_ID,
   task_id: TASK_ID,
-  task_instruction: taskInstruction,
-  output: aiResult
+  task_instruction: taskInstruction
 };
 
 // Helper for Smart Truncation (Debug Logs)
@@ -93,24 +92,19 @@ const sanitizedStepRecord = {
 };
 
 const outputData = {
-    // 1. Debug Info
-    debug_query: taskInstruction,
-    debug_response: sanitizedOutput,
-    debug_full_request_body: JSON.parse(JSON.stringify(requestBody, sanitize)),
-
-    // 2. Parsed AI Response Fields
+    // 1. Parsed AI Response Fields
     // If aiResult is an object (standard JSON), we spread it so properties (reasoning, python_code, etc.) are top-level.
     ...(typeof aiResult === 'object' ? aiResult : { raw_response: aiResult }),
 
-    // 3. Image Data (If present)
+    // 2. Image Data (If present)
     ...(finalImageBase64 ? { base64_img_string: finalImageBase64, base64_img_string_mime: "image/jpg" } : {}),
 
-    // 4. Context Preservation (Optional - Keep description alive if not updated)
+    // 3. Context Preservation (Optional - Keep description alive if not updated)
     ...((INPUT_DATA.latest_description && (!aiResult || !aiResult.latest_description)) 
         ? { latest_description: INPUT_DATA.latest_description } 
         : {}),
 
-    // 5. History & Config
+    // 4. History & Config
     history: [...fullHistory, sanitizedStepRecord],
     config: CONFIG
 };
@@ -136,8 +130,8 @@ if (CONFIG.enable_gui_logging === true && CONFIG.gui_webhook_url) {
             phase_id: PHASE_ID,
             agent_id: AGENT_ID,
             task_id: TASK_ID,
-            query: outputData.debug_query,       
-            response: outputData.debug_response, 
+            query: taskInstruction,
+            response: sanitizedOutput,
             status: broadcastStatus, // "running", "failed", or "completed"
             timestamp: new Date().toISOString(),
             ...(finalImageBase64 ? { base64_img_string: finalImageBase64 } : {})  // Attach the image string if one was generated
@@ -163,4 +157,11 @@ if (CONFIG.enable_gui_logging === true && CONFIG.gui_webhook_url) {
     }
 }
 
-return [{ json: outputData }];
+return [{
+    json: {
+        outputData,
+        model_url: INPUT_DATA._model_url,
+        usage: content?.usageMetadata || {},
+        grounding: content?.groundingMetadata || {}
+    }
+}];
