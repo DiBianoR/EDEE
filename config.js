@@ -78,7 +78,7 @@ const modelRegistry = {
 };
 
 // use with usageMetadata & groundingMetadata to calculate costs
-const cost_registry = {
+const costRegistry = {
   "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-pro-preview:generateContent": {
     input: 2.00,
     output_text: 12.00,
@@ -137,6 +137,7 @@ const config = {
   // In the future, you can pass this in from Streamlit just like the style_preference
   "active_provider": items[0].json.provider_preference || "google",
   "model_registry": modelRegistry, // Inject the registry into config so downstream nodes can access it
+  "cost_registry": costRegistry,
 
   // Default tiers if an agent doesn't specify one
   "default_text_tier": "fast",
