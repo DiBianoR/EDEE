@@ -77,58 +77,6 @@ const modelRegistry = {
   }
 };
 
-// use with usageMetadata & groundingMetadata to calculate costs
-const costRegistry = {
-  "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-pro-preview:generateContent": {
-    input: 2.00,
-    output_text: 12.00,
-    contextThreshold: 200000,
-    input_over_threshold: 4.00,
-    output_text_over_threshold: 18.00,
-    cache_read: 0.20,
-    cache_read_over_threshold: 0.40,
-    cache_storage_hourly: 4.50,
-    grounding_search_per_1k: 14.00,  // A customer-submitted request to Gemini may result in one or more queries to Google Search. You will be charged for each individual search query performed.
-    grounding_maps_per_1k: 14.00
-  },
-  "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent": {
-    input: 1.50,
-    output_text: 9.00,
-    cache_read: 0.15,
-    cache_storage_hourly: 1.00,
-    grounding_search_per_1k: 14.00,  // A customer-submitted request to Gemini may result in one or more queries to Google Search. You will be charged for each individual search query performed.
-    grounding_maps_per_1k: 14.00
-  },
-  "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent": {
-    input_default: 0.25, // text, image, video
-    input_audio: 0.50,   // double rate for audio
-    output_text: 1.50,
-    cache_read_default: 0.025,
-    cache_read_audio: 0.05,
-    cache_storage_hourly: 1.00,
-    grounding_search_per_1k: 14.00,
-    grounding_maps_per_1k: 14.00
-  },
-  "https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-image:generateContent": {
-    // Inherits base text/image properties from Gemini 3.1 Pro
-    input: 2.00,
-    output_text: 12.00,
-    output_image: 120.00,
-    grounding_search_per_1k: 14.00
-  },
-  "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-image:generateContent": {
-    input: 0.50,
-    output_text: 3.00,
-    output_image: 60.00,
-    grounding_search_per_1k: 14.00
-  },
-  "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent": {
-    input: 0.30,
-    output_text: 2.50,   // Matched to base 2.5 Flash text output rate
-    output_image: 30.00
-  }
-};
-
 const config = {
   // === 🔑 API SETTINGS ===
   "api_key": items[0].json.api_key,
@@ -137,7 +85,6 @@ const config = {
   // In the future, you can pass this in from Streamlit just like the style_preference
   "active_provider": items[0].json.provider_preference || "google",
   "model_registry": modelRegistry, // Inject the registry into config so downstream nodes can access it
-  "cost_registry": costRegistry,
 
   // Default tiers if an agent doesn't specify one
   "default_text_tier": "fast",
