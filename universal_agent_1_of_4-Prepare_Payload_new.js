@@ -32,7 +32,8 @@ const outputType = isImageGen ? "image_blob" : "json";  //  constrained generati
 // === 🪶 String Templating (The ADK Way) ===
 function templateInstruction(instruction, state) {
     if (!instruction) return "";
-    return instruction.replace(/{([^}]+)}/g, (match, key) => {
+    return instruction.replace(/{([^}]+)}/g, (match, rawKey) => {
+        const key = rawKey.trim();
         let val = state[key];
         if (val === undefined) throw new Error(`TEMPLATE ERROR: The variable '{${key}}' was referenced in the prompt, but it does not exist in the session_state.`);
         if (typeof val === 'object') return JSON.stringify(val);  // If the variable is an array/object (like {master_table}), we stringify it so it renders as text in the prompt.
@@ -46,9 +47,11 @@ const finalUserInstruction = templateInstruction(taskBlueprint.instruction, sess
 
 // === 📦 Construct empty API Payload ===
 let requestBody = {
-    systemInstruction: { parts: [{ text: finalSystemInstruction }] },  // Agent identity [optional]
     contents: []  // contains list of {role, parts[text, inlineData, fileData, functionCall, functionResponse]} objs
-};  // generationConfig{} & safetySettings[] are the other optional fields
+};  // systemInstruction{}, generationConfig{} & safetySettings[] are the other optional fields
+if (finalSystemInstruction) {
+    requestBody.systemInstruction = { parts: [{ text: finalSystemInstruction }] };
+}
 if (outputType === "json" && taskBlueprint.schema) {  // constrained generation - json schema
     requestBody.generationConfig = {
         response_mime_type: "application/json",
@@ -143,6 +146,9 @@ for (const event of eventsToProcess) {
     queue.push(event);
 }
 flushQueue(); // Flush the final segment (this inherently handles the currentPromptEvent and any attached images)
+if (finalContents.length > 0 && finalContents[0].role === "model") {
+    finalContents.unshift({ role: "user", parts: [{ text: "" }] }); // Gemini requires the first content to have role "user"
+}
 requestBody.contents = finalContents; // Finally, attach the constructed contents to the request payload
 
 
