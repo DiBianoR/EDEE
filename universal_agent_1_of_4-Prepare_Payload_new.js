@@ -151,7 +151,6 @@ requestBody.contents = finalContents; // Finally, attach the constructed content
 // Prepare output for the n8n HTTP Request Node
 return [{
     json: {
-        ...inputData,
         _model_url: ?,
         _api_key: config.api_key,
         _request_body: requestBody,
