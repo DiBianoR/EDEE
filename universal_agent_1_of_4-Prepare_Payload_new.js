@@ -41,6 +41,19 @@ function templateInstruction(instruction, state) {
     });
 }
 
+// Recursively template the string leaves of a config value (used by no_model results).
+// Strings get {var} substitution; objects/arrays recurse; numbers/booleans/null pass through.
+function templateObject(value, state) {
+    if (typeof value === 'string') return templateInstruction(value, state);
+    if (Array.isArray(value)) return value.map(v => templateObject(v, state));
+    if (value && typeof value === 'object') {
+        const out = {};
+        for (const [k, v] of Object.entries(value)) out[k] = templateObject(v, state);
+        return out;
+    }
+    return value;
+}
+
 // === 📝 CONSTRUCT SYSTEM & USER PROMPTS ===
 const finalSystemInstruction = templateInstruction(agentBlueprint.system_identity, sessionState);
 const finalUserInstruction = templateInstruction(taskBlueprint.instruction, sessionState);
@@ -151,13 +164,50 @@ if (finalContents.length > 0 && finalContents[0].role === "model") {
 }
 requestBody.contents = finalContents; // Finally, attach the constructed contents to the request payload
 
-
 //[WIP]
+// === 🏎️ TIER, ROUTING & NO_MODEL RESOLUTION ===
+// Task tier overrides agent tier, which falls back to the type-based default.
+let requestedTier = taskBlueprint.model_tier || agentBlueprint.model_tier ||
+                    (isImageGen ? config.default_image_tier : config.default_text_tier);
+
+let model_url;
+let skipApi = false;
+let aiResult; // only populated in no_model mode
+
+if (requestedTier === "no_model") {
+    // === ⚡ NO_MODEL MODE: skip the API, resolve the canned result locally ===
+    skipApi = true;
+    model_url = "no_model";
+
+    const rawResult = taskBlueprint.result;
+    if (rawResult === undefined) {
+        throw new Error(`CONFIGURATION ERROR: Task '${currentTaskId}' requested tier 'no_model' but defines no 'result'.`);
+    }
+    // result is an object; we template its string leaves, so there is no JSON to escape or parse.
+    noModelResult = templateObject(rawResult, sessionState);
+
+} else {
+    // === 🏎️ TIER CAPPING (honor user speed/cost ceiling from April) ===
+    const tierRanks = { "fast": 1, "medium": 2, "slow": 3 };
+    const maxTier = isImageGen ? (config.maximum_image_tier || "slow") : (config.maximum_text_tier || "slow");
+    if (tierRanks[requestedTier] && tierRanks[maxTier] && tierRanks[requestedTier] > tierRanks[maxTier]) {
+        requestedTier = maxTier;
+    }
+
+    // === 🌐 DYNAMIC URL RESOLUTION (provider → type → tier) ===
+    const provider = config.active_provider || "google";
+    try {
+        model_url = config.model_registry[provider][modelType][requestedTier];
+        if (!model_url) throw new Error("URL resolved to undefined.");
+    } catch (e) {
+        throw new Error(`ROUTING ERROR: Failed to resolve model URL. Provider: '${provider}', Type: '${modelType}', Tier: '${requestedTier}'.`);
+    }
+}
 
 // Prepare output for the n8n HTTP Request Node
 return [{
     json: {
-        _model_url: ?,
+        _model_url: model_url,
         _api_key: config.api_key,
         _request_body: requestBody,
         _skip_api: skipApi
