@@ -12,7 +12,7 @@
           "conditions": [
             {
               "id": "c1",
-              "leftValue": "={{ $json._skip_api }}",
+              "leftValue": "={{ $json.skipApi }}",
               "rightValue": true,
               "operator": {
                 "type": "boolean",
@@ -27,22 +27,22 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
-        432,
-        0
+        624,
+        336
       ],
-      "id": "3e1e62e4-abab-4328-8191-39c61f002b25",
+      "id": "32fcd50a-00a3-4d48-944c-0c470946c075",
       "name": "Skip API Call?"
     },
     {
       "parameters": {
         "method": "POST",
-        "url": "={{ $json._model_url }}",
+        "url": "={{ $json.model_url }}",
         "sendQuery": true,
         "queryParameters": {
           "parameters": [
             {
               "name": "key",
-              "value": "={{ $json._api_key }}"
+              "value": "={{ $json.api_key }}"
             }
           ]
         },
@@ -57,7 +57,7 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ $json._request_body }}",
+        "jsonBody": "={{ $json.requestBody }}",
         "options": {
           "timeout": 180000
         }
@@ -65,10 +65,10 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        656,
-        192
+        848,
+        528
       ],
-      "id": "83a14107-a84e-4a27-8cd4-5ffc105a2041",
+      "id": "bf382e6b-8e23-4569-be35-b8feab8c2948",
       "name": "2. API Call",
       "retryOnFail": true,
       "maxTries": 3,
@@ -96,6 +96,6 @@
   },
   "pinData": {},
   "meta": {
-    "instanceId": "df2a3209410ed788eacffb4d1872acd7fcd84c9b8c68de9775fcdebdbc87d329"
+    "instanceId": "050d7f5d3593566ffe36464e2179832d9e4aa282cb8a519a27bd68446dae16b9"
   }
 }
