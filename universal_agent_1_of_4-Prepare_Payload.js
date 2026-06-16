@@ -1,241 +1,222 @@
 // === ⚙️ CONFIGURATION ===
-// Set these 3 IDs for each node instance
-const PHASE_ID = items[0].json.PHASE_ID;
-const AGENT_ID = items[0].json.AGENT_ID;
-const TASK_ID = items[0].json.TASK_ID;
+const inputData = items[0].json;
+const {
+    config,
+    session_state: sessionState = {},  // state: contains a flat dictionary of misc. variables
+    session_events: sessionEvents = [],  // history: contains list of {author, task, parts[text, inlineData, fileData, functionCall, functionResponse], actions[], partial, timestamp} objs
+    prompt_author: promptAuthor = "system",  // used if another agent directly wrote the prompt
+    TASK_ID: currentTaskId,
+    AGENT_ID: providedAgentId,
+    base64_img_string,  // If we have an input image
+    base64_img_string_mime,
+    ...externalVars
+} = inputData;
+Object.assign(sessionState, externalVars);  // Other variables into sessionState. If same name exists, overwritten.
+if (!config) throw new Error("CONFIGURATION ERROR: No 'config' object found in the payload.");
+if (!config.tasks || !config.agents) throw new Error("CONFIGURATION ERROR: The provided 'config' is missing 'tasks' or 'agents' registries.");
 
-// Standard Setup
-const INPUT_DATA = items[0].json;  // output of previous node
-const CONFIG = INPUT_DATA.config;
-const fullHistory = INPUT_DATA.history || [];
-
-// Replaces ${VAR.PATH} placeholders with real values from the context object
-// Supports: ${Node Name:variable} OR ${variable} (from localContext)
-function resolveTemplate(templateStr, isJsonTarget = false) {
-    if (typeof templateStr !== 'string') return templateStr;
-
-    return templateStr.replace(/\$\{([^}]+)\}/g, (match, path) => {
-        // 1. DEFAULT: Start with the global items[0].json
-        // We can access 'items' directly because it is in the scope
-        let value = items[0].json; 
-
-        // 2. OPTIONAL: Handle Node Syntax (NodeName:variable)
-        // If the path has a colon, we switch 'value' to look at that specific node
-        if (path.includes(':')) {
-            const [nodeName, varPath] = path.split(/:(.+)/);
-            // We can access '$' directly because it is in the scope
-            try {
-                value = $(nodeName).first().json;
-                path = varPath; // Update path to be just the variable part
-            } catch (e) {
-                throw new Error(`Node '${nodeName}' not found.`);
-            }
-        }
-
-        // 3. Drill down into 'value'
-        const keys = path.trim().split('.');
-        for (const key of keys) {
-            if (value === undefined || value === null) {
-                 throw new Error(`MISSING: Path '${path}' not found.`);
-            }
-            value = value[key];
-        }
-
-        if (typeof value === 'object') return JSON.stringify(value, null, 2);
-        let valStr = String(value);
-        if (isJsonTarget) {
-            // Safely escapes \n, \r, \t, and " so it doesn't break your JSON
-            valStr = JSON.stringify(valStr).slice(1, -1);
-        }
-        return valStr;
-    });
-}
-
-// === 🧭 NAVIGATE CONFIG ===
-if (!CONFIG || !CONFIG.phases) throw new Error("Missing 'config'. Ensure Load Config runs first.");
-
-const phaseConfig = CONFIG.phases[PHASE_ID];
-if (!phaseConfig) throw new Error(`Phase ${PHASE_ID} not found in config.`);
-
-const agentConfig = phaseConfig.agents[AGENT_ID];
-if (!agentConfig) throw new Error(`Agent ${AGENT_ID} not found in Phase ${PHASE_ID}.`);
-
-const taskConfig = agentConfig.tasks[TASK_ID];
-if (!taskConfig) throw new Error(`Task ${TASK_ID} not found in Agent ${AGENT_ID}.`);
-
-// === 🧠 ASSEMBLE IDENTITY (System Instruction) ===
-const systemParts = [
-  CONFIG.global_task_explanation,
-  phaseConfig.identity,
-  agentConfig.identity
-].filter(Boolean);
-
-const finalSystemInstruction = resolveTemplate(systemParts.join("\n\n"));
-
-// === 📜 ASSEMBLE HISTORY ===
-let scopedHistory = [];
-const scope = taskConfig.history_scope || "agent";
-
-if (scope === "global") scopedHistory = fullHistory;
-else if (scope === "phase") scopedHistory = fullHistory.filter(h => h.phase_id === PHASE_ID);
-else if (scope === "agent") scopedHistory = fullHistory.filter(h => h.phase_id === PHASE_ID && h.agent_id === AGENT_ID); 
-// If scope is "none", scopedHistory remains []
-
-// === 📝 CONSTRUCT USER PROMPT ===
-// Priority: Task > Agent > Phase > Config Default > Error
-let rawGlobalContext = taskConfig.context_override || 
-                       agentConfig.context_override || 
-                       phaseConfig.context_override || 
-                       CONFIG.default_context_template;
-
-if (!rawGlobalContext) {
-    throw new Error("CONTEXT ERROR: No context_override found in Task/Agent/Phase and no 'default_context_template' found in Config.");
-}
-
-const globalContext = resolveTemplate(rawGlobalContext);
-
-let historySection = scopedHistory.length > 0 ? `=== HISTORY ===\n${JSON.stringify(scopedHistory, null, 2)}` : "";
-
-const userPrompt = `
-=== CONTEXT ===
-${globalContext}
-
-${historySection}
-
-=== YOUR CURRENT TASK ===
-${resolveTemplate(taskConfig.instruction)}
-`.trim();
+// agent & task
+if (!currentTaskId) throw new Error("No TASK_ID provided to the Universal Agent.");
+const taskBlueprint = config.tasks[currentTaskId];
+if (!taskBlueprint) throw new Error(`Task ID '${currentTaskId}' not found in config.`);
+const targetAgentId = providedAgentId || taskBlueprint.assigned_agent;
+const agentBlueprint = config.agents[targetAgentId];
+if (!agentBlueprint) throw new Error(`Agent ID '${targetAgentId}' not found in config.`);
 
 // === 🎯 MODEL CAPABILITY IDENTIFICATION ===
-const modelType = taskConfig.model_type || agentConfig.model_type || "text"; // Supports "text", "view_img", "img2img"
+const modelType = taskBlueprint.model_type || agentBlueprint.model_type || "text"; // Supports "text", "view_img", "img2img"
+const isImageRead = (modelType === "view_img") || (modelType === "img2img");
 const isImageGen = (modelType === "img2img");
-const outputType = isImageGen ? "image_blob" : "json";
+const outputType = isImageGen ? "image_blob" : "json";  //  constrained generation produces json, no raw text case atm
 
-// === 🖼️ IMAGE HANDLING ===
-let parts = [{ text: userPrompt }];
-
-// Automatically attach image if the selected model type requires vision/image context
-if (modelType === "view_img" || modelType === "img2img") {
-    let imgData = null;
-    let imgMime = null;
-
-    // 1. Try fetching from explicit source (Configured Override)
-    if (taskConfig.image_source) {
-        try {
-            const sourceItem = $(taskConfig.image_source).last().json;
-            imgData = sourceItem.base64_img_string;
-            imgMime = sourceItem.base64_img_string_mime;
-        } catch (e) {
-            throw new Error(`IMAGE ERROR: 'image_source' was set to '${taskConfig.image_source}', but that node execution could not be found.`);
-        }
-    }
-    // 2. Fallback: Try fetching from immediate input
-    else {
-        imgData = INPUT_DATA.base64_img_string;
-        imgMime = INPUT_DATA.base64_img_string_mime;
-    }
-
-    // 3. VALIDATION: Fail if blind
-    if (!imgData || !imgMime) {
-        throw new Error(`CONFIGURATION ERROR: Agent '${AGENT_ID}' (Task: '${TASK_ID}') has model_type '${modelType}', but no 'base64_img_string' was found in input context or specified 'image_source'.`);
-    }
-
-    // 4. Attach Image
-    parts.push({
-        inline_data: {
-            mime_type: imgMime,
-            data: imgData
-        }
+// === 🪶 String Templating (The ADK Way) ===
+function templateInstruction(instruction, state) {
+    if (!instruction) return "";
+    return instruction.replace(/{([^}]+)}/g, (match, rawKey) => {
+        const key = rawKey.trim();
+        let val = state[key];
+        if (val === undefined) throw new Error(`TEMPLATE ERROR: The variable '{${key}}' was referenced in the prompt, but it does not exist in the session_state.`);
+        if (typeof val === 'object') return JSON.stringify(val);  // If the variable is an array/object (like {master_table}), we stringify it so it renders as text in the prompt.
+        return val;
     });
 }
 
-// === 🏎️ TIER CAPPING & ROUTING LOGIC ===
-let requestedTier = taskConfig.model_tier || agentConfig.model_tier ||
-                    (isImageGen ? CONFIG.default_image_tier : CONFIG.default_text_tier);
+// Recursively template the string leaves of a config value (used by no_model results).
+// Strings get {var} substitution; objects/arrays recurse; numbers/booleans/null pass through.
+function templateObject(value, state) {
+    if (typeof value === 'string') return templateInstruction(value, state);
+    if (Array.isArray(value)) return value.map(v => templateObject(v, state));
+    if (value && typeof value === 'object') {
+        const out = {};
+        for (const [k, v] of Object.entries(value)) out[k] = templateObject(v, state);
+        return out;
+    }
+    return value;
+}
 
-// Output containers
+// === 📝 CONSTRUCT SYSTEM & USER PROMPTS ===
+const finalSystemInstruction = templateInstruction(agentBlueprint.system_identity, sessionState);
+const finalUserInstruction = templateInstruction(taskBlueprint.instruction, sessionState);
+
+// === 📦 Construct empty API Payload ===
+let requestBody = {
+    contents: []  // contains list of {role, parts[text, inlineData, fileData, functionCall, functionResponse]} objs
+};  // systemInstruction{}, generationConfig{} & safetySettings[] are the other optional fields
+if (finalSystemInstruction) {
+    requestBody.systemInstruction = { parts: [{ text: finalSystemInstruction }] };
+}
+if (outputType === "json" && taskBlueprint.schema) {  // constrained generation - json schema
+    requestBody.generationConfig = {
+        response_mime_type: "application/json",
+        response_schema: taskBlueprint.schema
+    };
+}
+
+// === 📜 HISTORY SCOPE RESOLUTION & CONSTRUCTION ===
+const rawHistoryScope = agentBlueprint.history_scope || [];  // A list of agent IDs
+const historyScope = Array.isArray(rawHistoryScope) ? rawHistoryScope : [rawHistoryScope];  // Allow single item as string
+const filteredEvents = sessionEvents.filter(event => historyScope.includes(event.author));
+
+// === 🖼️️️ FINISH CONSTRUCTING CURRENT PROMPT ===
+const currentParts = [{ text: finalUserInstruction }];
+if (base64_img_string && base64_img_string_mime) {
+    currentParts.unshift({ // unshift adds the element to the front of the array
+        inlineData: {
+            mimeType: base64_img_string_mime,
+            data: base64_img_string
+        }
+    });
+}
+const currentPromptEvent = {
+    author: promptAuthor,
+    parts: currentParts
+};
+
+// === 🔄 QUEUE PROCESSING & CONTENT FLUSHING ===
+const eventsToProcess = [...filteredEvents, currentPromptEvent];
+const finalContents = [];
+let queue = [];
+let currentIsModel = null; // true if targetAgentId (model), false otherwise (user)
+
+const flushQueue = () => {
+    if (queue.length === 0) return;
+
+    const isModelQueue = currentIsModel;
+    const role = isModelQueue ? "model" : "user";
+    const contentParts = [];
+
+    // Determine if we need to apply author labels based on your rules
+    let applyLabels = false;
+    if (!isModelQueue) {
+        const uniqueAuthors = new Set(queue.map(e => e.author));
+
+        if (queue.length === 1) {
+            const author = queue[0].author;
+            // Single item: apply if author isn't a standard 'system' or 'user'
+            applyLabels = author !== "system" && author !== "user";
+        } else {
+            const allSame = uniqueAuthors.size === 1;
+            const onlyAuthor = Array.from(uniqueAuthors)[0];
+            // Multiple items: apply unless ALL are 'system' or ALL are 'user'
+            applyLabels = !(allSame && (onlyAuthor === "system" || onlyAuthor === "user"));
+        }
+    }
+
+    // Process the queue items into standard Gemini parts
+    let labeledAnyText = false;
+    queue.forEach((event) => {
+        let labeledFirstTextOfEvent = false;
+        event.parts.forEach((part) => {
+            if (part.text !== undefined) {
+                let text = part.text;
+                // Apply the label to the FIRST text block of the event, if required
+                if (applyLabels && !labeledFirstTextOfEvent) {
+                    const prefix = labeledAnyText === false ? `${event.author} said: ` : `\n${event.author} said: `;
+                    text = prefix + text;
+                    labeledAnyText = true;
+                    labeledFirstTextOfEvent = true;
+                }
+                contentParts.push({ text });
+            } else {
+                // Push inlineData, functionCall, functionResponse, etc., completely untouched
+                contentParts.push(part);
+            }
+        });
+    });
+
+    finalContents.push({ role, parts: contentParts });
+    queue = []; // Empty the queue for the next batch
+};
+
+// Process events sequentially into the queue
+for (const event of eventsToProcess) {
+    const isModel = event.author === targetAgentId;
+    // If the role switches (and the queue isn't empty), flush the existing queue
+    if (currentIsModel !== null && isModel !== currentIsModel) {
+        flushQueue();
+    }
+    currentIsModel = isModel;
+    queue.push(event);
+}
+flushQueue(); // Flush the final segment (this inherently handles the currentPromptEvent and any attached images)
+if (finalContents.length > 0 && finalContents[0].role === "model") {
+    finalContents.unshift({ role: "user", parts: [{ text: "" }] }); // Gemini requires the first content to have role "user"
+}
+requestBody.contents = finalContents; // Finally, attach the constructed contents to the request payload
+
+//[WIP]
+// === 🏎️ TIER, ROUTING & NO_MODEL RESOLUTION ===
+// Task tier overrides agent tier, which falls back to the type-based default.
+let requestedTier = taskBlueprint.model_tier || agentBlueprint.model_tier ||
+                    (isImageGen ? config.default_image_tier : config.default_text_tier);
+
 let model_url;
-let aiResult;
-let requestBody = {};
 let skipApi = false;
+let aiResult; // only populated in no_model mode
 
-// === ⚡ CHECK FOR NO_MODEL MODE ===
 if (requestedTier === "no_model") {
+    // === ⚡ NO_MODEL MODE: skip the API, resolve the canned result locally ===
     skipApi = true;
     model_url = "no_model";
-    const rawResult = taskConfig.result;
+
+    const rawResult = taskBlueprint.result;
     if (rawResult === undefined) {
-        throw new Error(`CONFIGURATION ERROR: Agent '${AGENT_ID}' (Task: '${TASK_ID}') requested tier 'no_model' but is missing 'result'.`);
+        throw new Error(`CONFIGURATION ERROR: Task '${currentTaskId}' requested tier 'no_model' but defines no 'result'.`);
     }
-
-    // Pass TRUE to safely escape quotes and newlines for the JSON parser
-    const resolvedResult = resolveTemplate(rawResult, true);
-
-    // Try to auto-parse JSON if it looks like one
-    if (typeof resolvedResult === 'string' && (resolvedResult.trim().startsWith('{') || resolvedResult.trim().startsWith('['))) {
-        try {
-            aiResult = JSON.parse(resolvedResult);
-        } catch (e) {
-            aiResult = resolvedResult;
-        }
-    } else {
-        aiResult = resolvedResult;
-    }
-
-    requestBody = { mode: "no_model", result_template: rawResult };
+    // result is an object; we template its string leaves, so there is no JSON to escape or parse.
+    noModelResult = templateObject(rawResult, sessionState);
 
 } else {
-    // === 🏎️ TIER CAPPING LOGIC ===
+    // === 🏎️ TIER CAPPING (honor user speed/cost ceiling from April) ===
     const tierRanks = { "fast": 1, "medium": 2, "slow": 3 };
-    const maxTier = isImageGen ? (CONFIG.maximum_image_tier || "slow") : (CONFIG.maximum_text_tier || "slow");
-
-    // If the requested tier is higher (slower/more expensive) than the maximum allowed, downgrade it.
+    const maxTier = isImageGen ? (config.maximum_image_tier || "slow") : (config.maximum_text_tier || "slow");
     if (tierRanks[requestedTier] && tierRanks[maxTier] && tierRanks[requestedTier] > tierRanks[maxTier]) {
         requestedTier = maxTier;
     }
 
-    // === 🌐 DYNAMIC URL RESOLUTION ===
-    const provider = CONFIG.active_provider || "google";
-
-    // Use the exact model_type ("text", "view_img", "img2img") to find the URL in the registry
-    const registryCategory = modelType;
-
+    // === 🌐 DYNAMIC URL RESOLUTION (provider → type → tier) ===
+    const provider = config.active_provider || "google";
     try {
-        model_url = CONFIG.model_registry[provider][registryCategory][requestedTier];
+        model_url = config.model_registry[provider][modelType][requestedTier];
         if (!model_url) throw new Error("URL resolved to undefined.");
     } catch (e) {
-        throw new Error(`ROUTING ERROR: Failed to resolve Model URL. Provider: '${provider}', Category: '${registryCategory}', Tier: '${requestedTier}'.`);
-    }
-
-    // === 🚀 CONSTRUCT REQUEST (STANDARD) ===
-    requestBody = {
-        contents: [{ parts: parts }],
-        systemInstruction: { parts: [{ text: finalSystemInstruction }] }
-    };
-
-    if (outputType === "json") {  // constrained generation - json schema
-        requestBody.generationConfig = {
-            response_mime_type: "application/json",
-            response_schema: taskConfig.schema
-        };
-    } else {
-        requestBody.generationConfig = {};
+        throw new Error(`ROUTING ERROR: Failed to resolve model URL. Provider: '${provider}', Type: '${modelType}', Tier: '${requestedTier}'.`);
     }
 }
 
+// Prepare output for the n8n HTTP Request Node
 return [{
     json: {
-        ...INPUT_DATA,
-        _model_url: model_url,
-        _api_key: CONFIG.api_key,
-        _request_body: requestBody,
-        _output_type: outputType,
-        _skip_api: skipApi,
-        _no_model_result: aiResult,
-        _task_instruction: resolveTemplate(taskConfig.instruction),
-        _phase_id: PHASE_ID,
-        _agent_id: AGENT_ID,
-        _task_id: TASK_ID,
-        _full_history: fullHistory
+        const config,
+        sessionState,
+        sessionEvents,
+        model_url,  // for API Call
+        api_key: config.api_key,  // for API Call
+        requestBody,  // for API Call
+        noModelResult,
+        skipApi,  // for skip branch
+        targetAgentId,
+        currentTaskId,
+        outputType
     }
 }];
