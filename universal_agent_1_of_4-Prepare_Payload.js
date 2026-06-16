@@ -207,7 +207,7 @@ if (requestedTier === "no_model") {
 // Prepare output for the n8n HTTP Request Node
 return [{
     json: {
-        const config,
+        config,
         sessionState,
         sessionEvents,
         model_url,  // for API Call
