@@ -1,0 +1,77 @@
+[incomplete] list of previous work from billings
+
+**2026:
+*Jan:
+Did more work on phase 5
+
+Completed & optimized and  universal agent
+- more universal, nearly all behavior now determined from config
+- image read, image gen, image edit, no model modes all supported purely via easy to adjust settings in config
+- use custom inputs defined in config
+- templating engine for variable interpolation of variables that don't exist yet during config
+- custom outputs defined in config instead of case statements in universal agent
+- no passing redundant variables; keep raw image data out of history variable
+- split into multiple code blocks (code, HTTP POST, code) to prevent n8n timeout on code blocks after 60 sec
+- supports real time reporting of chain-of-thought
+
+Moved config and universal agent into sub-workflows
+
+Field tested & tuned instructions on agents in all phases
+- more distinction between planning scaffolding and final image
+- improved situational directives in phase 2
+- grouped multiple tasks under one agent where it made sense
+
+Major debugging on all phases
+
+Added new QA failure and retry loops(and improved existing ones)
+
+*Feb:
+- Publication
+  * evaluated system on all test problems, generated various sample images
+- System for changing style, and several styles
+- Frontend/GUI - Improved quality and responsiveness
+  * Real time thinking display
+- Reporting agent
+  * summarizes how the process went
+  *  warning and error messages for user if there is an issue
+  * detailed dev team report describing the run in more detail and pinpointing areas to improve, issues they noticed with subordinates, for iterative process improvement later.
+- full public version deployed for initial testing
+
+*Mar:
+State Management & Polling: Integrated Google Cloud Firestore and Cloud Storage to enable real-time UI updates, polling the backend for agent thought logs and visual assets.
+display in-progress images in GUI, color coded the thought logs in GUI
+GUI debugging and improvements, Improved GUI layout
+errors return gracefully to UI
+added error handling agent to give a clear explanation
+'final broadcast' node - successful completion handled gracefully by UI; zip file of results returned
+cleaned a lot of garbage out of history to make it short and human readable
+3 tries max for any task, no infinite loops possible
+all fail/retry situations cleaned up and standardized
+added troubleshooting agent on every potential failure loop
+added catch type sub workflow to gracefully process crashes and report to UI
+designed some standard code blocks for reuse
+replaced all custom code nodes with standardized parts with LLM instructions editable in config
+Simple Interactive Image Carousel: Engineered a custom session-state carousel allowing users to seamlessly toggle between Phase 2 (Scaffolding Blueprint) and Phase 6 (Final Artwork).
+all project code now in github - python, n8n js and json, and cloud run services
+GitOps Pipeline Implementation: Established an automated continuous deployment pipeline linking the GitHub monorepo to Google Cloud Run.
+migrated n8n code to shared workspace
+converted cloud run to shared project
+set up firestore for text data and S3 bucket for images, auto empty expired data to save space
+python code to parse config and make a report listing all agent definitions in neat, readable format
+python code to parse the report and if any changes have been made, update config accordingly
+
+*Apr:
+- Added speed categories slow(powerful, costly), medium, and fast(less powerful, inexpensive). Agents ask for one of these 3 speed categories a model type(text, img2txt, img2img, etc.) and a provider(OpenAI, Google, etc.) instead of a specific model
+  - supports swapping LLM providers, or falling back if one is unavailable
+  - user can speed up or slow down the overall workflow easily, or cap speed/cost
+- Test Orchestrator workflow, to run batch operations and coolect metrics
+  - loads a list of problems from a google sheets document, saves the results and metrics onto the sheet in real time
+  - user sets request prompt and [optional]model speed, and the scaffolding image, final image, time taken, summary/report, and job history are all filled out on the worksheet.
+
+
+So far this billing cycle:
+-cost calculator, universal_agent_4_of_4_Cost_Calculator.js
+-I want to simplify, and move towards ADK-style session.events(history) & session.state, and I've started on this, although it's not integrated into my repo yet.
+
+working on now:
+I want my universal agent to be more elegant, simple, readable, general purpose, flexible, and more in-line with current state of the art design.

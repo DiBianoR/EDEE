@@ -1,0 +1,558 @@
+Review of Agent Development Kit request/response, multiturn, and sessionEvents and sessionState standards
+
+-----
+
+look up the format for requestBody for a gemini call in js
+
+Whether you are using the native `fetch` API to make REST calls or using Google's official Node.js SDK, the payload structure for generating content with the Gemini API revolves around the `GenerateContentRequest` object.
+
+Here is the complete and standard format for the `requestBody` in JavaScript, including the required fields and the most common optional configurations.
+
+### **The Standard JSON Payload (`requestBody`)**
+
+If you are using `fetch` or `axios`, your request body must be stringified (e.g., `JSON.stringify(requestBody)`).
+
+```javascript
+const requestBody = {
+  // REQUIRED: The conversation history and input prompt
+  contents: [
+    {
+      role: "user", // Can be "user" or "model"
+      parts: [
+        {
+          text: "Explain quantum computing in one paragraph."
+        },
+        // You can also pass inline data (like base64 images) in the parts array
+        /*
+        {
+          inlineData: {
+            mimeType: "image/jpeg",
+            data: "BASE64_ENCODED_STRING"
+          }
+        }
+        */
+      ]
+    }
+  ],
+
+  // OPTIONAL: System instructions to guide model behavior
+  systemInstruction: {
+    role: "system",
+    parts: [
+      {
+        text: "You are a helpful science tutor. Always respond cheerfully."
+      }
+    ]
+  },
+
+  // OPTIONAL: Tune the model's output generation
+  generationConfig: {
+    temperature: 0.7,             // 0.0 to 2.0 (higher = more creative/random)
+    maxOutputTokens: 1024,        // Maximum length of the response
+    topK: 40,                     // Limits vocabulary to top K tokens
+    topP: 0.95,                   // Limits vocabulary based on cumulative probability
+    stopSequences: ["\n\n"],      // Array of strings that will stop output generation
+    responseMimeType: "text/plain" // Can be "application/json" for JSON mode
+  },
+
+  // OPTIONAL: Safety filter thresholds
+  safetySettings: [
+    {
+      category: "HARM_CATEGORY_HARASSMENT",
+      threshold: "BLOCK_ONLY_HIGH" // Options: BLOCK_NONE, BLOCK_ONLY_HIGH, BLOCK_MEDIUM_AND_ABOVE, BLOCK_LOW_AND_ABOVE
+    },
+    {
+      category: "HARM_CATEGORY_HATE_SPEECH",
+      threshold: "BLOCK_ONLY_HIGH"
+    },
+    {
+      category: "HARM_CATEGORY_SEXUALLY_EXPLICIT",
+      threshold: "BLOCK_ONLY_HIGH"
+    },
+    {
+      category: "HARM_CATEGORY_DANGEROUS_CONTENT",
+      threshold: "BLOCK_ONLY_HIGH"
+    }
+  ]
+};
+
+```
+
+---
+
+### **Usage Examples**
+
+#### **1. Using Native `fetch` (REST API)**
+
+If you are calling the endpoint directly, you pass the `requestBody` into the `body` parameter.
+
+```javascript
+const API_KEY = 'YOUR_API_KEY';
+const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`;
+
+async function callGemini() {
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(requestBody) // <--- Passed here
+  });
+
+  const data = await response.json();
+  console.log(data.candidates[0].content.parts[0].text);
+}
+
+```
+
+#### **2. Using the Official SDK (`@google/generative-ai`)**
+
+If you are using the official JavaScript SDK, you don't need to manually stringify it. You pass the exact same properties directly into the `generateContent()` method.
+
+```javascript
+import { GoogleGenerativeAI } from "@google/generative-ai";
+
+const genAI = new GoogleGenerativeAI("YOUR_API_KEY");
+const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+
+async function callGeminiSDK() {
+  // You omit the "contents" wrapper here and just pass the array/object
+  const response = await model.generateContent({
+    contents: requestBody.contents,
+    systemInstruction: requestBody.systemInstruction,
+    generationConfig: requestBody.generationConfig,
+    safetySettings: requestBody.safetySettings
+  });
+
+  console.log(response.response.text());
+}
+
+```
+
+show an example where conversation history has a couple rounds. you can leave out generationConfig & safetySettings since they're optional.
+
+In a multi-turn conversation (or chat), you must pass the entire history of the dialogue back to the API with every request. The model doesn't remember previous turns on its own, so the `contents` array serves as its memory.
+
+You do this by alternating the `role` between `"user"` and `"model"`. The final object in the array represents the user's newest prompt.
+
+Here is an example of what that `requestBody` looks like for a conversation with a few rounds, with the optional configurations omitted:
+
+```javascript
+const requestBody = {
+  contents: [
+    // --- Turn 1 ---
+    {
+      role: "user",
+      parts: [
+        { text: "Who was the first person to walk on the moon?" }
+      ]
+    },
+    {
+      role: "model",
+      parts: [
+        { text: "Neil Armstrong was the first person to walk on the moon, stepping onto the lunar surface on July 20, 1969." }
+      ]
+    },
+    // --- Turn 2 ---
+    {
+      role: "user",
+      parts: [
+        { text: "Who was the second?" }
+      ]
+    },
+    {
+      role: "model",
+      parts: [
+        { text: "Buzz Aldrin was the second person to walk on the moon. He joined Neil Armstrong on the surface about 19 minutes later." }
+      ]
+    },
+    // --- Turn 3 (The Current Prompt) ---
+    {
+      role: "user",
+      parts: [
+        { text: "How long were they outside the spacecraft?" }
+      ]
+    }
+  ]
+};
+
+```
+
+### **Key Rules for Conversation History:**
+
+* **Alternating Roles:** The conversation generally must alternate between `"user"` and `"model"`.
+* **User First:** The very first item in the `contents` array must usually be from the `"user"`.
+* **Last Item:** The final item in the array is the new question or command you want the model to generate a response for right now.
+
+```const requestBody = {
+  // REQUIRED: The conversation history and input prompt
+  contents: [
+    {
+      role: "user", // Can be "user" or "model"
+      parts: [
+        {
+          text: "Explain quantum computing in one paragraph."
+        },
+        // You can also pass inline data (like base64 images) in the parts array
+        /*
+        {
+          inlineData: {
+            mimeType: "image/jpeg",
+            data: "BASE64_ENCODED_STRING"
+          }
+        }
+        */
+      ]
+    }
+  ],```
+explain why parts[text, inlineData] seems to be a list, and not 2 paralell fields. Can parts actually have more than 1 text block? What are the formatting rules, if any?
+
+This is a great question. It gets to the core of how modern, multi-modal LLMs are designed to process information.
+
+Here is the breakdown of why the API is structured this way, whether you can use multiple text blocks, and the rules you need to follow.
+
+### **1. Why is `parts` a list instead of parallel fields?**
+
+The short answer is **sequence and interleaving**.
+
+If `text` and `inlineData` were parallel fields at the same level (e.g., `{ text: "...", inlineData: "..." }`), the model wouldn't know the precise *order* in which to process them.
+
+Because Gemini is natively multi-modal, it "reads" images, audio, and video just like it reads text. By making `parts` an ordered array, the API allows you to interleave different types of media exactly as a human would experience them in a document or conversation.
+
+For example, if you want the model to compare two images, the array structure allows you to do this:
+
+1. `text`: "Look at this first image:"
+2. `inlineData`: [Base64 of Image 1]
+3. `text`: "Now look at this second image:"
+4. `inlineData`: [Base64 of Image 2]
+5. `text`: "What are the main differences between them?"
+
+If they were parallel fields, you could only send "Here is the text" and "Here is a batch of images," losing the crucial context of exactly where each image belongs in the flow of your prompt.
+
+---
+
+### **2. Can `parts` have more than one text block?**
+
+**Yes, absolutely.** You can include as many text blocks as you want within the `parts` array.
+
+The model will process them in the exact sequence they appear, essentially concatenating them logically. This is incredibly useful when you are dynamically generating prompts in your code. For instance, you might want to separate the user's input from instructions or retrieved database context:
+
+```javascript
+parts: [
+  { text: "Summarize the following article in three bullet points:" }, // Static instruction
+  { text: "\n\n--- ARTICLE START ---\n\n" },                         // Formatting divider
+  { text: dynamicArticleText },                                       // Variable injected from your app
+  { text: "\n\n--- ARTICLE END ---\n" }                               // Formatting divider
+]
+
+```
+
+Rather than using string interpolation (`\$\{}`) to build one massive string before sending it, you can push multiple text objects into the `parts` array.
+
+---
+
+### **3. What are the formatting rules for `parts`?**
+
+When constructing the `parts` array, there are a few strict rules you need to follow:
+
+* **One data type per object:** Each object inside the `parts` array should represent exactly *one* type of data. You should not put `text` and `inlineData` inside the same dictionary object.
+* **Incorrect:** `{ text: "What is this?", inlineData: { ... } }`
+* **Correct:** `{ text: "What is this?" }, { inlineData: { ... } }`
+
+
+* **Valid Keys:** The object must use one of the officially supported keys. The most common are:
+* `text`: For plain text strings.
+* `inlineData`: For base64 encoded files (requires `mimeType` and `data` fields).
+* `fileData`: For files previously uploaded via the File API (requires `mimeType` and `fileUri`).
+* `functionCall` / `functionResponse`: Used when giving the model access to external tools or APIs.
+
+
+* **Size Limits:** While you can have many parts, the total payload is subject to the model's token limits and HTTP payload size limits (typically around 20MB for direct base64 `inlineData` payloads; if your images/video are larger, you must use the File API and pass `fileData` instead).
+* **Sequential Processing:** The order matters. Always construct the array in the chronological order you want the model to "read" the data.
+
+research how sessionEvents are formatted in google ADK(agent design toolkit)
+
+*(Note: Google's framework is officially documented as the **Agent Development Kit**, or **ADK**, though it is frequently referred to as a design toolkit).*
+
+In the Google ADK, **Sessions** act as the container for a conversation, and **Events** (which are logged inside a session) are the immutable, chronological transcript of everything that happens.
+
+Every user message, agent response, tool call, and state change is recorded as an `Event` object and appended to the session's event list.
+
+### The Format and Structure of an Event
+
+Each event is structured to carry specific metadata that identifies exactly what occurred at that step in the execution lifecycle. Here are the core fields that format an ADK event:
+
+* **`author`**: Identifies the source of the event. This will typically be `'user'` for human input, or the specific name of the agent generating the output (e.g., `'cafe_concierge'`).
+* **`content.parts`**: An array that holds the actual payload of the event. Depending on what the event represents, this can contain:
+* Standard text strings (chat messages).
+* Function/Tool call requests.
+* Function/Tool return responses.
+
+
+* **`actions`**: Carries the side effects and control flow signals triggered by the event. Common sub-fields include:
+* `state_delta`: A key-value dictionary representing changes to the session's or user's state. For example, if a tool updates a preference, it might look like `{"user:dietary_preferences": ["lactose intolerant"]}`.
+* `artifact_delta`: Instructions for tracking and updating application artifacts.
+* `transfer_to_agent` or `escalate`: Control flow signals used to hand off the conversation to another agent or to terminate an execution loop.
+
+
+* **`partial`**: A boolean flag used during text streaming. If `True`, it indicates the payload is an incomplete text chunk. If `False`, it represents a complete text message.
+* **Custom Metadata**: When appending manual events, the framework supports custom fields such as `invocation_id`, `timestamp`, or arbitrary nested dictionaries.
+
+---
+
+### Example: Parsing the Event Format
+
+Because ADK treats "everything as an event," you can programmatically parse this format to identify exactly what is happening in real-time. Here is a conceptual Python example demonstrating how these formatted fields are accessed during a run:
+
+```python
+async for event in runner.run_async():
+    print(f"Event from: {event.author}")
+    
+    if event.content and event.content.parts:
+        # 1. Is the event a request to use a tool?
+        if event.get_function_calls():
+            print("Type: Tool Call Request")
+            
+        # 2. Is the event a tool returning its result?
+        elif event.get_function_responses():
+            print("Type: Tool Result")
+            
+        # 3. Is the event a standard text message?
+        elif event.content.parts[0].text:
+            if event.partial:
+                print("Type: Streaming Text Chunk")
+            else:
+                print("Type: Complete Text Message")
+                
+    # 4. Did this event trigger a background state change?
+    if event.actions and event.actions.state_delta:
+        print(f"State changed: {event.actions.state_delta}")
+
+```
+
+### Why it is formatted this way
+
+This uniform structure serves as the standard message format between the UI, the Runner, the LLM, and external tools. Whether an agent is replying with text, making a silent backend API call, or saving a variable to a persistent Cloud SQL database via the `DatabaseSessionService`, the underlying format remains identical. This creates a highly traceable, step-by-step history that makes auditing and debugging agent behavior much easier.
+
+Now research how sessionState is formatted in google ADK
+
+If `sessionEvents` act as the immutable, chronological transcript of a conversation, **`sessionState`** is the living memory. It is where the agent stores and updates the dynamic details it needs to recall to make the current (or future) conversations effective.
+
+Conceptually, `sessionState` is simply a flat key-value dictionary (`dict[str, Any]` in Python or `Map<String, Object>` in Java). However, the way it is **formatted** relies entirely on a strict **string-prefix naming convention** for its keys.
+
+Instead of building deeply nested JSON schemas to separate temporary variables from long-term user profiles, ADK routes data persistence automatically based on how you format the key's prefix.
+
+### The Key-Prefix Format
+
+When an agent or tool writes a value to `sessionState`, the prefix of the key tells the underlying `SessionService` (like VertexAI, a SQL Database, or InMemory) exactly how long that data should live and who gets to see it.
+
+| Prefix Format | Scope | Persistence Behavior | Use Case Example |
+| --- | --- | --- | --- |
+| **No Prefix** *(Session)* | The current session (`session.id`). | Persists across conversational turns, but dies when the session is deleted or expires. | `state['current_step'] = 'checkout'` |
+| **`user:`** *(User)* | All sessions tied to the current `user_id`. | Persists globally for that user across all their active and future sessions. | `state['user:dietary_pref'] = 'vegan'` |
+| **`app:`** *(Application)* | All users and all sessions within the `app_name`. | Persists globally. Acts as shared application memory. | `state['app:global_discount'] = 'SAVE10'` |
+| **`temp:`** *(Invocation)* | The current execution loop (a single user turn). | Destroyed the moment the agent finishes generating its final response to the user. | `state['temp:raw_api_payload'] = {...}` |
+
+*(Note: ADK developers have also proposed a **`secret:`** scope convention to handle sensitive data like OAuth tokens. Keys formatted with `secret:` survive across conversational turns but are intentionally blocked from being written to permanent storage or exposed in analytics logs).*
+
+### How it Integrates with Events
+
+You rarely update the database directly. Instead, `sessionState` is updated via the **Events** we discussed earlier.
+
+When a tool finishes executing, it doesn't just return a text string; it can return an `Event` containing an `actions.state_delta`. The `state_delta` is a formatted dictionary of the keys you want to add, update, or remove.
+
+### Example: Formatting a State Update
+
+Here is what it looks like when a tool reads from the user's permanent state, does some work, and then uses a `state_delta` to update both temporary memory and the current session state:
+
+```python
+async def flight_booking_tool(context: ToolContext, destination: str):
+    # 1. Read from the formatted state (pulling a global user preference)
+    preferred_seat = context.state.get("user:seat_preference", "aisle")
+    
+    # ... perform API booking logic ...
+
+    # 2. Return a state_delta to update the session memory
+    return ToolResponse(
+        text=f"Booked {destination} with an {preferred_seat} seat.",
+        state_delta={
+            # Saves to the current conversation only
+            "flight_status": "booked",
+            "destination": destination,
+            
+            # Formatted to self-destruct after the agent replies
+            "temp:api_transaction_id": "tx_8839201A"
+        }
+    )
+
+```
+
+By keeping the format as a flat, prefix-routed dictionary, ADK allows you to share state seamlessly across distributed agents (using tools like LangGraph, n8n, or SequentialAgents) without having to build complex database schemas to support them.
+
+so each prompt and response would be entirely seperate events? show me an example of 2 agents in succession, where the second agent uses the result from the first.
+
+Exactly. Every single interaction—whether it is the user typing a prompt, a tool returning a database query, or an agent generating text—is appended as a distinct, standalone event in the sequence.
+
+When you chain agents together (often called "handoffs" or "routing"), the second agent knows what to do because it inherits the **entire chronological event history** and the **shared session state** from the first agent.
+
+Here is a conceptual example of how the event transcript looks when two agents operate in succession. In this scenario, the user asks to research a topic and write a poem about it.
+
+1. **Agent 1 (`research_agent`)** finds the facts.
+2. **Agent 2 (`creative_agent`)** uses those facts to write the poem.
+
+### The Chronological Event Log
+
+If you were to inspect the `sessionEvents` list during this process, it would look like this sequence of separate events:
+
+```json
+[
+  // EVENT 1: The User's Prompt
+  {
+    "author": "user",
+    "content": {
+      "parts": [{"text": "Find out what the weather is like on Mars right now and write a haiku about it."}]
+    },
+    "actions": {}
+  },
+
+  // EVENT 2: The First Agent's Output & Handoff
+  {
+    "author": "research_agent",
+    "content": {
+      "parts": [{"text": "I checked the Mars Weather API. The current temperature is -80°F at Jezero Crater with high winds."}]
+    },
+    "actions": {
+      // Agent 1 saves the raw data to temporary state so Agent 2 can easily parse it
+      "state_delta": {
+        "temp:mars_temp": "-80F",
+        "temp:mars_conditions": "high winds"
+      },
+      // Agent 1 signals the ADK Runner to transfer control to Agent 2
+      "transfer_to_agent": "creative_agent" 
+    }
+  },
+
+  // EVENT 3: The Second Agent's Final Output
+  {
+    "author": "creative_agent",
+    "content": {
+      "parts": [
+        {
+          "text": "Dust blows through the cold,\nMinus eighty degrees now,\nJezero sleeps deep."
+        }
+      ]
+    },
+    "actions": {
+      // The task is complete, control is implicitly returned to the user
+      "yield_to_user": true 
+    }
+  }
+]
+
+Correction: yield_to_user: true is not a real EventActions field. It appears in the two-agent example chat as the signal that control returns to the user. The actual EventActions fields are state_delta, artifact_delta, transfer_to_agent, escalate, skip_summarization, requested_auth_configs, and a few others — no yield_to_user. The real mechanism for "this is the final turn" is the is_final_response() helper and the event's turn_complete flag, not an action field. So that JSON is illustrative-but-fabricated at that point.
+
+```
+
+### How Agent 2 uses Agent 1's results
+
+Notice that Agent 2 (`creative_agent`) never actually "talked" directly to Agent 1. Instead, Agent 2 was invoked by the ADK framework and simply looked at the shared context. It can extract what it needs in two ways:
+
+1. **Reading the Transcript:** When `creative_agent` wakes up, its LLM prompt automatically includes the context of Event 1 and Event 2. It can literally read the text *"The current temperature is -80°F..."* generated by the previous agent.
+2. **Reading the State:** Because `research_agent` used a `state_delta` to push `"temp:mars_temp": "-80F"` into the `sessionState`, the `creative_agent` (or any of its tools) can programmatically pull that exact variable without having to parse the natural language of the previous chat message.
+
+Because both prompts and responses are strictly formatted as immutable events, chaining complex multi-agent workflows just becomes a matter of adding to the list and passing the baton.
+
+under all the abstraction creative_agent still had to have a user prompt though. What actually was the user prompt? Do your research, I want to know how it's really handled in practice.
+
+Under the hood, there is no hidden secondary text prompt generated by a human. When you peel back the ADK abstractions, the "prompt" is simply the raw JSON payload constructed for the LLM's API (like Gemini or OpenAI), and the handoff is managed using function calling to satisfy the API's strict role alternation rules.
+
+Here is exactly how the framework translates the handoff into the raw API payload that wakes up `creative_agent`.
+
+## The API Payload Structure
+
+When ADK invokes `creative_agent`, it constructs a standard LLM completion request. The payload consists of two main parts: the **System Instruction** and the **Message History**.
+
+### 1. The System Instruction (The Persona)
+
+The first thing `creative_agent` sees is its own configuration, combined with routing rules injected by the ADK.
+
+```json
+{
+  "system_instruction": {
+    "parts": [
+      { "text": "You are a creative poet." },
+      { "text": "[ADK System]: You have access to the following sibling agents: [none]. Do not attempt to route the conversation." }
+    ]
+  }
+}
+
+```
+
+### 2. The Message History (The "Prompt")
+
+LLM APIs require an alternating sequence of `user` and `model` roles. You cannot end a history with a `model` message and ask the model to generate again.
+
+Because `Agent 1` was the last one to act, its output is logged as a `model` role. To bridge the gap to `Agent 2` without breaking the API's role constraints, ADK treats the handoff itself as a tool call.
+
+When the ADK maps the `sessionEvents` to the API's `contents` array, it looks like this:
+
+```json
+"contents": [
+  // 1. The actual human prompt
+  {
+    "role": "user",
+    "parts": [{"text": "Find out what the weather is like on Mars right now and write a haiku about it."}]
+  },
+  
+  // 2. Agent 1's backend work (Tool call to weather API)
+  {
+    "role": "model",
+    "parts": [
+      {"functionCall": {"name": "get_weather", "args": {"location": "Mars"}}}
+    ]
+  },
+  {
+    "role": "user",
+    "parts": [
+      {"functionResponse": {"name": "get_weather", "response": {"temp": "-80F", "conditions": "high winds"}}}
+    ]
+  },
+
+  // 3. Agent 1's decision to hand off to Agent 2
+  {
+    "role": "model",
+    "parts": [
+      {"text": "I checked the Mars Weather API. The current temperature is -80°F at Jezero Crater with high winds."},
+      {"functionCall": {"name": "transfer_to_agent", "args": {"agent_name": "creative_agent"}}}
+    ]
+  },
+
+  // 4. The Synthetic "User Prompt"
+  {
+    "role": "user",
+    "parts": [
+      {"functionResponse": {"name": "transfer_to_agent", "response": {"status": "success", "message": "Control transferred. Please proceed."}}}
+    ]
+  }
+]
+
+```
+
+## The Synthetic Trigger
+
+Notice the final message in the array. **That is the actual "user prompt" that triggers the `creative_agent`.**
+
+The human user didn't type it. The ADK framework generated a synthetic `functionResponse` attached to the `user` role to acknowledge that the `transfer_to_agent` tool call was successful.
+
+When `creative_agent` receives this payload, it looks at the history, sees that the user originally asked for a haiku, sees that the previous "model" gathered the weather data and called the transfer function, and sees the "user" confirming the transfer.
+
+Because it is now the model's turn to speak, and its system instruction tells it to be a poet, it immediately generates the haiku based on the `-80F` data sitting in the history context.
+
+Look over the previous chats.
+
+One refinement worth knowing
+The chat says temp: state is "destroyed the moment the agent finishes." The precise mechanism is more useful to you: temp: keys ARE applied to the in-memory session state so subsequent agents in the same turn can read them, but they're trimmed from the event's state_delta so they never get persisted to the database. That's exactly the "share within a turn, never write to disk" pattern — which maps cleanly onto your current temp:-style use of raw image blobs that you deliberately keep out of history. DeepWiki
+Minor: the Gemini systemInstruction example includes role: "system". Harmless, but the role on systemInstruction is effectively ignored by the API — it's a Content object, not part of the turn alternation.
+The bigger caveat for your port
+The two-agent "synthetic user prompt" chat is conceptually sound — ADK really does model handoffs as a transfer_to_agent function call, and the next agent really does wake up reading the shared transcript + state rather than a hand-written prompt. But the exact JSON (the synthetic functionResponse bridging the role-alternation gap) is an idealized reconstruction, not something I'd treat as a literal spec. The mechanism varies by flow type and isn't always a clean transfer-call/response pair.
+Since you're porting ADK concepts into n8n rather than running ADK itself, the durable takeaways are: (1) immutable append-only event log, (2) flat prefix-scoped state dict separate from the log, (3) deltas rather than full-state rewrites, and (4) keep heavy blobs in temp:/artifacts, never in the persisted log. The specific field names matter much less than getting those four right.

@@ -165,6 +165,9 @@ if (finalContents.length > 0 && finalContents[0].role === "model") {
 requestBody.contents = finalContents; // Finally, attach the constructed contents to the request payload
 
 //[WIP]
+// currentPromptEvent needs to be added to sessionEvents at some point.
+//...
+
 // === 🏎️ TIER, ROUTING & NO_MODEL RESOLUTION ===
 // Task tier overrides agent tier, which falls back to the type-based default.
 let requestedTier = taskBlueprint.model_tier || agentBlueprint.model_tier ||

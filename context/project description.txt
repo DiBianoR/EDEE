@@ -1,0 +1,6 @@
+Phase 1: Validation and Initial Planning
+Phase 2: Description Refinement
+Phase 3: Base(Scaffolding) Diagram Generation
+Phase 4: Advanced Image Generation
+Phase 5: Multi-Metric Review and Postprocessing (Parallel Refinement Cascade)
+Phase 6: Final Output

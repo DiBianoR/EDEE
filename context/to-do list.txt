@@ -1,0 +1,64 @@
+🔜=priority  🛠=WIP  🌗=partway  ✔=Done
+
+
+🔄 QUEUE PROCESSING & CONTENT FLUSHING was supposed to reconstruct mutiturn history, but does it handle json reponses properly? If it's a single response, I think the json is fine, but if it's part of a multiturn flattened into one user prompt, how should we display it?
+
+✔Cost counter
+sharply cut run costs
+  ✔cheap model by default
+  less context
+    scope history much tighter!
+    🛠ADK-style session.events(history), session.state?
+  🔜ChatGPT for image gen
+  see if we can deny any loops without losses
+
+chance to run without error 70%->90%
+  check logs for common failure modes
+  threaten/pressure managers for results	
+  check in with user for feedback
+  allow manager to modify query after failure[maybe; this is what a human would do]
+
+🛠Empirical results - Would like 100 sample images of each sample problem, cost permitting. 10 of each is more realistic at current pricing.
+  ✔Batch processing
+
+🌗Add capabilities universal agent
+  ✔Route workflow(decide which branch to take)
+  ✔Close workflow(return success/failure and an explanation)
+  Pause workflow(wait for real time user feedback)
+  2-part tasks, ex. analysis with slow agent, reprint full code with fast agent
+🌗Work on failure review agents’ logic, keep them from wasting time in loops
+  ✔Update logic from my notes
+  ✔Limit retries on the same task to 3 max everywhere
+  Decide where review agents should just attempt to patch on the fly rather than full rewrite.
+Fallback models, for model unavailability(quota, outage, etc.)
+  ✔Toggle to use fast model
+✔Git with
+  Example results
+  Editable agent definitions
+Job browser in frontend
+  Short name for each job
+Let managers have more autonomy
+  Failure loop detection and handling
+  Let them choose who to send the task back to in case of error
+  Send directions of their choice to subordinates
+  Second guess subordinates, check code against visual reports, ask subordinates to be sure if their findings don’t make sense
+  Give them authority to upgrade model used by subordinate
+  Give them authority to allow a sub-par product through instead of causing a failure
+  Let them try to consult user during a job(with a timeout)
+  ✔Let them leave warning and error messages for user if there is an issue
+  ✔Let them write to a log about issues they noticed with subordinates, for iterative process improvement later.
+Agent Improvement/fixes
+New situational planning
+  Isolate 3d/2d/isometric early
+    Fix wording throughout the workflow
+  Distinguish between simple and complex 3d objects
+Study and integrate paper banana - feature matching
+Test how well image readers perceive different issues
+Ask grad students to list failure modes
+Revise System Architecture and Components - finish top level add sub diagrams / details
+Experiment with coteach
+  - Closed source vs. our open source
+  - Limited application to proprietary materials
+  - No information suggesting they are pursuing grants
+  - No information suggesting they are pursuing research into effectiveness, etc.
+  - Quick development suggests lack of barriers to develop similar features
