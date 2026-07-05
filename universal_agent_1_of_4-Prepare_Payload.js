@@ -220,6 +220,7 @@ return [{
         skipApi,  // for skip branch
         targetAgentId,
         currentTaskId,
-        outputType
+        outputType,
+        finalUserInstruction
     }
 }];
