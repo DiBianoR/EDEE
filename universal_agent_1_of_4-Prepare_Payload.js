@@ -164,9 +164,33 @@ if (finalContents.length > 0 && finalContents[0].role === "model") {
 }
 requestBody.contents = finalContents; // Finally, attach the constructed contents to the request payload
 
+// === 🧾 LOG THE PROMPT AS A SESSION EVENT ===
+// ADK style: the prompt is itself an immutable event in the transcript. Without it, the
+// persisted log would contain only model-authored response events, and the next turn's
+// QUEUE PROCESSING could never reconstruct alternating user/model Gemini history.
+// We append a SANITIZED copy (image blob swapped for a tag, mirroring Node 3's replacer);
+// the raw currentPromptEvent above keeps the real blob for the requestBody only.
+// NOTE: .push() mutates, but that's required here — sessionEvents is a const destructure,
+// and this local copy is ours to build before returning. Appended AFTER filteredEvents was
+// computed, so the current prompt can't be double-included in this turn's own contents.
+function sanitizeEventParts(key, value) {  // same replacer as Node 3's sanitize()
+    if (typeof value === "string" && value.length > 100) {
+        if (key === "data" && (this.mimeType || this.mime_type)) return "<IMAGE_BLOB(Gemini)>";
+        if (key === "base64_img_string") return "<IMAGE_BLOB>";
+        if (key === "thoughtSignature") return "<THOUGHT_SIGNATURE>";
+    }
+    return value;
+}
+
+sessionEvents.push({
+    author: promptAuthor,
+    task: currentTaskId,
+    status: "ok",
+    parts: JSON.parse(JSON.stringify(currentPromptEvent.parts, sanitizeEventParts)),
+    timestamp: new Date().toISOString()
+});
+
 //[WIP]
-// currentPromptEvent needs to be added to sessionEvents at some point.
-//...
 
 // === 🏎️ TIER, ROUTING & NO_MODEL RESOLUTION ===
 // Task tier overrides agent tier, which falls back to the type-based default.
@@ -175,7 +199,7 @@ let requestedTier = taskBlueprint.model_tier || agentBlueprint.model_tier ||
 
 let model_url;
 let skipApi = false;
-let aiResult; // only populated in no_model mode
+let noModelResult = null; // canned task result, only populated in no_model mode
 
 if (requestedTier === "no_model") {
     // === ⚡ NO_MODEL MODE: skip the API, resolve the canned result locally ===
