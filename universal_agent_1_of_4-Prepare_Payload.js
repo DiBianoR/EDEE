@@ -79,7 +79,7 @@ const filteredEvents = sessionEvents.filter(event => historyScope.includes(event
 
 // === 🖼️️️ FINISH CONSTRUCTING CURRENT PROMPT ===
 const currentParts = [{ text: finalUserInstruction }];
-if (base64_img_string && base64_img_string_mime) {
+if (isImageRead && base64_img_string && base64_img_string_mime) {
     currentParts.unshift({ // unshift adds the element to the front of the array
         inlineData: {
             mimeType: base64_img_string_mime,
@@ -97,6 +97,22 @@ const eventsToProcess = [...filteredEvents, currentPromptEvent];
 const finalContents = [];
 let queue = [];
 let currentIsModel = null; // true if targetAgentId (model), false otherwise (user)
+
+// Parts pulled from the LOG are sanitized: any inlineData.data is a placeholder tag
+// (<IMAGE_BLOB...>), not real base64. Replaying that verbatim would send Gemini an invalid
+// blob, so we rewrite the part into a plain text marker instead. Returning a {text} part
+// (rather than handling this at push time) lets the marker fall through the normal text
+// path below, so it inherits author labeling like any other text - otherwise an image-only
+// event (common for img2img responses, which carry no text part) would replay unattributed.
+// Live blobs never reach here: they only enter via currentPromptEvent, which is unsanitized.
+const resolveLogPart = (part, isModelPart) => {
+    const blob = part.inlineData || part.inline_data;
+    if (blob && typeof blob.data === "string" && blob.data.startsWith("<IMAGE_BLOB")) {
+        return { text: isModelPart ? "[image generated here - omitted from history]"
+                                   : "[image omitted from history]" };
+    }
+    return part; // text, functionCall, functionResponse, fileData, live inlineData: untouched
+};
 
 const flushQueue = () => {
     if (queue.length === 0) return;
@@ -126,7 +142,10 @@ const flushQueue = () => {
     let labeledAnyText = false;
     queue.forEach((event) => {
         let labeledFirstTextOfEvent = false;
-        event.parts.forEach((part) => {
+        event.parts.forEach((rawPart) => {
+            // Swap sanitized image placeholders for text BEFORE the text/non-text split,
+            // so markers get labeled and prefixed exactly like real text.
+            const part = resolveLogPart(rawPart, isModelQueue);
             if (part.text !== undefined) {
                 let text = part.text;
                 // Apply the label to the FIRST text block of the event, if required
@@ -160,7 +179,7 @@ for (const event of eventsToProcess) {
 }
 flushQueue(); // Flush the final segment (this inherently handles the currentPromptEvent and any attached images)
 if (finalContents.length > 0 && finalContents[0].role === "model") {
-    finalContents.unshift({ role: "user", parts: [{ text: "" }] }); // Gemini requires the first content to have role "user"
+    finalContents.unshift({ role: "user", parts: [{ text: "..." }] }); // Gemini requires the first content to have role "user"
 }
 requestBody.contents = finalContents; // Finally, attach the constructed contents to the request payload
 
@@ -170,7 +189,7 @@ requestBody.contents = finalContents; // Finally, attach the constructed content
 // QUEUE PROCESSING could never reconstruct alternating user/model Gemini history.
 // We append a SANITIZED copy (image blob swapped for a tag, mirroring Node 3's replacer);
 // the raw currentPromptEvent above keeps the real blob for the requestBody only.
-// NOTE: .push() mutates, but that's required here — sessionEvents is a const destructure,
+// NOTE: .push() mutates, but that's required here - sessionEvents is a const destructure,
 // and this local copy is ours to build before returning. Appended AFTER filteredEvents was
 // computed, so the current prompt can't be double-included in this turn's own contents.
 function sanitizeEventParts(key, value) {  // same replacer as Node 3's sanitize()
@@ -189,8 +208,6 @@ sessionEvents.push({
     parts: JSON.parse(JSON.stringify(currentPromptEvent.parts, sanitizeEventParts)),
     timestamp: new Date().toISOString()
 });
-
-//[WIP]
 
 // === 🏎️ TIER, ROUTING & NO_MODEL RESOLUTION ===
 // Task tier overrides agent tier, which falls back to the type-based default.

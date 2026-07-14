@@ -1,13 +1,13 @@
 // === 📥 RECEIVE FROM NODE 1 ===
 // Reach-back target: must equal the EXACT n8n node name of universal_agent_1_of_4.
-node1 = $("1. Prepare Payload").item.json; // ⚠️ confirm this matches your renamed node
+const node1 = $("1. Prepare Payload").item.json; // ⚠️ confirm this matches your renamed node
 
-config = node1.config;
+const config = node1.config;
 const sessionState = node1.sessionState || {};
 const sessionEvents = node1.sessionEvents || [];
-model_url = node1.model_url;  // for Cost Calculator
-noModelResult = node1.noModelResult
-skipApi = node1.skipApi;
+const model_url = node1.model_url;  // for Cost Calculator
+const noModelResult = node1.noModelResult;
+const skipApi = node1.skipApi;
 const agent_id = node1.targetAgentId || "Unknown Agent";
 const task_id = node1.currentTaskId || "Unknown Task";
 const outputType = node1.outputType || "text";
@@ -31,12 +31,13 @@ function sanitize(key, value) {
 // === 🔎 PARSE THE OUTPUT ===
 // Job of this section: build the one turnEvent for this turn (parts kept structural,
 // sanitized), merge any parsed JSON fields into sessionState, pull the image out to the
-// top-level return only, and set the status/statusMessage reroute gate.
+// top-level return only, and set the turnStatus/turnStatusMessage & add to state.
 let parsedResult = null;       // merged into sessionState; null on image/error paths
 let eventParts = null;         // becomes this turn's turnEvent.parts
 let finalImageBase64 = null;   // top-level return only - not sessionState/turnEvent
-let status = "ok";
-let statusMessage = null;
+let finalImageBase64_mimeType = null;
+let turnStatus = "ok";
+let turnStatusMessage = null;
 
 if (skipApi) {
     // --- PATH A: no_model. Synthesize a Gemini-shaped part, as if constrained generation sent it. ---
@@ -50,13 +51,14 @@ if (skipApi) {
 
     if (inlineData?.data) {
         finalImageBase64 = inlineData.data;
+        finalImageBase64_mimeType = inlineData.mimeType || inlineData.mime_type
         eventParts = JSON.parse(JSON.stringify(rawParts, sanitize));  // sanitize() swaps the long `data` string for <IMAGE_BLOB(Gemini)>
     } else {
-        status = "error";
-        statusMessage = "No image found in response";
+        turnStatus = "error";
+        turnStatusMessage = "No image found in response";
         let rawDump = rawParts[0]?.text || JSON.stringify(geminiResponse);
         if (rawDump && rawDump.length > 500) rawDump = rawDump.substring(0, 500) + "...";
-        eventParts = [{ text: `${status}: ${statusMessage}\nraw_result: ${rawDump}` }];
+        eventParts = [{ text: `${turnStatus}: ${turnStatusMessage}\nraw_result: ${rawDump}` }];
     }
 
 } else {
@@ -65,9 +67,9 @@ if (skipApi) {
     const rawText = rawParts?.[0]?.text;
 
     if (rawText === undefined) {
-        status = "error";
-        statusMessage = "No text found in response";
-        eventParts = [{ text: `${status}: ${statusMessage}\nraw_result: ${JSON.stringify(geminiResponse).substring(0, 500)}` }];
+        turnStatus = "error";
+        turnStatusMessage = "No text found in response";
+        eventParts = [{ text: `${turnStatus}: ${turnStatusMessage}\nraw_result: ${JSON.stringify(geminiResponse).substring(0, 500)}` }];
     } else {
         const cleanText = rawText.replace(/```json\n?|\n?```/g, "");
         try {
@@ -76,18 +78,20 @@ if (skipApi) {
             // (e.g. text + functionCall) exactly as Gemini emitted them.
             eventParts = JSON.parse(JSON.stringify(rawParts, sanitize));
         } catch (e) {
-            status = "error";
-            statusMessage = `JSON parse failed: ${e.message}`;
+            turnStatus = "error";
+            turnStatusMessage = `JSON parse failed: ${e.message}`;
             let rawDump = cleanText.length > 500 ? cleanText.substring(0, 500) + "..." : cleanText;
-            eventParts = [{ text: `${status}: ${statusMessage}\nraw_result: ${rawDump}` }];
+            eventParts = [{ text: `${turnStatus}: ${turnStatusMessage}\nraw_result: ${rawDump}` }];
         }
     }
 }
 
 // Surface a readable error in sessionState too, so a later agent (e.g. the troubleshooter)
 // can see what went wrong without parsing the transcript.
-if (status === "error") {
-    sessionState.last_error = statusMessage;
+sessionState.last_turnStatus = turnStatus;
+sessionState.last_turnStatusMessage = null;
+if (turnStatus === "error") {
+    sessionState.last_turnStatusMessage = turnStatusMessage;
 }
 
 // === 🧱 RECORD THIS TURN AS AN EVENT ===
@@ -98,7 +102,7 @@ if (status === "error") {
 const turnEvent = {
     author: agent_id,
     task: task_id,
-    status: status,
+    status: turnStatus,
     parts: eventParts,
     // actions - turnEvent.actions = { state_delta: parsedResult }  //  not using for now
     // partial: false,  //  to detect incomplete content chunks during real-time streaming - not used atm
@@ -125,12 +129,12 @@ if (parsedResult && typeof parsedResult === "object" && !Array.isArray(parsedRes
 // CONFIG.phases[PHASE_ID].agents[AGENT_ID].tasks[TASK_ID].terminal_mode; Node 1's registry
 // contract is config.tasks[task_id], so terminal_mode now lives directly under the task.
 const terminalConfig = config.tasks[task_id]?.terminal_mode;
-let broadcastStatus = "running";   // GUI pipeline status: "running" | "failed" | "completed"
-                                   // (distinct from `status` above, which is parse "ok"/"error")
+let jobStatus = "running";   // job-level pipeline status: "running" | "failed" | "completed"
+                                   // (distinct from turnStatus, which is this turn's parse outcome)
 let uiMessage = null;              // terminal agent's user-facing text (error_message / user_message)
 
 if (terminalConfig) {  // has fields status & message_field
-    broadcastStatus = terminalConfig.status || "failed";  // status[to GUI:failed/completed]
+    jobStatus = terminalConfig.status || "failed";  // status[to GUI:failed/completed]
     uiMessage = parsedResult?.[terminalConfig.message_field];  // message_field[name of the field w/ user-facing message]
 }
 
@@ -138,30 +142,26 @@ if (terminalConfig) {  // has fields status & message_field
 // Keeps the ORIGINAL broadcast payload shape so the state-manager + Streamlit frontend keep
 // working unchanged. Fields the flattened/ADK rewrite no longer carries get stand-ins:
 //   - phase_id: "-"  (phases were flattened out of the config; the GUI just renders "Phase -")
-//   - query:    falls back to the untemplated task instruction, since Node 1 doesn't yet
-//               forward the templated finalUserInstruction (see hand-off note below).
-let guiBroadcastError = null; // surfaced by the final return section (old: outputData.debug_gui_broadcast_error)
-
+//   - query:    falls back to the untemplated task instruction
 if (config.enable_gui_logging === true && config.gui_webhook_url) {
 
     // Rebuild the old `sanitizedOutput` the GUI expects as `response`: the parsed dict with any
     // long base64/thoughtSignature strings swapped out (reusing sanitize() from the parse
     // section). parsedResult is null on the image + error paths, so mirror the old file's
     // synthetic objects for those. (Error objects carry `message` rather than the old
-    // raw_text/raw_response, but statusMessage already holds the useful detail.)
+    // raw_text/raw_response, but turnStatusMessage already holds the useful detail.)
     let broadcastResponse;
     if (parsedResult && typeof parsedResult === "object") {
         broadcastResponse = JSON.parse(JSON.stringify(parsedResult, sanitize));
     } else if (finalImageBase64) {
         broadcastResponse = { status: "success", message: "Image generated successfully" };
-    } else if (status === "error") {
-        broadcastResponse = { status: "error", message: statusMessage };
+    } else if (turnStatus === "error") {
+        broadcastResponse = { status: "error", message: turnStatusMessage };
     } else {
         broadcastResponse = parsedResult; // null passthrough (not expected in practice)
     }
 
-    // query: prefer the templated instruction if a future Node 1 forwards it, else the raw
-    // config instruction. Placeholder until the Node 1 hand-off (below) is wired up.
+    // query: prefer the templated instruction if Node 1 forwards it, else the raw
     const broadcastQuery = node1.finalUserInstruction || config.tasks[task_id]?.instruction || "";
 
     try {
@@ -172,7 +172,7 @@ if (config.enable_gui_logging === true && config.gui_webhook_url) {
             task_id: task_id,
             query: broadcastQuery,
             response: broadcastResponse,
-            status: broadcastStatus, // "running", "failed", or "completed"
+            status: jobStatus, // "running", "failed", or "completed"
             timestamp: new Date().toISOString(),
             ...(finalImageBase64 ? { base64_img_string: finalImageBase64 } : {})  // Attach the image string if one was generated
         };
@@ -180,8 +180,8 @@ if (config.enable_gui_logging === true && config.gui_webhook_url) {
         // If this is a terminal agent, attach the message for the frontend
         if (terminalConfig && uiMessage) {
             // Streamlit looks for 'error_message' if status is failed, and 'user_message' if completed
-            if (broadcastStatus === "failed") broadcastPayload.error_message = uiMessage;
-            else if (broadcastStatus === "completed") broadcastPayload.user_message = uiMessage;
+            if (jobStatus === "failed") broadcastPayload.error_message = uiMessage;
+            else if (jobStatus === "completed") broadcastPayload.user_message = uiMessage;
         }
 
         await this.helpers.httpRequest({
@@ -193,9 +193,9 @@ if (config.enable_gui_logging === true && config.gui_webhook_url) {
             timeout: 500
         });
     } catch (e) {
-        // Fire-and-forget: never let a GUI logging failure break the pipeline. Stash the
-        // message so the final return section can surface it.
-        guiBroadcastError = e.message;
+        // Fire-and-forget: never let a GUI logging failure break the pipeline.
+        // Not forwarded downstream (would land in next-turn sessionState); logged locally instead.
+        console.log(`GUI broadcast failed: ${e.message}`);
     }
 }
 
@@ -218,11 +218,8 @@ const outputData = {
     // Image passthrough (top-level only; kept out of session_state & session_events).
     // mime is required: Node 1 only attaches the image when BOTH string + mime are present.
     ...(finalImageBase64
-        ? { base64_img_string: finalImageBase64, base64_img_string_mime: "image/jpg" }
+        ? { base64_img_string: finalImageBase64, base64_img_string_mime: finalImageBase64_mimeType || "image/png" }
         : {}),
-
-    // GUI broadcast failure surfaced for debugging (old: outputData.debug_gui_broadcast_error)
-    ...(guiBroadcastError ? { debug_gui_broadcast_error: guiBroadcastError } : {})
 };
 
 
