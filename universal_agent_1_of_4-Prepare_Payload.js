@@ -73,7 +73,7 @@ if (outputType === "json" && taskBlueprint.schema) {  // constrained generation 
 }
 
 // === 📜 HISTORY SCOPE RESOLUTION & CONSTRUCTION ===
-const rawHistoryScope = agentBlueprint.history_scope || [];  // A list of agent IDs
+const rawHistoryScope = taskBlueprint.history_scope || agentBlueprint.history_scope || [];  // A list of agent IDs
 const historyScope = Array.isArray(rawHistoryScope) ? rawHistoryScope : [rawHistoryScope];  // Allow single item as string
 const filteredEvents = sessionEvents.filter(event => historyScope.includes(event.author));
 
