@@ -28,6 +28,9 @@ const modelType = taskBlueprint.model_type || agentBlueprint.model_type || "text
 const isImageRead = (modelType === "view_img") || (modelType === "img2img");
 const isImageGen = (modelType === "img2img");
 const outputType = isImageGen ? "image_blob" : "json";  //  constrained generation produces json, no raw text case atm
+const resolvedProvider = taskBlueprint.provider || agentBlueprint.provider ||
+    (config.provider_by_type && config.provider_by_type[modelType]) ||
+    config.active_provider || "google";
 
 // === 🪶 String Templating (The ADK Way) ===
 function templateInstruction(instruction, state) {
@@ -75,7 +78,23 @@ if (outputType === "json" && taskBlueprint.schema) {  // constrained generation 
 // === 📜 HISTORY SCOPE RESOLUTION & CONSTRUCTION ===
 const rawHistoryScope = taskBlueprint.history_scope || agentBlueprint.history_scope || [];  // A list of agent IDs
 const historyScope = Array.isArray(rawHistoryScope) ? rawHistoryScope : [rawHistoryScope];  // Allow single item as string
-const filteredEvents = sessionEvents.filter(event => historyScope.includes(event.author));
+
+// Response events: in scope iff their author is listed (unchanged behavior).
+// Prompt events (author "user"/"system"): those authors may now be listed in a scope, BUT a
+// prompt is only replayed if the event immediately after it in the log ALSO survived the
+// author filter — i.e. its reply is in scope. Without the pairing check, putting "system"
+// in any scope would pull in every prompt from the entire run (the original todo complaint).
+// Prompts whose turn crashed (successor missing or itself a prompt) are excluded.
+// Scoped-out prompts leave adjacent same-role replies, which flushQueue already squashes.
+const PROMPT_AUTHORS = ["user", "system"];
+const filteredEvents = sessionEvents.filter((event, i) => {
+    if (!historyScope.includes(event.author)) return false;
+    if (PROMPT_AUTHORS.includes(event.author)) {
+        const next = sessionEvents[i + 1];
+        return !!next && historyScope.includes(next.author) && !PROMPT_AUTHORS.includes(next.author);
+    }
+    return true;
+});
 
 // === 🖼️️️ FINISH CONSTRUCTING CURRENT PROMPT ===
 const currentParts = [{ text: finalUserInstruction }];
@@ -167,9 +186,10 @@ const flushQueue = () => {
     queue = []; // Empty the queue for the next batch
 };
 
+const forceFlatten = (modelType === "img2img") && resolvedProvider === "openai";
 // Process events sequentially into the queue
 for (const event of eventsToProcess) {
-    const isModel = event.author === targetAgentId;
+    const isModel = forceFlatten ? false : (event.author === targetAgentId);
     // If the role switches (and the queue isn't empty), flush the existing queue
     if (currentIsModel !== null && isModel !== currentIsModel) {
         flushQueue();
@@ -195,6 +215,7 @@ requestBody.contents = finalContents; // Finally, attach the constructed content
 function sanitizeEventParts(key, value) {  // same replacer as Node 3's sanitize()
     if (typeof value === "string" && value.length > 100) {
         if (key === "data" && (this.mimeType || this.mime_type)) return "<IMAGE_BLOB(Gemini)>";
+        if (key === "b64_json") return "<IMAGE_BLOB(OpenAI)>";
         if (key === "base64_img_string") return "<IMAGE_BLOB>";
         if (key === "thoughtSignature") return "<THOUGHT_SIGNATURE>";
     }
@@ -238,13 +259,61 @@ if (requestedTier === "no_model") {
         requestedTier = maxTier;
     }
 
-    // === 🌐 DYNAMIC URL RESOLUTION (provider → type → tier) ===
-    const provider = config.active_provider || "google";
+// === 🌐 DYNAMIC URL RESOLUTION (provider → type → tier) ===
+    let model_name = null;  // OpenAI carries the model in the request BODY; the URL is shared across tiers
     try {
-        model_url = config.model_registry[provider][modelType][requestedTier];
+        const registryEntry = config.model_registry[resolvedProvider][modelType][requestedTier];
+        if (!registryEntry) throw new Error("URL resolved to undefined.");
+        // Registry entries: bare URL string (Gemini) OR { url, model } (OpenAI, where every
+        // tier hits the same endpoint and the tier selects the model).
+        model_url = typeof registryEntry === "object" ? registryEntry.url : registryEntry;
+        model_name = typeof registryEntry === "object" ? (registryEntry.model || null) : null;
         if (!model_url) throw new Error("URL resolved to undefined.");
     } catch (e) {
-        throw new Error(`ROUTING ERROR: Failed to resolve model URL. Provider: '${provider}', Type: '${modelType}', Tier: '${requestedTier}'.`);
+        throw new Error(`ROUTING ERROR: Failed to resolve model URL. Provider: '${resolvedProvider}', Type: '${modelType}', Tier: '${requestedTier}'.`);
+    }
+
+    // === 🎨 OPENAI PAYLOAD OVERRIDE (img2img via /v1/images/edits) ===
+    if (resolvedProvider === "openai") {
+        if (!isImageGen) {
+            throw new Error(`ROUTING ERROR: OpenAI provider currently supports model_type 'img2img' only (task '${currentTaskId}' asked for '${modelType}').`);
+        }
+        // QUEUE PROCESSING ran in forceFlatten mode, so requestBody.contents is exactly ONE
+        // labeled user turn containing the scoped history + current prompt. Translate it:
+        //   text parts            → joined into the single `prompt` string (32k char cap)
+        //   live inlineData parts → data-URL entries in `images` (log placeholders were
+        //                           already rewritten to text markers by resolveLogPart)
+        //   systemInstruction     → no OpenAI equivalent; prepended to the prompt
+        const flatParts = requestBody.contents[0]?.parts || [];
+        const promptPieces = [];
+        const inputImages = [];
+        for (const part of flatParts) {
+            if (part.text !== undefined) promptPieces.push(part.text);
+            const blob = part.inlineData || part.inline_data;
+            if (blob?.data && !blob.data.startsWith("<IMAGE_BLOB")) {
+                inputImages.push({ image_url: `data:${blob.mimeType || blob.mime_type || "image/png"};base64,${blob.data}` });
+            }
+        }
+        const flatPrompt = [finalSystemInstruction, promptPieces.join("\n")].filter(Boolean).join("\n\n");
+
+        requestBody = {
+            ...(model_name ? { model: model_name } : {}),  // Node 3's cost lookup reads requestBody.model
+            prompt: flatPrompt,
+            ...(inputImages.length ? { images: inputImages } : {}),
+            size: "auto",         // scaffoldings are square today; revisit if aspect drift shows in QA
+            output_format: "png"
+        };
+        // input_fidelity=high anchors the scaffolding geometry, but the param is unsupported
+        // on gpt-image-1-mini (400s) and meaningless without an input image.
+        if (inputImages.length && model_name !== "gpt-image-1-mini") {
+            requestBody.input_fidelity = "high";
+        }
+        // /images/edits REQUIRES at least one input image. The DIRECT_IMAGE_GEN path arrives
+        // with none, so reroute to the text-to-image endpoint (same body minus `images`,
+        // same response shape, so Node 3 needs no extra branch).
+        if (!inputImages.length) {
+            model_url = model_url.replace("/images/edits", "/images/generations");
+        }
     }
 }
 
@@ -254,8 +323,10 @@ return [{
         config,
         sessionState,
         sessionEvents,
+        resolvedProvider,
         model_url,  // for API Call
-        api_key: config.api_key,  // for API Call
+        api_key: (config.api_keys && config.api_keys[resolvedProvider]) || config.api_key,  // for API Call
+        auth_mode: resolvedProvider === "openai" ? "bearer" : "query_key",  // routes the Node 2 provider switch
         requestBody,  // for API Call
         noModelResult,
         skipApi,  // for skip branch

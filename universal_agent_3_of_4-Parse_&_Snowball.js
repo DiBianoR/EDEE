@@ -5,6 +5,7 @@ const node1 = $("1. Prepare Payload").item.json; // ⚠️ confirm this matches 
 const config = node1.config;
 const sessionState = node1.sessionState || {};
 const sessionEvents = node1.sessionEvents || [];
+const resolvedProvider = node1.resolvedProvider;
 const model_url = node1.model_url;  // for Cost Calculator
 const noModelResult = node1.noModelResult;
 const skipApi = node1.skipApi;
@@ -22,6 +23,7 @@ if (!skipApi) {
 function sanitize(key, value) {
     if (typeof value === "string" && value.length > 100) {
         if (key === "data" && (this.mimeType || this.mime_type)) return "<IMAGE_BLOB(Gemini)>";
+        if (key === "b64_json") return "<IMAGE_BLOB(OpenAI)>";
         if (key === "base64_img_string") return "<IMAGE_BLOB>";
         if (key === "thoughtSignature") return "<THOUGHT_SIGNATURE>";
     }
@@ -43,6 +45,27 @@ if (skipApi) {
     // --- PATH A: no_model. Synthesize a Gemini-shaped part, as if constrained generation sent it. ---
     parsedResult = noModelResult;
     eventParts = [{ text: JSON.stringify(noModelResult) }];
+
+} else if (outputType === "image_blob" && (resolvedProvider || "google") === "openai") {
+    // --- PATH B2: OpenAI image edit (/v1/images/edits). Response shape:
+    //     { created, data: [{ b64_json }], output_format, usage } — GPT image models always
+    //     return base64 (no URL mode); output_format ("png"/"jpeg"/"webp") gives the mime subtype.
+    const b64 = geminiResponse?.data?.[0]?.b64_json;
+
+    if (b64) {
+        finalImageBase64 = b64;
+        finalImageBase64_mimeType = "image/" + (geminiResponse.output_format || "png");
+        // Synthesize a Gemini-shaped parts array so the event log stays uniform across providers
+        // (Node 1's replay/resolveLogPart logic only ever sees one shape).
+        eventParts = [{ inlineData: { mimeType: finalImageBase64_mimeType, data: "<IMAGE_BLOB(OpenAI)>" } }];
+    } else {
+        turnStatus = "error";
+        // OpenAI errors arrive as { error: { message, type, ... } } rather than a data array.
+        turnStatusMessage = geminiResponse?.error?.message || "No image found in response";
+        let rawDump = JSON.stringify(geminiResponse);
+        if (rawDump && rawDump.length > 500) rawDump = rawDump.substring(0, 500) + "...";
+        eventParts = [{ text: `${turnStatus}: ${turnStatusMessage}\nraw_result: ${rawDump}` }];
+    }
 
 } else if (outputType === "image_blob") {
     // --- PATH B: image generation. Keep Gemini's own parts array, sanitized. ---
@@ -278,6 +301,21 @@ const cost_registry = {
     input: 0.30,
     output_text: 2.50,   // Matched to base 2.5 Flash text output rate
     output_image: 30.00
+  },
+  // --- OpenAI image models (keyed by MODEL NAME, not URL: all tiers share
+  //     /v1/images/edits; lookup falls back to requestBody.model below). Rates
+  //     are $/1M tokens split by modality, matching the usage.*_tokens_details shape. ---
+  "gpt-image-1.5": {
+    input_text: 5.00,
+    input_image: 8.00,
+    output_text: 10.00,
+    output_image: 32.00
+  },
+  "gpt-image-1-mini": {
+    input_text: 2.00,
+    input_image: 2.50,   // ⚠️ verify mini rates against the live pricing page before relying on them
+    output_text: 8.00,
+    output_image: 8.00
   }
 };
 
@@ -285,13 +323,28 @@ const cost_registry = {
 // Inlined I/O: read locals directly instead of a downstream node's $input payload.
 // (outputData was assembled above; model_url/usage/grounding are already in scope.)
 const modelUrl = model_url;
+const requestModel = node1.requestBody?.model || null;  // OpenAI carries the model in the body, not the URL
 const usage = geminiResponse?.usageMetadata || {};
 const grounding = geminiResponse?.groundingMetadata || {};
 
 let taskCost = 0;
-const pricing = cost_registry[modelUrl];
+const pricing = cost_registry[modelUrl] || (requestModel ? cost_registry[requestModel] : undefined);
 
-if (pricing) {
+if (pricing && geminiResponse?.usage?.input_tokens_details) {  // OpenAI
+    // --- OpenAI images usage shape: flat modality splits, no per-detail arrays,
+    //     no context-window threshold, no grounding fees on this endpoint. ---
+    const u = geminiResponse.usage;
+    const inText  = u.input_tokens_details?.text_tokens ?? 0;
+    const inImage = u.input_tokens_details?.image_tokens ?? 0;
+    const outText  = u.output_tokens_details?.text_tokens ?? 0;
+    const outImage = u.output_tokens_details?.image_tokens ?? (u.output_tokens ?? 0);
+
+    taskCost = (inText  / 1000000) * (pricing.input_text   ?? 0)
+             + (inImage / 1000000) * (pricing.input_image  ?? 0)
+             + (outText  / 1000000) * (pricing.output_text  ?? 0)
+             + (outImage / 1000000) * (pricing.output_image ?? 0);
+
+} else if (pricing) {  // Gemini
     const totalPromptTokens = usage.promptTokenCount ?? 0;
     const totalTokens = usage.totalTokenCount ?? 0;
 

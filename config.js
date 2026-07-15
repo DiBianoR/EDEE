@@ -91,20 +91,10 @@ const modelRegistry = {
     }
   },
   "openai": {
-    "text": {
-      "slow": "https://api.openai.com/v1/chat/completions", // e.g. gpt-4o
-      "medium": "https://api.openai.com/v1/chat/completions", // e.g. gpt-4o-mini
-      "fast": "https://api.openai.com/v1/chat/completions"    // e.g. gpt-3.5-turbo (legacy)
-    },
-    "view_img": {
-      "slow": "https://api.openai.com/v1/chat/completions", // e.g. gpt-4o
-      "medium": "https://api.openai.com/v1/chat/completions", // e.g. gpt-4o-mini
-      "fast": "https://api.openai.com/v1/chat/completions"    // e.g. gpt-3.5-turbo (legacy)
-    },
     "img2img": {
-      "slow": "https://api.openai.com/v1/images/generations", // e.g. dall-e-3
-      "medium": "https://api.openai.com/v1/images/generations", // e.g. dall-e-2
-      "fast": "https://api.openai.com/v1/images/generations"
+      "slow":   { url: "https://api.openai.com/v1/images/edits", model: "gpt-image-1.5" },
+      "medium": { url: "https://api.openai.com/v1/images/edits", model: "gpt-image-1-mini" },
+      "fast":   { url: "https://api.openai.com/v1/images/edits", model: "gpt-image-1-mini" }
     }
   }
 };
@@ -1441,9 +1431,13 @@ Walk through the problem logically:
 const config = {
   // === 🔑 API SETTINGS ===
   "api_key": items[0].json.api_key,
+  "api_keys": {
+    "google": items[0].json.api_key,
+    "openai": items[0].json.openai_api_key
+    },
 
   // === ⚙️ PROVIDER & MODEL ROUTING ===
-  "active_provider": items[0].json.provider_preference || "google",
+  "provider_by_type": { text: "google", view_img: "google", img2img: "google" },
   "model_registry": modelRegistry,
 
   // Default tiers if an agent doesn't specify one
