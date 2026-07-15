@@ -16,11 +16,17 @@ sharply cut run costs
   see if we can deny any loops without losses
 
 chance to run without error 70%->90%
+  good-enough result still beats a crash; cutting edge agents just give an apology too
   check logs for common failure modes
   threaten/pressure managers for results	
   check in with user for feedback
   allow manager to modify query after failure[maybe; this is what a human would do]
 
+User Feedback
+  choose between scaffolding or final
+  chance to give feedback after scaffolding, and again after final
+  multiple(3) scaffolding images -> multiple final images
+  
 🛠Empirical results - Would like 100 sample images of each sample problem, cost permitting. 10 of each is more realistic at current pricing.
   ✔Batch processing
 
