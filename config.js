@@ -5,8 +5,8 @@
 //   config.tasks[task_id]   → { assigned_agent, instruction, schema?, model_tier?,
 //                               model_type?, history_scope?, result?, terminal_mode? }
 //   config.agents[agent_id] → { system_identity, history_scope, model_tier?, model_type? }
-//   config.model_registry / active_provider / default_*_tier / maximum_*_tier
-//   config.api_key / job_id / enable_gui_logging / gui_webhook_url
+//   config.model_registry / provider_by_type / default_*_tier / maximum_*_tier
+//   config.api_keys / job_id / enable_gui_logging / gui_webhook_url
 //
 // KEY CHANGES FROM THE OLD NESTED CONFIG:
 //   - phases[] is GONE. tasks and agents are flat, globally-unique registries.
@@ -174,10 +174,10 @@ const DIRECTIVE_PRIMITIVES = `\
 // retry/critique loops); everyone else's come back as role "user".
 //
 // ⚠️ NOTE ON PROMPT EVENTS: Node 1 logs each prompt with author = prompt_author, which
-// defaults to "system". Because scoping is by author (not by task), adding "system" to a
-// scope pulls in EVERY prompt from the entire run, not just the relevant ones. So no scope
-// below lists "system": prompt events stay in the log for audit/GUI, but are not replayed
-// into Gemini history. Add "system" only if you decide you want that firehose.
+// defaults to "system". Scoping is by author (not by task): a prompt is only replayed
+// if the event immediately after it in the log ALSO survived the author filter — i.e.
+// its reply is in scope.
+
 const STAGE1_AGENTS = ["problem_validation", "image_description"];
 const STAGE2_AGENTS = ["image_detail_planner", "dimension_expert", "layout_expert", "visual_director",
                        "markup_specialist", "educator", "3d_specialist", "data_viz_expert",
@@ -1430,9 +1430,8 @@ Walk through the problem logically:
 // =============================================================================
 const config = {
   // === 🔑 API SETTINGS ===
-  "api_key": items[0].json.api_key,
   "api_keys": {
-    "google": items[0].json.api_key,
+    "google": items[0].json.google_api_key,
     "openai": items[0].json.openai_api_key
     },
 

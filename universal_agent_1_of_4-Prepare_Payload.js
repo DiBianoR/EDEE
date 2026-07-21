@@ -29,8 +29,7 @@ const isImageRead = (modelType === "view_img") || (modelType === "img2img");
 const isImageGen = (modelType === "img2img");
 const outputType = isImageGen ? "image_blob" : "json";  //  constrained generation produces json, no raw text case atm
 const resolvedProvider = taskBlueprint.provider || agentBlueprint.provider ||
-    (config.provider_by_type && config.provider_by_type[modelType]) ||
-    config.active_provider || "google";
+    config.provider_by_type[modelType] || "google";
 
 // === 🪶 String Templating (The ADK Way) ===
 function templateInstruction(instruction, state) {
@@ -325,7 +324,7 @@ return [{
         sessionEvents,
         resolvedProvider,
         model_url,  // for API Call
-        api_key: (config.api_keys && config.api_keys[resolvedProvider]) || config.api_key,  // for API Call
+        api_key: (config.api_keys && config.api_keys[resolvedProvider]),  // for API Call
         auth_mode: resolvedProvider === "openai" ? "bearer" : "query_key",  // routes the Node 2 provider switch
         requestBody,  // for API Call
         noModelResult,
