@@ -3,7 +3,7 @@
 const node1 = $("1. Prepare Payload").item.json; // ⚠️ confirm this matches your renamed node
 
 const config = node1.config;
-const sessionState = node1.sessionState || {};
+const sessionState = { ...(node1.sessionState || {}) };
 const sessionEvents = node1.sessionEvents || [];
 const resolvedProvider = node1.resolvedProvider;
 const model_url = node1.model_url;  // for Cost Calculator
@@ -30,16 +30,25 @@ function sanitize(key, value) {
     return value;
 }
 
+// Truncation helper for throw messages (keeps the error string useful but bounded).
+const trunc = (s) => (s && s.length > 500 ? s.substring(0, 500) + "..." : s);
+
 // === 🔎 PARSE THE OUTPUT ===
 // Job of this section: build the one turnEvent for this turn (parts kept structural,
-// sanitized), merge any parsed JSON fields into sessionState, pull the image out to the
-// top-level return only, and set the turnStatus/turnStatusMessage & add to state.
-let parsedResult = null;       // merged into sessionState; null on image/error paths
+// sanitized), merge any parsed JSON fields into sessionState, and pull the image out to
+// the top-level return only.
+//
+// ERROR POLICY: any malformed response (missing image, missing text, broken JSON) THROWS.
+// A model that failed to respond properly can't be recovered by the pipeline anyway — the
+// retry loops handle SEMANTIC failures (failed QA, bad code), which arrive as perfectly
+// well-formed responses. Throwing drops us into the catch sub-workflow, which owns all
+// failure reporting to the UI (via log_error → report_unknown_error). Node 3 itself never
+// broadcasts a failure. Throw messages carry agent/task, finishReason where available, and
+// a truncated raw dump — once we throw, that string is the only diagnostic that survives.
+let parsedResult = null;       // merged into sessionState; null on the image path
 let eventParts = null;         // becomes this turn's turnEvent.parts
 let finalImageBase64 = null;   // top-level return only - not sessionState/turnEvent
 let finalImageBase64_mimeType = null;
-let turnStatus = "ok";
-let turnStatusMessage = null;
 
 if (skipApi) {
     // --- PATH A: no_model. Synthesize a Gemini-shaped part, as if constrained generation sent it. ---
@@ -52,37 +61,34 @@ if (skipApi) {
     //     return base64 (no URL mode); output_format ("png"/"jpeg"/"webp") gives the mime subtype.
     const b64 = geminiResponse?.data?.[0]?.b64_json;
 
-    if (b64) {
-        finalImageBase64 = b64;
-        finalImageBase64_mimeType = "image/" + (geminiResponse.output_format || "png");
-        // Synthesize a Gemini-shaped parts array so the event log stays uniform across providers
-        // (Node 1's replay/resolveLogPart logic only ever sees one shape).
-        eventParts = [{ inlineData: { mimeType: finalImageBase64_mimeType, data: "<IMAGE_BLOB(OpenAI)>" } }];
-    } else {
-        turnStatus = "error";
+    if (!b64) {
         // OpenAI errors arrive as { error: { message, type, ... } } rather than a data array.
-        turnStatusMessage = geminiResponse?.error?.message || "No image found in response";
-        let rawDump = JSON.stringify(geminiResponse);
-        if (rawDump && rawDump.length > 500) rawDump = rawDump.substring(0, 500) + "...";
-        eventParts = [{ text: `${turnStatus}: ${turnStatusMessage}\nraw_result: ${rawDump}` }];
+        const apiMessage = geminiResponse?.error?.message || "no error message";
+        throw new Error(`[${agent_id} / ${task_id}] No image in OpenAI response (${apiMessage}) — raw: ${trunc(JSON.stringify(geminiResponse))}`);
     }
 
+    finalImageBase64 = b64;
+    finalImageBase64_mimeType = "image/" + (geminiResponse.output_format || "png");
+    // Synthesize a Gemini-shaped parts array so the event log stays uniform across providers
+    // (Node 1's replay/resolveLogPart logic only ever sees one shape).
+    eventParts = [{ inlineData: { mimeType: finalImageBase64_mimeType, data: "<IMAGE_BLOB(OpenAI)>" } }];
+
 } else if (outputType === "image_blob") {
-    // --- PATH B: image generation. Keep Gemini's own parts array, sanitized. ---
+    // --- PATH B: Gemini image generation. Keep Gemini's own parts array, sanitized. ---
     const rawParts = geminiResponse?.candidates?.[0]?.content?.parts || [];
     const inlineData = (rawParts[0]?.inlineData || rawParts[0]?.inline_data);
 
-    if (inlineData?.data) {
-        finalImageBase64 = inlineData.data;
-        finalImageBase64_mimeType = inlineData.mimeType || inlineData.mime_type
-        eventParts = JSON.parse(JSON.stringify(rawParts, sanitize));  // sanitize() swaps the long `data` string for <IMAGE_BLOB(Gemini)>
-    } else {
-        turnStatus = "error";
-        turnStatusMessage = "No image found in response";
-        let rawDump = rawParts[0]?.text || JSON.stringify(geminiResponse);
-        if (rawDump && rawDump.length > 500) rawDump = rawDump.substring(0, 500) + "...";
-        eventParts = [{ text: `${turnStatus}: ${turnStatusMessage}\nraw_result: ${rawDump}` }];
+    if (!inlineData?.data) {
+        // Gemini returns HTTP 200 with no image when it blocks on safety or truncates —
+        // finishReason (or promptFeedback.blockReason) distinguishes "model declined" from a bug.
+        const finishReason = geminiResponse?.candidates?.[0]?.finishReason
+            || geminiResponse?.promptFeedback?.blockReason || "none";
+        throw new Error(`[${agent_id} / ${task_id}] No image in Gemini response (finishReason: ${finishReason}) — raw: ${trunc(rawParts[0]?.text || JSON.stringify(geminiResponse))}`);
     }
+
+    finalImageBase64 = inlineData.data;
+    finalImageBase64_mimeType = inlineData.mimeType || inlineData.mime_type;
+    eventParts = JSON.parse(JSON.stringify(rawParts, sanitize));  // sanitize() swaps the long `data` string for <IMAGE_BLOB(Gemini)>
 
 } else {
     // --- PATH C: standard JSON text response. Keep the real parts array, sanitized; parse the text. ---
@@ -90,42 +96,32 @@ if (skipApi) {
     const rawText = rawParts?.[0]?.text;
 
     if (rawText === undefined) {
-        turnStatus = "error";
-        turnStatusMessage = "No text found in response";
-        eventParts = [{ text: `${turnStatus}: ${turnStatusMessage}\nraw_result: ${JSON.stringify(geminiResponse).substring(0, 500)}` }];
-    } else {
-        const cleanText = rawText.replace(/```json\n?|\n?```/g, "");
-        try {
-            parsedResult = JSON.parse(cleanText);
-            // Keep the real (sanitized) parts array - preserves multi-part responses
-            // (e.g. text + functionCall) exactly as Gemini emitted them.
-            eventParts = JSON.parse(JSON.stringify(rawParts, sanitize));
-        } catch (e) {
-            turnStatus = "error";
-            turnStatusMessage = `JSON parse failed: ${e.message}`;
-            let rawDump = cleanText.length > 500 ? cleanText.substring(0, 500) + "..." : cleanText;
-            eventParts = [{ text: `${turnStatus}: ${turnStatusMessage}\nraw_result: ${rawDump}` }];
-        }
+        const finishReason = geminiResponse?.candidates?.[0]?.finishReason
+            || geminiResponse?.promptFeedback?.blockReason || "none";
+        throw new Error(`[${agent_id} / ${task_id}] No text in Gemini response (finishReason: ${finishReason}) — raw: ${trunc(JSON.stringify(geminiResponse))}`);
     }
-}
 
-// Surface a readable error in sessionState too, so a later agent (e.g. the troubleshooter)
-// can see what went wrong without parsing the transcript.
-sessionState.last_turnStatus = turnStatus;
-sessionState.last_turnStatusMessage = null;
-if (turnStatus === "error") {
-    sessionState.last_turnStatusMessage = turnStatusMessage;
+    const cleanText = rawText.replace(/```json\n?|\n?```/g, "");
+    try {
+        parsedResult = JSON.parse(cleanText);
+    } catch (e) {
+        throw new Error(`[${agent_id} / ${task_id}] JSON parse failed (${e.message}) — raw: ${trunc(cleanText)}`);
+    }
+    // Keep the real (sanitized) parts array - preserves multi-part responses
+    // (e.g. text + functionCall) exactly as Gemini emitted them.
+    eventParts = JSON.parse(JSON.stringify(rawParts, sanitize));
 }
 
 // === 🧱 RECORD THIS TURN AS AN EVENT ===
 // ADK style: one immutable event per turn, appended to the log. `eventParts` was already
-// built + sanitized in the parse section above (no_model → JSON text; image → Gemini parts
-// with the blob swapped for <IMAGE_BLOB>; JSON text → the real sanitized parts). The raw
-// image is deliberately NOT in here — it rides along top-level only, like a temp:/artifact.
+// built + sanitized in the parse section above (no_model → JSON text; image → provider
+// parts with the blob swapped for <IMAGE_BLOB>; JSON text → the real sanitized parts).
+// The raw image is deliberately NOT in here — it rides along top-level only, like a
+// temp:/artifact. No `status` field: error turns throw before reaching this point, so
+// every recorded event is by definition a good one.
 const turnEvent = {
     author: agent_id,
     task: task_id,
-    status: turnStatus,
     parts: eventParts,
     // actions - turnEvent.actions = { state_delta: parsedResult }  //  not using for now
     // partial: false,  //  to detect incomplete content chunks during real-time streaming - not used atm
@@ -138,8 +134,8 @@ const updatedSessionEvents = [...sessionEvents, turnEvent];
 // === 🧠 MERGE PARSED FIELDS INTO SESSION STATE ===
 // sessionState is the live, full-fidelity working memory Node 1 reads for {variable}
 // templating, so parsed fields (reasoning, python_code, latest_description, etc.) must land
-// here. Only the no_model and standard-JSON paths produce parsedResult; image and error
-// paths leave it null and add nothing.
+// here. Only the no_model and standard-JSON paths produce parsedResult; the image path
+// leaves it null and adds nothing.
 // (Guard skips strings/arrays so a stray string result can't get spread into state as
 //  character-indexed keys. no_model results are expected to be objects of named fields.)
 if (parsedResult && typeof parsedResult === "object" && !Array.isArray(parsedResult)) {
@@ -148,13 +144,12 @@ if (parsedResult && typeof parsedResult === "object" && !Array.isArray(parsedRes
 
 // === 🛑 TERMINAL MODE DETECTION ===
 // Check if this task is configured to cleanly terminate the pipeline (success or failure).
-// NOTE: lookup path changed with the flattened config. The old file read
-// CONFIG.phases[PHASE_ID].agents[AGENT_ID].tasks[TASK_ID].terminal_mode; Node 1's registry
-// contract is config.tasks[task_id], so terminal_mode now lives directly under the task.
+// NOTE: terminal_mode is for PLANNED endings where an agent successfully wrote a message
+// for the user. UNPLANNED endings (malformed responses) throw in the parse section above
+// and are handled by the catch sub-workflow instead.
 const terminalConfig = config.tasks[task_id]?.terminal_mode;
 let jobStatus = "running";   // job-level pipeline status: "running" | "failed" | "completed"
-                                   // (distinct from turnStatus, which is this turn's parse outcome)
-let uiMessage = null;              // terminal agent's user-facing text (error_message / user_message)
+let uiMessage = null;        // terminal agent's user-facing text (error_message / user_message)
 
 if (terminalConfig) {  // has fields status & message_field
     jobStatus = terminalConfig.status || "failed";  // status[to GUI:failed/completed]
@@ -166,22 +161,17 @@ if (terminalConfig) {  // has fields status & message_field
 // working unchanged. Fields the flattened/ADK rewrite no longer carries get stand-ins:
 //   - phase_id: "-"  (phases were flattened out of the config; the GUI just renders "Phase -")
 //   - query:    falls back to the untemplated task instruction
+// Only successful turns reach this point (error turns threw above), so `response` is
+// either the sanitized parsed dict or the synthetic image-success object.
 if (config.enable_gui_logging === true && config.gui_webhook_url) {
 
-    // Rebuild the old `sanitizedOutput` the GUI expects as `response`: the parsed dict with any
-    // long base64/thoughtSignature strings swapped out (reusing sanitize() from the parse
-    // section). parsedResult is null on the image + error paths, so mirror the old file's
-    // synthetic objects for those. (Error objects carry `message` rather than the old
-    // raw_text/raw_response, but turnStatusMessage already holds the useful detail.)
     let broadcastResponse;
     if (parsedResult && typeof parsedResult === "object") {
         broadcastResponse = JSON.parse(JSON.stringify(parsedResult, sanitize));
     } else if (finalImageBase64) {
         broadcastResponse = { status: "success", message: "Image generated successfully" };
-    } else if (turnStatus === "error") {
-        broadcastResponse = { status: "error", message: turnStatusMessage };
     } else {
-        broadcastResponse = parsedResult; // null passthrough (not expected in practice)
+        broadcastResponse = parsedResult; // defensive fallback (not expected in practice)
     }
 
     // query: prefer the templated instruction if Node 1 forwards it, else the raw
@@ -421,4 +411,4 @@ if (outputData.session_events && outputData.session_events.length > 0) {
 
 // 3. Return ONLY the outputData. Billing metadata (modelUrl/usage/grounding) stays local
 //    and is never bundled into the return, so nothing extra crosses the sub-workflow boundary.
-return { json: outputData };
+return [{ json: outputData }];

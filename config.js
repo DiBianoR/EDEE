@@ -1313,14 +1313,12 @@ Summarize the entire endeavor from validation through final QA. You must explici
       status: "failed",
       message_field: "error_message"
     },
-    // {last_turnStatusMessage} is written by Node 3 on EVERY turn (null when the turn was
-    // clean), so it is always present in session_state and can never throw a TEMPLATE ERROR.
-    // It replaces the old {error} hint, which nothing was guaranteed to populate.
+    // Error details arrive via the catch path: log_error injects {error_report} into
+    // history as an error_injector event, which this agent's ALL_AGENTS scope can see.
     instruction: `\
-Error Hint: {last_turnStatusMessage}
 An error has triggered a pipeline termination.
 Review the entire 'Project History' to understand what happened.
-1. Identify exactly where and why the process failed (e.g., validation rejection, python coding errors, rendering glitches, correction loop between agents fails repeatedly, etc.). 'Error Hint' may give some additional insight.
+1. Identify exactly where and why the process failed (e.g., validation rejection, python coding errors, rendering glitches, correction loop between agents fails repeatedly, etc.).
 2. Draft a clear, polite, and simple explanation for the user. Do NOT use overly technical jargon (e.g., avoid mentioning 'JSON parsing', 'base64', 'Cloud Run', or 'API endpoints'). Instead, explain the *concept* of what failed (e.g., "We couldn't quite figure out the geometry for the math problem," or "Our digital artist got stuck trying to arrange the objects").
 3. If applicable based on the failure, give the user a helpful tip on how they might adjust their prompt to succeed next time.
 4. Keep the tone friendly, apologetic, and encouraging.`,
