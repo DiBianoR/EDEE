@@ -10,6 +10,9 @@ const {
     AGENT_ID: providedAgentId,
     base64_img_string,  // If we have an input image
     base64_img_string_mime,
+	debug_system,
+	debug_prompt,
+	debug_response,
     ...externalVars
 } = inputData;
 Object.assign(sessionState, externalVars);  // Other variables into sessionState. If same name exists, overwritten.
