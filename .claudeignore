@@ -1,0 +1,12 @@
+# IDE metadata
+.idea/
+
+# n8n workflow exports — large, redundant, often stale
+EDEE Global Error Handler.json
+Load Config Sub-workflow.json
+Main Workflow.json
+Universal Agent Sub-Workflow.json
+
+# Outdated, not currently maintained
+generate_docs.py
+publish_agents.py
