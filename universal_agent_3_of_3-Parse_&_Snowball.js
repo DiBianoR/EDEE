@@ -117,11 +117,12 @@ if (skipApi) {
 // built + sanitized in the parse section above (no_model → JSON text; image → provider
 // parts with the blob swapped for <IMAGE_BLOB>; JSON text → the real sanitized parts).
 // The raw image is deliberately NOT in here — it rides along top-level only, like a
-// temp:/artifact. No `status` field: error turns throw before reaching this point, so
-// every recorded event is by definition a good one.
+// temp:/artifact. status is always "ok": error turns throw before reaching this point,
+// so every recorded event is by definition a good one (mirrors Node 1's prompt events).
 const turnEvent = {
     author: agent_id,
     task: task_id,
+    status: "ok",
     parts: eventParts,
     // actions - turnEvent.actions = { state_delta: parsedResult }  //  not using for now
     // partial: false,  //  to detect incomplete content chunks during real-time streaming - not used atm
