@@ -1,3 +1,11 @@
+// === 🐞 DEBUG TOGGLE ===
+// When true, the return envelope also carries debug_system / debug_prompt / debug_response:
+// plain-text views of the final templated system instruction, user instruction, and raw
+// response text ("<IMAGE_BLOB>" for image-only responses). Off for normal runs: these are
+// top-level fields, so any downstream "All Except" passthrough into a universal-agent call
+// would sweep them into session_state unless the cfg nodes exclude them too.
+const DEBUG_EMIT_IO = true;
+
 // === 📥 RECEIVE FROM NODE 1 ===
 // Reach-back target: must equal the EXACT n8n node name of universal_agent_1_of_4.
 const node1 = $("1. Prepare Payload").item.json; // ⚠️ confirm this matches your renamed node
@@ -233,6 +241,22 @@ const outputData = {
     // mime is required: Node 1 only attaches the image when BOTH string + mime are present.
     ...(finalImageBase64
         ? { base64_img_string: finalImageBase64, base64_img_string_mime: finalImageBase64_mimeType || "image/png" }
+        : {}),
+
+    // Debug I/O record: plain-text views of this turn's exchange.
+    //   debug_system   — final templated systemInstruction text (null if agent has none)
+    //   debug_prompt   — final templated user instruction (current turn only, no history)
+    //   debug_response — raw response text/JSON; "<IMAGE_BLOB>" if the model returned
+    //                    only an image with no accompanying text
+    ...(DEBUG_EMIT_IO
+        ? {
+            debug_system: node1.requestBody?.systemInstruction?.parts?.[0]?.text || null,
+            debug_prompt: node1.finalUserInstruction || null,
+            debug_response: skipApi
+                ? JSON.stringify(noModelResult)
+                : (geminiResponse?.candidates?.[0]?.content?.parts?.find(p => p.text !== undefined)?.text
+                    ?? (finalImageBase64 ? "<IMAGE_BLOB>" : null))
+          }
         : {}),
 };
 
