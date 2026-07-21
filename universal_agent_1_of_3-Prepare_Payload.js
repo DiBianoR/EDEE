@@ -5,6 +5,7 @@ const {
     session_state: sessionState = {},  // state: contains a flat dictionary of misc. variables
     session_events: sessionEvents = [],  // history: contains list of {author, task, parts[text, inlineData, fileData, functionCall, functionResponse], actions[], partial, timestamp} objs
     prompt_author: promptAuthor = "system",  // used if another agent directly wrote the prompt
+    PHASE_ID: currentPhaseId
     TASK_ID: currentTaskId,
     AGENT_ID: providedAgentId,
     base64_img_string,  // If we have an input image
