@@ -1465,19 +1465,24 @@ const config = {
 // explicitly rather than spreading items[0].json (which would leak api_key/job_id into
 // session_state, and from there into any prompt that stringifies state).
 //
-// scaffolding_blueprint is pre-seeded empty because the DIRECT_IMAGE_GEN path skips
+// If the incoming item already carries config / session_state / session_events (i.e.
+// this is a phase 2+ re-run), pass them through untouched instead of rebuilding —
+// config is only truly built once, at phase 1, where style_preference exists at top
+// level and gets baked into the instruction strings.
+//
+// scaffolding_blueprint is pre-seeded because the DIRECT_IMAGE_GEN path skips
 // design_scaffolding entirely — without the seed, {scaffolding_blueprint} in the Stage 4
 // prompts would throw a TEMPLATE ERROR. The artist's instruction already handles the
 // "can't find the base diagram" case.
 // =============================================================================
+const incoming = items[0].json;
 return [{
   json: {
-    config,
-    session_state: {
-      original_query: items[0].json.original_query,
-      style_preference: selectedStyle,
-      scaffolding_blueprint: ""
+    config: incoming.config || config,
+    session_state: incoming.session_state || {
+      original_query: incoming.original_query,
+      scaffolding_blueprint: "No scaffolding image."
     },
-    session_events: []
+    session_events: incoming.session_events || []
   }
 }];
