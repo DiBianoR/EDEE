@@ -279,7 +279,7 @@ if (requestedTier === "no_model") {
         }
         // QUEUE PROCESSING ran in forceFlatten mode, so requestBody.contents is exactly ONE
         // labeled user turn containing the scoped history + current prompt. Translate it:
-        //   text parts            → joined into the single `prompt` string (32k char cap)
+        //   text parts            → joined into the single `prompt` string
         //   live inlineData parts → data-URL entries in `images` (log placeholders were
         //                           already rewritten to text markers by resolveLogPart)
         //   systemInstruction     → no OpenAI equivalent; prepended to the prompt
