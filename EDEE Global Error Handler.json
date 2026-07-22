@@ -5,10 +5,10 @@
       "type": "n8n-nodes-base.errorTrigger",
       "typeVersion": 1,
       "position": [
-        640,
-        -32
+        -192,
+        16
       ],
-      "id": "2d2c8f9f-79df-4cc5-8fe0-4b7b1d92f62e",
+      "id": "da78208e-6e42-48f4-a9e7-c57bb7e65815",
       "name": "Error Trigger"
     },
     {
@@ -18,10 +18,10 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        832,
-        -32
+        0,
+        16
       ],
-      "id": "f58c73c8-4071-4e72-8112-d2e4b634d43d",
+      "id": "b7df282a-c225-44b8-8ca4-ba91687fe4e3",
       "name": "Code in JavaScript"
     },
     {
@@ -54,10 +54,10 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        1408,
-        -32
+        576,
+        16
       ],
-      "id": "7710ac23-bcd1-4e89-bc79-e6ccec3a9ce2",
+      "id": "c9e80abd-239c-4acd-b6a4-9b63466d386a",
       "name": "cfg5"
     },
     {
@@ -82,10 +82,10 @@
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1.3,
       "position": [
-        1536,
-        -32
+        704,
+        16
       ],
-      "id": "c9100764-5cfc-4a8e-845a-47b3e535728f",
+      "id": "1331e9d5-51c3-432d-ba7e-5f0a2066370f",
       "name": "error_handler - report_fatal_error"
     },
     {
@@ -95,10 +95,10 @@
       "type": "n8n-nodes-base.stopAndError",
       "typeVersion": 1,
       "position": [
-        1664,
-        -32
+        832,
+        16
       ],
-      "id": "90b17615-1696-4771-9c7d-2f997df0a256",
+      "id": "e7414cbd-9e40-47ee-9821-40cb4b254485",
       "name": "Error Message"
     },
     {
@@ -119,10 +119,10 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        1024,
-        -32
+        192,
+        16
       ],
-      "id": "b8a3d3e7-f86a-4bb4-bd16-4efecd66d2df",
+      "id": "2810a5f7-23f4-4d1f-96b3-a61552400dac",
       "name": "Set API Key"
     },
     {
@@ -147,10 +147,10 @@
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1.3,
       "position": [
-        1216,
-        -32
+        384,
+        16
       ],
-      "id": "62848440-7b0a-4725-9c10-90b3b9a37f12",
+      "id": "63b3f221-8ed2-4d83-b10b-808982df62e7",
       "name": "Load Config"
     }
   ],
@@ -224,6 +224,6 @@
   },
   "pinData": {},
   "meta": {
-    "instanceId": "df2a3209410ed788eacffb4d1872acd7fcd84c9b8c68de9775fcdebdbc87d329"
+    "instanceId": "050d7f5d3593566ffe36464e2179832d9e4aa282cb8a519a27bd68446dae16b9"
   }
 }
