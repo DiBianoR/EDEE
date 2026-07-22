@@ -957,6 +957,10 @@ Analyze the 'Original Query', 'Diagram Request', and especially the 'scaffolding
 
   "write_code": {
     assigned_agent: "builder",
+    // python_code is big and single-use: the executor reads it directly off this turn's
+    // output, and reviewers see it via scoped history. Hoist it to a top-level field so it
+    // never enters session_state and isn't copied into every downstream envelope.
+    hoist_result_fields: ["python_code"],
     instruction: `\
 Write the Python code based on the execution plan.
 
@@ -995,9 +999,9 @@ CHECKS:
       "properties": {
         "analysis": { "type": "STRING" },
         "critique": { "type": "STRING", "description": "List of technical errors." },
-        "pass": { "type": "BOOLEAN" }
+        "passed_syntax": { "type": "BOOLEAN" }
       },
-      "required": ["analysis", "critique", "pass"]
+      "required": ["analysis", "critique", "passed_syntax"]
     }
   },
 
@@ -1017,9 +1021,9 @@ CHECKS:
       "properties": {
         "analysis": { "type": "STRING" },
         "critique": { "type": "STRING", "description": "List of logic discrepancies." },
-        "pass": { "type": "BOOLEAN" }
+        "passed_logic": { "type": "BOOLEAN" }
       },
-      "required": ["analysis", "critique", "pass"]
+      "required": ["analysis", "critique", "passed_logic"]
     }
   },
 
@@ -1043,9 +1047,9 @@ CHECKS:
       "properties": {
         "analysis": { "type": "STRING", "description": "What objects do you see?" },
         "critique": { "type": "STRING", "description": "Discrepancies from the request." },
-        "pass": { "type": "BOOLEAN" }
+        "passed_adherence": { "type": "BOOLEAN" }
       },
-      "required": ["analysis", "critique", "pass"]
+      "required": ["analysis", "critique", "passed_adherence"]
     }
   },
 
@@ -1061,9 +1065,9 @@ Detect and troubleshoot problems with 3d perspective:
       "properties": {
         "analysis": { "type": "STRING", "description": "What objects do you see?" },
         "critique": { "type": "STRING", "description": "Discrepancies from the request." },
-        "pass": { "type": "BOOLEAN" }
+        "passed_perspective": { "type": "BOOLEAN" }
       },
-      "required": ["analysis", "critique", "pass"]
+      "required": ["analysis", "critique", "passed_perspective"]
     }
   },
 
@@ -1080,9 +1084,9 @@ CHECKS:
       "properties": {
         "analysis": { "type": "STRING", "description": "Assessment of spacing and labels." },
         "critique": { "type": "STRING", "description": "Locations of overlaps/cut-offs." },
-        "pass": { "type": "BOOLEAN" }
+        "passed_overlaps": { "type": "BOOLEAN" }
       },
-      "required": ["analysis", "critique", "pass"]
+      "required": ["analysis", "critique", "passed_overlaps"]
     }
   },
 
@@ -1099,9 +1103,9 @@ CHECKS:
       "properties": {
         "analysis": { "type": "STRING" },
         "critique": { "type": "STRING", "description": "List of technical glitches." },
-        "pass": { "type": "BOOLEAN" }
+        "passed_artifacts": { "type": "BOOLEAN" }
       },
-      "required": ["analysis", "critique", "pass"]
+      "required": ["analysis", "critique", "passed_artifacts"]
     }
   },
 

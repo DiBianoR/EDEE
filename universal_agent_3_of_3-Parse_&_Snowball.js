@@ -142,13 +142,28 @@ const updatedSessionEvents = [...sessionEvents, turnEvent];
 
 // === 🧠 MERGE PARSED FIELDS INTO SESSION STATE ===
 // sessionState is the live, full-fidelity working memory Node 1 reads for {variable}
-// templating, so parsed fields (reasoning, python_code, latest_description, etc.) must land
-// here. Only the no_model and standard-JSON paths produce parsedResult; the image path
-// leaves it null and adds nothing.
+// templating, so parsed fields (reasoning, latest_description, etc.) must land here.
+// Only the no_model and standard-JSON paths produce parsedResult; the image path leaves
+// it null and adds nothing.
 // (Guard skips strings/arrays so a stray string result can't get spread into state as
 //  character-indexed keys. no_model results are expected to be objects of named fields.)
+//
+// HOISTED FIELDS: a task may list result keys in `hoist_result_fields`. These are big,
+// single-use payloads (e.g. python_code) that a downstream node reads directly off this
+// turn's output but that no prompt templates via {var}. We lift them to the top-level
+// return and delete them from state, so they ride ONE hop to their consumer instead of
+// being copied into every subsequent envelope's session_state. Same treatment as the
+// image blob. The reviewers still see the value via scoped history (session_events).
+const hoistKeys = config.tasks[task_id]?.hoist_result_fields || [];
+const hoistedFields = {};
 if (parsedResult && typeof parsedResult === "object" && !Array.isArray(parsedResult)) {
     Object.assign(sessionState, parsedResult);
+    for (const k of hoistKeys) {
+        if (k in sessionState) {
+            hoistedFields[k] = sessionState[k];
+            delete sessionState[k];
+        }
+    }
 }
 
 // === 🛑 TERMINAL MODE DETECTION ===
@@ -242,6 +257,9 @@ const outputData = {
     ...(finalImageBase64
         ? { base64_img_string: finalImageBase64, base64_img_string_mime: finalImageBase64_mimeType || "image/png" }
         : {}),
+
+    // Hoisted heavy fields (e.g. python_code): top-level, single-hop, never in state.
+    ...hoistedFields,
 
     // Debug I/O record: plain-text views of this turn's exchange.
     //   debug_system   — final templated systemInstruction text (null if agent has none)
