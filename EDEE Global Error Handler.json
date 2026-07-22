@@ -107,8 +107,14 @@
           "assignments": [
             {
               "id": "4086eabe-e504-4d6c-904e-3e48a6dafb88",
-              "name": "api_key",
+              "name": "google_api_key",
               "value": "<GEMINI_API_KEY_REDACTED>",
+              "type": "string"
+            },
+            {
+              "id": "6c59404e-e1c3-41f3-b078-7246ca1a5029",
+              "name": "openai_api_key",
+              "value": "<OPENAI_API_KEY_REDACTED>",
               "type": "string"
             }
           ]
