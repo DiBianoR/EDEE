@@ -149,7 +149,7 @@
               "id": "47e4e78d-31ea-41a8-8ad0-05aa0e414f77",
               "name": "=session_state",
               "value": "={{ $json.session_state }}",
-              "type": "string"
+              "type": "object"
             },
             {
               "id": "f40b4c7b-540f-4b90-92e5-b817056db086",
@@ -283,7 +283,7 @@
               "id": "cbb498b6-eae3-4ee7-a47a-f5079a6ee5be",
               "name": "session_state",
               "value": "={{ $json.session_state }}",
-              "type": "string"
+              "type": "object"
             },
             {
               "id": "36684097-6d27-40a6-9572-691704ca8aee",
@@ -2168,7 +2168,7 @@
               "id": "38026c23-e7c8-4f71-a42c-f8034b37683e",
               "name": "=session_state",
               "value": "={{ $json.session_state }}",
-              "type": "string"
+              "type": "object"
             },
             {
               "id": "8e7999e0-2ae7-49eb-8202-c2a458117591",
@@ -2492,7 +2492,7 @@
               "id": "ffdf8d8f-d7c7-492d-813f-7a81133b2ff3",
               "name": "=session_state",
               "value": "={{ $json.session_state }}",
-              "type": "string"
+              "type": "object"
             },
             {
               "id": "42b3d3e4-6612-4d51-8fe9-8f8a94053096",
@@ -3363,6 +3363,8 @@
           ]
         },
         "includeOtherFields": true,
+        "include": "except",
+        "excludeFields": "situational_directives",
         "options": {}
       },
       "type": "n8n-nodes-base.set",
@@ -3760,7 +3762,7 @@
               "id": "bbb11e1e-8234-4a7d-b037-cac14280dc9e",
               "name": "=session_state",
               "value": "={{ $json.session_state }}",
-              "type": "string"
+              "type": "object"
             },
             {
               "id": "aae40b40-e6c4-45e0-9ceb-064a7d4dd4d5",
@@ -3873,7 +3875,7 @@
               "id": "b18a6c09-ecd2-4492-a4e8-181127494d53",
               "name": "=session_state",
               "value": "={{ $json.session_state }}",
-              "type": "string"
+              "type": "object"
             },
             {
               "id": "c7638180-04ae-47f4-8518-829e7d06194c",
@@ -3998,18 +4000,6 @@
               "name": "TASK_ID",
               "value": "format_ready_branch",
               "type": "string"
-            },
-            {
-              "id": "a836c52e-b569-4f83-8e21-3cb553792129",
-              "name": "math_text",
-              "value": "={{ $('Problem Validation Agent - Switch').item.json.math_text }}",
-              "type": "string"
-            },
-            {
-              "id": "2f613266-4dc7-4a2b-a806-776b92de677c",
-              "name": "visual_text",
-              "value": "={{ $('Problem Validation Agent - Switch').item.json.visual_text }}",
-              "type": "string"
             }
           ]
         },
@@ -4074,12 +4064,6 @@
               "name": "TASK_ID",
               "value": "format_math_only_branch",
               "type": "string"
-            },
-            {
-              "id": "650f4644-150d-46d4-8b59-e3f047db5087",
-              "name": "math_text",
-              "value": "={{ $('Problem Validation Agent - Switch').item.json.math_text }}",
-              "type": "string"
             }
           ]
         },
@@ -4115,12 +4099,6 @@
               "id": "16b09845-a443-436c-bde4-b8bf509bc238",
               "name": "TASK_ID",
               "value": "format_visual_only_branch",
-              "type": "string"
-            },
-            {
-              "id": "6d80b31e-1a8a-422f-9681-6d49448ae94f",
-              "name": "visual_text",
-              "value": "={{ $('Problem Validation Agent - Switch').item.json.visual_text }}",
               "type": "string"
             }
           ]
@@ -5388,34 +5366,6 @@
     },
     {
       "parameters": {
-        "workflowId": {
-          "__rl": true,
-          "value": "UReLQDgBIPpb9P4f",
-          "mode": "list",
-          "cachedResultUrl": "/workflow/UReLQDgBIPpb9P4f",
-          "cachedResultName": "EDEE — Universal Agent Sub-Workflow"
-        },
-        "workflowInputs": {
-          "mappingMode": "defineBelow",
-          "value": {},
-          "matchingColumns": [],
-          "schema": [],
-          "attemptToConvertTypes": false,
-          "convertFieldsToString": true
-        },
-        "options": {}
-      },
-      "type": "n8n-nodes-base.executeWorkflow",
-      "typeVersion": 1.3,
-      "position": [
-        320,
-        1360
-      ],
-      "id": "d9fee9d5-b448-49c9-86df-05568900456d",
-      "name": "scaffolding_designer - inject_multiple_constraints"
-    },
-    {
-      "parameters": {
         "rules": {
           "values": [
             {
@@ -5647,7 +5597,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const input = items[0].json;\nconst config = input.config || $('Load Phase 3 Config').item.json.config;\n\nconst needs3D = input.needs_3d_planning === true;\nconst needsPrim = input.needs_arrangement_planning === true;\n\nlet combinedDirectives = [];\n\n// 2. Navigate to the scaffolding_designer tasks in the config\nconst tasks = config.phases[\"3\"].agents.scaffolding_designer.tasks;\n\n// 3. Parse the JSON strings from the config to extract just the text\nif (needs3D) {\n    const rawResult3D = JSON.parse(tasks.inject_3d_constraints.result);\n    combinedDirectives.push(rawResult3D.situational_directives);\n}\n\nif (needsPrim) {\n    const rawResultPrim = JSON.parse(tasks.inject_primitives_constraints.result);\n    combinedDirectives.push(rawResultPrim.situational_directives);\n}\n\n// 4. If no directives are needed, set TASK_ID to skip\nif (combinedDirectives.length === 0) {\n    return [{\n        json: {\n            ...input,\n            TASK_ID: \"skip\"\n        }\n    }];\n}\n\n// 5. Pass the combined string into the 'directives' variable for the UA to inject\nreturn [{\n    json: {\n        ...input,\n        PHASE_ID: \"3\",\n        AGENT_ID: \"scaffolding_designer\", \n        TASK_ID: \"inject_multiple_constraints\",\n        directives: combinedDirectives.join(\"\\n\\n\") // Maps directly to $directives\n    }\n}];"
+        "jsCode": "const input = items[0].json;\nconst state = input.session_state || {};\nconst lib = input.config.directive_library || {};\n\n// Compose every directive whose planner flag is true in session_state.\n// Adding a new constraint type = new schema boolean + new directive_library entry.\nconst directives = Object.entries(lib)\n    .filter(([flag]) => state[flag] === true)\n    .map(([, text]) => text);\n\n// Nothing flagged: skip the inject task entirely.\nif (directives.length === 0) {\n    return [{\n        json: {\n            ...input,\n            TASK_ID: \"skip\"\n        }\n    }];\n}\n\n// situational_directives rides top-level; Node 1 sweeps it into session_state,\n// and inject_constraints' result templates it back out as a logged event.\nreturn [{\n    json: {\n        ...input,\n        PHASE_ID: \"3\",\n        AGENT_ID: \"scaffolding_designer\",\n        TASK_ID: \"inject_constraints\",\n        situational_directives: directives.join(\"\\n\\n\")\n    }\n}];"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -6645,6 +6595,34 @@
       "notesInFlow": true,
       "retryOnFail": false,
       "notes": "Entry: Load Config"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "UReLQDgBIPpb9P4f",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/UReLQDgBIPpb9P4f",
+          "cachedResultName": "EDEE — Universal Agent Sub-Workflow"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        320,
+        1360
+      ],
+      "id": "d9fee9d5-b448-49c9-86df-05568900456d",
+      "name": "scaffolding_designer - inject_constraints"
     }
   ],
   "connections": {
@@ -6715,7 +6693,13 @@
     },
     "Problem Validation Agent - Output": {
       "main": [
-        []
+        [
+          {
+            "node": "Load Phase 2 Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "Problem Validation Agent - Switch": {
@@ -8174,17 +8158,6 @@
         ]
       ]
     },
-    "scaffolding_designer - inject_multiple_constraints": {
-      "main": [
-        [
-          {
-            "node": "cfg34",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
     "if bool_var3": {
       "main": [
         [
@@ -8243,7 +8216,7 @@
         ],
         [
           {
-            "node": "scaffolding_designer - inject_multiple_constraints",
+            "node": "scaffolding_designer - inject_constraints",
             "type": "main",
             "index": 0
           }
@@ -8543,6 +8516,17 @@
         [
           {
             "node": "Set Job",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "scaffolding_designer - inject_constraints": {
+      "main": [
+        [
+          {
+            "node": "cfg34",
             "type": "main",
             "index": 0
           }
