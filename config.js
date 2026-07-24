@@ -150,9 +150,9 @@ Focus: Analyzing the pipeline's history when a critical error, crash, or unrecov
 
 
 // === 🧱 SITUATIONAL DIRECTIVES (canned no_model payloads) ===
-// Hoisted to consts so `inject_multiple_constraints` can concatenate them.
-// (The old config's `inject_multiple_constraints` result was `"\$directives"`, which
-//  referenced a variable that never existed — it is fixed here by real concatenation.)
+// Hoisted to consts, registered in config.directive_library (bottom of file) keyed by
+// their situational_planning boolean. The "cfg inject constraints" n8n node composes
+// whichever subset is flagged true and hands the joined text to inject_constraints.
 const DIRECTIVE_3D = `\
 [3D RENDERING CONSTRAINTS]:
 - Analyze the scene for 3D logic. Ensure depth cues (shading, perspective) are defined.
@@ -883,27 +883,19 @@ OPTIONS:
     }
   },
 
-  "inject_3d_constraints": {
+  "inject_constraints": {
     assigned_agent: "scaffolding_designer",
     model_tier: "no_model",
-    instruction: "Apply 3D constraints.",
-    result: { situational_directives: DIRECTIVE_3D }
-  },
-
-  "inject_primitives_constraints": {
-    assigned_agent: "scaffolding_designer",
-    model_tier: "no_model",
-    instruction: "Apply primitive composition constraints.",
-    result: { situational_directives: DIRECTIVE_PRIMITIVES }
-  },
-
-  "inject_multiple_constraints": {
-    assigned_agent: "scaffolding_designer",
-    model_tier: "no_model",
-    instruction: "Apply both 3D and primitive constraints.",
-    // ⚠️ FIXED: old result was `{"situational_directives": "$directives"}` — `directives`
-    // was never defined anywhere, so this injected a literal "$directives" string.
-    result: { situational_directives: `${DIRECTIVE_3D}\n\n${DIRECTIVE_PRIMITIVES}` }
+    instruction: "Apply situational constraints.",
+    // The "cfg inject constraints" n8n node composes any subset of
+    // config.directive_library (based on the situational_planning booleans in
+    // session_state) into a top-level `situational_directives` field. Node 1 sweeps
+    // it into session_state, and this result templates it back out — logging the
+    // composed text as a scaffolding_designer event so design_scaffolding sees it
+    // in Project History. Replaces the old fixed inject_3d_constraints /
+    // inject_primitives_constraints / inject_multiple_constraints trio, which
+    // couldn't scale to arbitrary subsets.
+    result: { situational_directives: "{situational_directives}" }
   },
 
   "design_scaffolding": {
@@ -1456,6 +1448,16 @@ const config = {
   // === 📡 GUI BROADCAST SETTINGS ===
   "enable_gui_logging": true,
   "gui_webhook_url": "https://ritel-state-manager-194521282716.us-south1.run.app/update-state",
+
+  // === 🧱 SITUATIONAL DIRECTIVE LIBRARY ===
+  // Keyed by the situational_planning schema's boolean flags. The "cfg inject
+  // constraints" n8n node composes the subset of directives whose flag is true in
+  // session_state and feeds the joined text to the inject_constraints task — adding
+  // a new constraint type = one schema boolean + one entry here. No new tasks.
+  "directive_library": {
+    "needs_3d_planning": DIRECTIVE_3D,
+    "needs_arrangement_planning": DIRECTIVE_PRIMITIVES
+  },
 
   // === 📚 REGISTRIES (the flat ADK contract Node 1 reads) ===
   "agents": agents,
