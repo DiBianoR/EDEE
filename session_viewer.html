@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Session Data Humanizer</title>
+    <style>
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
+            padding: 20px; 
+            max-width: 1000px; 
+            margin: 0 auto; 
+            background-color: #f0f2f5;
+        }
+        h2 { color: #333; }
+        textarea { 
+            width: 100%; 
+            height: 150px; 
+            margin-bottom: 15px; 
+            font-family: monospace; 
+            padding: 10px;
+            box-sizing: border-box;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        button { 
+            padding: 10px 20px; 
+            cursor: pointer; 
+            background-color: #6f42c1; 
+            color: white; 
+            border: none; 
+            border-radius: 4px;
+            font-size: 16px;
+            font-weight: 600;
+        }
+        button:hover { background-color: #59339d; }
+        
+        .output-section { 
+            margin-top: 25px; 
+            padding: 20px; 
+            border: 1px solid #ddd; 
+            border-radius: 6px; 
+            background: #fff; 
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+        }
+        h3 { margin-top: 0; color: #6f42c1; border-bottom: 2px solid #eee; padding-bottom: 10px; }
+        
+        /* Object Styling */
+        .object-block {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-top: 5px;
+        }
+        .key-value-pair {
+            display: flex;
+            flex-direction: column;
+        }
+        .key {
+            font-weight: 600;
+            color: #495057;
+            margin-bottom: 4px;
+            text-transform: capitalize;
+        }
+        .key::after { content: ":"; }
+        
+        /* Array Styling */
+        .array-block {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            border-left: 3px solid #6f42c1;
+            padding-left: 15px;
+            margin-top: 5px;
+        }
+        .list-item {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            padding: 15px;
+            border-radius: 4px;
+        }
+        .item-index {
+            font-size: 12px;
+            font-weight: bold;
+            color: #6c757d;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        /* Values */
+        .string-value { 
+            white-space: pre-wrap; /* Forces \n to render as real newlines */
+            word-wrap: break-word; 
+            background: #fdfdfe; 
+            padding: 12px; 
+            border-radius: 4px; 
+            border: 1px solid #e2e8f0;
+            font-family: Consolas, Monaco, monospace;
+            font-size: 14px;
+            color: #212529;
+            margin: 0;
+        }
+        .primitive-value {
+            font-family: monospace;
+            font-size: 15px;
+            color: #d63384;
+            background: #f8f9fa;
+            padding: 4px 8px;
+            border-radius: 4px;
+            display: inline-block;
+        }
+        .error { color: #dc3545; font-weight: bold; margin-top: 15px;}
+    </style>
+</head>
+<body>
+
+    <h2>Session Data Humanizer</h2>
+    <p>Paste your JSON array or object below to render it cleanly without JSON formatting:</p>
+    <textarea id="jsonInput" placeholder='Paste your payload here...'></textarea><br>
+    <button onclick="extractSessionInfo()">Render Human-Readable Data</button>
+
+    <div id="output"></div>
+
+    <script>
+        function extractSessionInfo() {
+            const input = document.getElementById('jsonInput').value;
+            const outputDiv = document.getElementById('output');
+            outputDiv.innerHTML = ''; 
+
+            if (!input.trim()) {
+                outputDiv.innerHTML = '<p class="error">Please paste some JSON first.</p>';
+                return;
+            }
+
+            try {
+                let data = JSON.parse(input);
+                
+                // Handle the case where the JSON is wrapped in an array
+                let targetObj = Array.isArray(data) ? data[0] : data;
+
+                if (!targetObj || typeof targetObj !== 'object') {
+                    throw new Error("Invalid structure. Expected a JSON object or an array containing an object.");
+                }
+
+                // Render the output
+                outputDiv.innerHTML = `
+                    <div class="output-section">
+                        <h3>Session State</h3>
+                        ${targetObj.session_state ? renderData(targetObj.session_state) : '<p><i>No session_state found.</i></p>'}
+                    </div>
+                    <div class="output-section">
+                        <h3>Session Events</h3>
+                        ${targetObj.session_events ? renderData(targetObj.session_events) : '<p><i>No session_events found.</i></p>'}
+                    </div>
+                `;
+            } catch (e) {
+                outputDiv.innerHTML = `<p class="error">Error parsing JSON: ${e.message}</p>`;
+            }
+        }
+
+        // Recursive function to build HTML elements instead of JSON strings
+        function renderData(data) {
+            if (typeof data === 'string') {
+                return `<pre class="string-value">${escapeHTML(data)}</pre>`;
+            } else if (typeof data === 'boolean' || typeof data === 'number') {
+                return `<span class="primitive-value">${data}</span>`;
+            } else if (data === null) {
+                return `<span class="primitive-value">null</span>`;
+            } else if (Array.isArray(data)) {
+                let html = '<div class="array-block">';
+                data.forEach((item, index) => {
+                    html += `
+                        <div class="list-item">
+                            <div class="item-index">Item #${index + 1}</div>
+                            <div class="item-content">${renderData(item)}</div>
+                        </div>`;
+                });
+                html += '</div>';
+                return html;
+            } else if (typeof data === 'object') {
+                let html = '<div class="object-block">';
+                for (const [key, value] of Object.entries(data)) {
+                    // Clean up the key names slightly for readability (e.g., "math_reasoning" -> "Math reasoning")
+                    const cleanKey = key.replace(/_/g, ' ');
+                    html += `
+                        <div class="key-value-pair">
+                            <div class="key">${escapeHTML(cleanKey)}</div>
+                            <div class="value">${renderData(value)}</div>
+                        </div>`;
+                }
+                html += '</div>';
+                return html;
+            }
+            return '';
+        }
+
+        // Utility to escape HTML to prevent DOM injection issues
+        function escapeHTML(str) {
+            return String(str).replace(/[&<>'"]/g, 
+                tag => ({
+                    '&': '&amp;',
+                    '<': '&lt;',
+                    '>': '&gt;',
+                    "'": '&#39;',
+                    '"': '&quot;'
+                }[tag] || tag)
+            );
+        }
+    </script>
+</body>
+</html>
