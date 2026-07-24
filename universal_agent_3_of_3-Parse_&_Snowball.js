@@ -120,6 +120,20 @@ if (skipApi) {
     eventParts = JSON.parse(JSON.stringify(rawParts, sanitize));
 }
 
+// === 🏷️ MODEL NAME RESOLUTION ===
+// Human-readable model name stamped onto both of this turn's events (query + response).
+// OpenAI carries it in the request body; Gemini only in the URL (".../models/NAME:generateContent"),
+// so we take the segment after the last "/" and before the ":". no_model turns get "none".
+const modelName = skipApi
+    ? "none"
+    : (node1.requestBody?.model
+        || (model_url ? model_url.substring(model_url.lastIndexOf("/") + 1).split(":")[0] : null));
+
+// Stamp this turn's query event too — Node 1 pushed it as the last element of sessionEvents.
+if (sessionEvents.length > 0) {
+    sessionEvents[sessionEvents.length - 1].model = modelName;
+}
+
 // === 🧱 RECORD THIS TURN AS AN EVENT ===
 // ADK style: one immutable event per turn, appended to the log. `eventParts` was already
 // built + sanitized in the parse section above (no_model → JSON text; image → provider
@@ -134,7 +148,8 @@ const turnEvent = {
     parts: eventParts,
     // actions - turnEvent.actions = { state_delta: parsedResult }  //  not using for now
     // partial: false,  //  to detect incomplete content chunks during real-time streaming - not used atm
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
+    model: modelName  // cost is injected after this field by the cost calculator below
 };
 
 // Append-only: build a new array, never mutate the inherited log.
