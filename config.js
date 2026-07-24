@@ -887,6 +887,9 @@ OPTIONS:
     assigned_agent: "scaffolding_designer",
     model_tier: "no_model",
     instruction: "Apply situational constraints.",
+    // Directives are consumed from HISTORY (the event this task logs), not from state —
+    // hoist keeps the big text from persisting in session_state after the turn.
+    hoist_result_fields: ["situational_directives"],
     // The "cfg inject constraints" n8n node composes any subset of
     // config.directive_library (based on the situational_planning booleans in
     // session_state) into a top-level `situational_directives` field. Node 1 sweeps
