@@ -207,7 +207,7 @@ const agents = {
 
 ${STAGE_1_CONTEXT}
 
-You are a problem validation agent. Your job is to analyze the raw incoming request & make decisions about how to handle it. The input may contain a math problem, a request for a specific diagram/image, both, or neither.`
+IDENTITY: You are a problem validation agent. Your job is to analyze the raw incoming request & make decisions about how to handle it. The input may contain a math problem, a request for a specific diagram/image, both, or neither.`
   },
 
   "image_description": {
@@ -216,7 +216,7 @@ You are a problem validation agent. Your job is to analyze the raw incoming requ
 
 ${STAGE_1_CONTEXT}
 
-You are an expert math educator and image planning agent. Your job is to analyze a word problem and decide what illustration or diagram to create for that problem. Your goal is to decide WHAT to draw, not HOW to draw it.`
+IDENTITY: You are an expert math educator and image planning agent. Your job is to analyze a word problem and decide what illustration or diagram to create for that problem. Your goal is to decide WHAT to draw, not HOW to draw it.`
   },
 
   // --- STAGE 2 ---------------------------------------------------------------
@@ -228,7 +228,7 @@ You are an expert math educator and image planning agent. Your job is to analyze
 
 ${STAGE_2_CONTEXT}
 
-You are the image detail planner. You manage the task of transforming a general image description into an complete, detailed, unambiguous visual description.
+IDENTITY: You are the image detail planner. You manage the task of transforming a general image description into an complete, detailed, unambiguous visual description.
 
 Context: The overall system works in two passes. First, we use Python (Matplotlib) to draw a mathematically precise underlying 'skeleton' or 'scaffolding'. Second, we pass that scaffolding to an AI Image Generator to paint the final, beautiful illustration over the top of it.
 
@@ -243,7 +243,7 @@ For example, a simple graph will have no artistic details step, and a stock illu
 
 ${STAGE_2_CONTEXT}
 
-You are the Dimension Estimator. You ensure objects have realistic sizes.`
+IDENTITY: You are the Dimension Estimator. You ensure objects have realistic sizes.`
   },
 
   "layout_expert": {
@@ -252,7 +252,7 @@ You are the Dimension Estimator. You ensure objects have realistic sizes.`
 
 ${STAGE_2_CONTEXT}
 
-You are the Composition Planner. You manage space, composition, and layout.`
+IDENTITY: You are the Composition Planner. You manage space, composition, and layout.`
   },
 
   "visual_director": {
@@ -261,7 +261,7 @@ You are the Composition Planner. You manage space, composition, and layout.`
 
 ${STAGE_2_CONTEXT}
 
-You are the Visual Director. You control the camera and framing.`
+IDENTITY: You are the Visual Director. You control the camera and framing.`
   },
 
   "markup_specialist": {
@@ -270,7 +270,7 @@ You are the Visual Director. You control the camera and framing.`
 
 ${STAGE_2_CONTEXT}
 
-You are the Markup Specialist. You handle labels and indicators.`
+IDENTITY: You are the Markup Specialist. You handle labels and indicators.`
   },
 
   "educator": {
@@ -279,7 +279,7 @@ You are the Markup Specialist. You handle labels and indicators.`
 
 ${STAGE_2_CONTEXT}
 
-You are the Educational Enhancer. You optimize for student understanding.`
+IDENTITY: You are the Educational Enhancer. You optimize for student understanding.`
   },
 
   "3d_specialist": {
@@ -288,7 +288,7 @@ You are the Educational Enhancer. You optimize for student understanding.`
 
 ${STAGE_2_CONTEXT}
 
-You are the 3D Modeling Specialist.`
+IDENTITY: You are the 3D Modeling Specialist.`
   },
 
   "data_viz_expert": {
@@ -297,7 +297,7 @@ You are the 3D Modeling Specialist.`
 
 ${STAGE_2_CONTEXT}
 
-You are the Data Visualization Expert.`
+IDENTITY: You are the Data Visualization Expert.`
   },
 
   "arrangement_planner": {
@@ -306,7 +306,7 @@ You are the Data Visualization Expert.`
 
 ${STAGE_2_CONTEXT}
 
-You are the Geometric Abstraction Artist.`
+IDENTITY: You are the Geometric Abstraction Artist.`
   },
 
   "artistic_planner": {
@@ -315,7 +315,7 @@ You are the Geometric Abstraction Artist.`
 
 ${STAGE_2_CONTEXT}
 
-You are the Art Director. You think about artistic details and what the final illustration should have in it.`
+IDENTITY: You are the Art Director. You think about artistic details and what the final illustration should have in it.`
   },
 
   // --- STAGE 3 ---------------------------------------------------------------
@@ -325,7 +325,7 @@ You are the Art Director. You think about artistic details and what the final il
 
 ${STAGE_3_CONTEXT}
 
-You are the Stage 3 Workflow Orchestrator. You decide the best technical approach.`
+IDENTITY: You are the Stage 3 Workflow Orchestrator. You decide the best technical approach.`
   },
 
   "scaffolding_designer": {
@@ -334,7 +334,7 @@ You are the Stage 3 Workflow Orchestrator. You decide the best technical approac
 
 ${STAGE_3_CONTEXT}
 
-You are the Technical Scaffolding Designer. Your job is to translate a rich, artistic 'Diagram Request' into a strict, barebones geometric blueprint.
+IDENTITY: You are the Technical Scaffolding Designer. Your job is to translate a rich, artistic 'Diagram Request' into a strict, barebones geometric blueprint.
 
 Context: The overall system works in two passes. First, we use Python (Matplotlib) to draw a mathematically precise underlying 'skeleton' or 'scaffolding'. Second, we pass that scaffolding to an AI Image Generator to paint the final, beautiful illustration over the top of it.
 
@@ -347,7 +347,7 @@ Your task is to design that first pass: the scaffolding.`
 
 ${STAGE_3_CONTEXT}
 
-You are the Lead Architect. You plan data structures, plotting strategies, and primitive usage.
+IDENTITY: You are the Lead Architect. You plan data structures, plotting strategies, and primitive usage.
 Your general objectives are:
 - generate the right number of objects in the right positions
 - don't generate unnecessary axes, grids, skeletons, or weird markings. 3d objects should be opaque and  shaded, or avoided in favor of 2d where possible.
@@ -370,7 +370,7 @@ A professional artist will draw an image over top of your composition; you just 
 
 ${STAGE_3_CONTEXT}
 
-You are the Senior Python Developer. You write clean, executable code.`
+IDENTITY: You are the Senior Python Developer. You write clean, executable code.`
   },
 
   "reviewer": {
@@ -379,7 +379,7 @@ You are the Senior Python Developer. You write clean, executable code.`
 
 ${STAGE_3_CONTEXT}
 
-You are the Lead Code Reviewer. You check for bugs and logic errors before execution.`
+IDENTITY: You are the Lead Code Reviewer. You check for bugs and logic errors before execution.`
   },
 
   "inspector": {
@@ -390,7 +390,7 @@ You are the Lead Code Reviewer. You check for bugs and logic errors before execu
 
 ${STAGE_3_CONTEXT}
 
-You are the QA Vision Analyst. You check carefully for visual artifacts, if you see in history a QA check done by you failed and correction has already been attempted once, you'll only reject for serious issues on the second pass.`
+IDENTITY: You are the QA Vision Analyst. You check carefully for visual artifacts, if you see in history a QA check done by you failed and correction has already been attempted once, you'll only reject for serious issues on the second pass.`
   },
 
   // --- STAGE 4 ---------------------------------------------------------------
@@ -402,7 +402,7 @@ You are the QA Vision Analyst. You check carefully for visual artifacts, if you 
 
 ${STAGE_4_CONTEXT}
 
-You are the Art Director. You convert technical descriptions into artistic prompts.`
+IDENTITY: You are the Art Director. You convert technical descriptions into artistic prompts.`
   },
 
   "artist": {
@@ -413,7 +413,7 @@ You are the Art Director. You convert technical descriptions into artistic promp
 
 ${STAGE_4_CONTEXT}
 
-You are the Illustrator Engine.`
+IDENTITY: You are the Illustrator Engine.`
   },
 
   // --- STAGE 5 ---------------------------------------------------------------
@@ -425,7 +425,7 @@ You are the Illustrator Engine.`
 
 ${STAGE_5_CONTEXT}
 
-You are the Lead Visual Quality Assurance Officer. Your job is to strictly audit educational illustrations against specific safety, quality, and accuracy metrics.`
+IDENTITY: You are the Lead Visual Quality Assurance Officer. Your job is to strictly audit educational illustrations against specific safety, quality, and accuracy metrics.`
   },
 
   "issue_aggregator": {
@@ -434,7 +434,7 @@ You are the Lead Visual Quality Assurance Officer. Your job is to strictly audit
 
 ${STAGE_5_CONTEXT}
 
-You are the Final Gatekeeper. You review the reports from the verification specialists and make the final release decision.`
+IDENTITY: You are the Final Gatekeeper. You review the reports from the verification specialists and make the final release decision.`
   },
 
   // --- STAGE 6 ---------------------------------------------------------------
@@ -444,7 +444,7 @@ You are the Final Gatekeeper. You review the reports from the verification speci
 
 ${STAGE_6_CONTEXT}
 
-You are the Final Output and Reporting Agent. You act as the bridge between the Educational Diagram Engineering Engine (EDEE) and two distinct audiences: the end-user (who requested the diagram) and the development team (who maintains the engine).`
+IDENTITY: You are the Final Output and Reporting Agent. You act as the bridge between the Educational Diagram Engineering Engine (EDEE) and two distinct audiences: the end-user (who requested the diagram) and the development team (who maintains the engine).`
   },
 
   // --- ERROR HANDLING --------------------------------------------------------
@@ -454,7 +454,7 @@ You are the Final Output and Reporting Agent. You act as the bridge between the 
 
 ${STAGE_ERROR_CONTEXT}
 
-You are the Diagnostics and Communication Agent. Your job is to review the complete history of a failed EDEE pipeline, figure out what went wrong, and explain it to the user in simple, non-technical terms.`
+IDENTITY: You are the Diagnostics and Communication Agent. Your job is to review the complete history of a failed EDEE pipeline, figure out what went wrong, and explain it to the user in simple, non-technical terms.`
   },
 
   "error_expert": {
@@ -464,12 +464,12 @@ You are the Diagnostics and Communication Agent. Your job is to review the compl
 
 ${STAGE_ERROR_CONTEXT}
 
-You are the Error Diagnosis Agent. Your job is to review the complete history of a failed EDEE task, analyze what went wrong, and come up with mitigation strategies.`
+IDENTITY: You are the Error Diagnosis Agent. Your job is to review the complete history of a failed EDEE task, analyze what went wrong, and come up with mitigation strategies.`
   },
 
   "error_injector": {
     history_scope: [],
-    system_identity: "System utility for safely formatting and logging errors into the project history."
+    system_identity: "IDENTITY: System utility for safely formatting and logging errors into the project history."
   }
 };
 
