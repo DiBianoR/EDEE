@@ -87,6 +87,33 @@
             text-transform: uppercase;
             letter-spacing: 1px;
         }
+
+        /* Model Badges */
+        .model-badge {
+            display: inline-block;
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            padding: 2px 8px;
+            border-radius: 10px;
+            margin-left: 8px;
+            text-transform: none;
+            vertical-align: middle;
+        }
+        .model-badge.model-real {
+            background: #d1e7ff;
+            color: #084298;
+            border: 1px solid #9ec5fe;
+        }
+        .model-badge.model-none {
+            background: #fff3cd;
+            color: #997404;
+            border: 1px solid #ffe69c;
+        }
+        .list-item.no-model-event {
+            border-left: 4px solid #ffc107;
+            background: #fffdf5;
+        }
         
         /* Values */
         .string-value { 
@@ -170,9 +197,19 @@
             } else if (Array.isArray(data)) {
                 let html = '<div class="array-block">';
                 data.forEach((item, index) => {
+                    // Events stamped by the pipeline carry a "model" field: "none" marks a
+                    // no_model (canned) turn; anything else is the actual model name.
+                    const model = (item && typeof item === 'object') ? item.model : undefined;
+                    const isNoModel = model === 'none';
+                    let badge = '';
+                    if (typeof model === 'string') {
+                        badge = isNoModel
+                            ? '<span class="model-badge model-none">no_model</span>'
+                            : `<span class="model-badge model-real">${escapeHTML(model)}</span>`;
+                    }
                     html += `
-                        <div class="list-item">
-                            <div class="item-index">Item #${index + 1}</div>
+                        <div class="list-item${isNoModel ? ' no-model-event' : ''}">
+                            <div class="item-index">Item #${index + 1}${badge}</div>
                             <div class="item-content">${renderData(item)}</div>
                         </div>`;
                 });
