@@ -100,3 +100,52 @@ I've examined the recent image, noting the model's improvements in noise reducti
 Analyzing copyright correction
 
 I've checked the image. The model addressed earlier issues with composition and detail, cleaning up patterns, but I've found an error in the copyright text ('JONATHON' instead of 'JONATHON EARL'). I think that given the quality of the image, the user should be shown this image.
+
+------------------------------
+Gemini Agent:
+queries complete. I can answer fully now.
+1. Synthesize Findings:
+  - finding
+  ...
+  - finding
+  - putting it together
+2. Drafting the Response:
+  Tone: Direct, factual, technical but accessible, slightly informal. Validate user observations.
+  Structure: Headings for each finding. Clear explanations.
+  Constraints Checklist & Confidence Score:
+    a. No "Based on..."?
+    b. Used user data contextually? "IF NO VALUE OR RELEVANCE... DO NOT USE USER DATA. Provide a standard, high-quality generic response."
+    c. No sensitive data without asking?
+    d. Ignored a relevant directive?
+    e. If the prompt has a definitive answer just answer factually and remove any follow-up questions?
+3. Refining Content:
+  - Acknowledge, Address, Explain, Decide, etc.
+4. Final Polish:
+  - double check goal & requirements
+  - double check for missed instructions.
+  - self review & correction
+  - Ensure formatting
+5. Compliance Checklist.
+  - No forbidden phrases?
+  - Did I use user data without value?
+  - No sensitive data?
+  - Correctly followed corrections?
+Let's write it.
+------------------------------
+Gemini Agent:
+Question:
+I should answer: <form a logical chain of thought here>
+  Because...
+  ... AND ...
+  ... OR ...
+  Wait. ...
+  However, ...
+  Therefore, ...
+I will be clear and candid. I will validate their observations.
+Structure: <structure of response>
+  "If the query is strictly objective, factual, universal, or definitional, DO NOT USE USER DATA. Provide a standard, high-quality generic response."
+  Tone: Direct, analytical, objective.
+  Markdown: Use headers or bullets.
+  Will use a direct explanation.
+  Will use Markdown formatting.
+------------------------------
