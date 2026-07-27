@@ -83,20 +83,26 @@ const rawHistoryScope = taskBlueprint.history_scope || agentBlueprint.history_sc
 const historyScope = Array.isArray(rawHistoryScope) ? rawHistoryScope : [rawHistoryScope];  // Allow single item as string
 
 // Response events: in scope iff their author is listed (unchanged behavior).
-// Prompt events (author "user"/"system"): those authors may now be listed in a scope, BUT a
-// prompt is only replayed if the event immediately after it in the log ALSO survived the
-// author filter — i.e. its reply is in scope. Without the pairing check, putting "system"
-// in any scope would pull in every prompt from the entire run (the original todo complaint).
+// Prompt events (author "user"/"system") are paired with the event immediately after
+// them in the log (their reply). A prompt is replayed iff its reply survived the filter
+// AND one of these holds:
+//   a) the reply is the CURRENT agent's own — always include, even when "system" isn't
+//      in the scope list. This keeps the agent's past model turns properly paired with
+//      the instructions that elicited them (ADK replays user prompts verbatim; without
+//      this, self-history replays as unprompted answers).
+//   b) the prompt's author is explicitly in scope (the original opt-in rule for
+//      replaying other conversations' prompts).
 // Prompts whose turn crashed (successor missing or itself a prompt) are excluded.
 // Scoped-out prompts leave adjacent same-role replies, which flushQueue already squashes.
 const PROMPT_AUTHORS = ["user", "system"];
 const filteredEvents = sessionEvents.filter((event, i) => {
-    if (!historyScope.includes(event.author)) return false;
     if (PROMPT_AUTHORS.includes(event.author)) {
         const next = sessionEvents[i + 1];
-        return !!next && historyScope.includes(next.author) && !PROMPT_AUTHORS.includes(next.author);
+        const replyInScope = !!next && historyScope.includes(next.author) && !PROMPT_AUTHORS.includes(next.author);
+        if (!replyInScope) return false;
+        return next.author === targetAgentId || historyScope.includes(event.author);
     }
-    return true;
+    return historyScope.includes(event.author);
 });
 
 // === 🖼️️️ FINISH CONSTRUCTING CURRENT PROMPT ===
@@ -172,7 +178,11 @@ const flushQueue = () => {
                 let text = part.text;
                 // Apply the label to the FIRST text block of the event, if required
                 if (applyLabels && !labeledFirstTextOfEvent) {
-                    const prefix = labeledAnyText === false ? `${event.author} said: ` : `\n${event.author} said: `;
+                    // ADK-style bracketed attribution. No "For context:" opener: with all
+                    // events squashed into one content, it could be read as applying to the
+                    // final (live) instruction too, and we have no unambiguous delimiter.
+                    // The "[x] said:" labels themselves are the boundaries between events.
+                    const prefix = labeledAnyText === false ? `[${event.author}] said: ` : `\n[${event.author}] said: `;
                     text = prefix + text;
                     labeledAnyText = true;
                     labeledFirstTextOfEvent = true;
