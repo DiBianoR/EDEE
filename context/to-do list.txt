@@ -49,6 +49,7 @@ Fallback models, for model unavailability(quota, outage, etc.)
 Job browser in frontend
   Short name for each job
 Let managers have more autonomy
+  DIRECTIVE_MANAGER="You are a manager. Your job is to review, synthesize, remove redundancies, review subordinates' decisions, address concerns, resolve conflicts/contradictions, double check correctness, and make the final call."
   Failure loop detection and handling
   Let them choose who to send the task back to in case of error
   It would be nice for managers to be able to forcibly send an error or instructional message to any other agent; even if the manager is normally not listed in their scope. It might need to decide whether to send the message, where to send it, and what to send; so this might take up to 3 additional return fields, plus a special event type, so one more field in events. It might be easier to just always put the manager on a subordinate's scope. Might managers need to message each other?

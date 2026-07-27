@@ -111,6 +111,26 @@ CORE DIRECTIVES:
 4. Aesthetics: diagrams must be colorful, easy to look at, and in a style suitable to the task. Stick to artistic/illustration style rather than realism.
 5. Safety/Liability: Diagrams shouldn't contain anything that will obviously be deemed unsuitable for children. No need to nitpick, but use common sense.`;
 
+// === COMMON BOILERPLATE DIRECTIVES ===
+const DIRECTIVE_MANAGER = `\
+[MANAGERIAL GUIDANCE]
+As a manager, your job is to:
+- review
+- synthesize
+- remove redundancies
+- review subordinates' decisions
+- address concerns
+- resolve conflicts/contradictions
+- double check correctness
+- make the final call
+- produce results for the user
+
+For tasks with retry loops:
+- decide whether a task is complete or needs to go back to subordinates for corrections
+- troubleshoot problems
+- direct subordinates
+- make the call when to return an imperfect result rather than an error`;
+
 // === 🧭 STAGE CONTEXT (the old per-phase `identity` blocks) ===
 // Phases no longer exist as a routing construct, but the text was useful orientation
 // for the agents, so it is folded into the system_identity of the agents that need it.
