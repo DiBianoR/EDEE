@@ -6,6 +6,28 @@
 // would sweep them into session_state unless the cfg nodes exclude them too.
 const DEBUG_EMIT_IO = true;
 
+// Render requestBody.contents as readable text: one block per contents entry (= one turn
+// as the model sees it), boundary line carries the role. Text parts verbatim — including
+// any "<agent> said:" labels and squashed multi-event text Node 1 baked in. Non-text
+// parts become short tags; live image base64 (the current prompt's input image rides
+// unsanitized in requestBody) is swapped for a tag, never dumped.
+function renderContentsForDebug(contents) {
+    if (!contents || !contents.length) return null;
+    const renderPart = (p) => {
+        if (p.text !== undefined) return p.text;
+        const blob = p.inlineData || p.inline_data;
+        if (blob) {
+            const data = (typeof blob.data === "string" && blob.data.length > 100)
+                ? "<IMAGE_BLOB>" : blob.data;
+            return `[inline image: ${blob.mimeType || blob.mime_type || "?"} ${data}]`;
+        }
+        return JSON.stringify(p); // functionCall / functionResponse / fileData
+    };
+    return contents.map((c, i) =>
+        `━━━━━━ turn ${i + 1} · role: ${c.role} ━━━━━━\n` + (c.parts || []).map(renderPart).join("\n")
+    ).join("\n\n");
+}
+
 // === 📥 RECEIVE FROM NODE 1 ===
 // Reach-back target: must equal the EXACT n8n node name of universal_agent_1_of_4.
 const node1 = $("1. Prepare Payload").item.json; // ⚠️ confirm this matches your renamed node
@@ -271,15 +293,22 @@ const outputData = {
     // Hoisted heavy fields (e.g. python_code): top-level, single-hop, never in state.
     ...hoistedFields,
 
-    // Debug I/O record: plain-text views of this turn's exchange.
+    // Debug I/O record: plain-text views of EXACTLY what the model saw this turn.
     //   debug_system   — final templated systemInstruction text (null if agent has none)
-    //   debug_prompt   — final templated user instruction (current turn only, no history)
+    //   debug_prompt   — the full requestBody.contents rendered readably: every turn the
+    //                    model received (replayed history + current prompt), with role
+    //                    boundaries between contents entries. Flattened/squashed events
+    //                    and "<agent> said:" labels appear inline exactly as sent —
+    //                    they're baked into the text parts by Node 1's flushQueue.
     //   debug_response — raw response text/JSON; "<IMAGE_BLOB>" if the model returned
     //                    only an image with no accompanying text
     ...(DEBUG_EMIT_IO
         ? {
             debug_system: node1.requestBody?.systemInstruction?.parts?.[0]?.text || null,
-            debug_prompt: node1.finalUserInstruction || null,
+            // Gemini: rendered contents. OpenAI images: requestBody.prompt IS the literal
+            // flat prompt sent (system text + flattened history + instruction, one string).
+            debug_prompt: renderContentsForDebug(node1.requestBody?.contents)
+                ?? node1.requestBody?.prompt ?? node1.finalUserInstruction ?? null,
             debug_response: skipApi
                 ? JSON.stringify(noModelResult)
                 : (geminiResponse?.candidates?.[0]?.content?.parts?.find(p => p.text !== undefined)?.text
