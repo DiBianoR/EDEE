@@ -121,3 +121,5 @@
 - Error handling
   - unrecoverable errors now crash loudly instead of continuing silently in a broken state
   - global error handler workflow updated to match
+
+*June:
