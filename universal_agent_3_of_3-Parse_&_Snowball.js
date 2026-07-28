@@ -131,11 +131,26 @@ if (skipApi) {
         throw new Error(`[${agent_id} / ${task_id}] No text in Gemini response (finishReason: ${finishReason}) — raw: ${trunc(JSON.stringify(geminiResponse))}`);
     }
 
-    const cleanText = rawText.replace(/```json\n?|\n?```/g, "");
+    // PARSE PROTECTION — parse-first, fence-extract on failure:
+    //   1. Raw text that is already valid JSON parses untouched. This also guarantees a
+    //      ``` inside a string VALUE can never trigger fence handling (the old global
+    //      strip deleted every ``` in the text, including ones inside values).
+    //   2. Only if the raw parse fails, extract the CONTENTS of the first fenced block
+    //      and parse that. Stripping just the markers (old behavior) was useless against
+    //      a preamble ("Here's the JSON: ```..."): the leftover prose crashed the parse
+    //      anyway. Extraction recovers it.
     try {
-        parsedResult = JSON.parse(cleanText);
-    } catch (e) {
-        throw new Error(`[${agent_id} / ${task_id}] JSON parse failed (${e.message}) — raw: ${trunc(cleanText)}`);
+        parsedResult = JSON.parse(rawText);
+    } catch (rawErr) {
+        const fenced = rawText.match(/```(?:json)?\s*([\s\S]*?)```/);
+        if (!fenced) {
+            throw new Error(`[${agent_id} / ${task_id}] JSON parse failed (${rawErr.message}) — raw: ${trunc(rawText)}`);
+        }
+        try {
+            parsedResult = JSON.parse(fenced[1]);
+        } catch (e) {
+            throw new Error(`[${agent_id} / ${task_id}] JSON parse failed inside fence (${e.message}) — raw: ${trunc(rawText)}`);
+        }
     }
     // Keep the real (sanitized) parts array - preserves multi-part responses
     // (e.g. text + functionCall) exactly as Gemini emitted them.

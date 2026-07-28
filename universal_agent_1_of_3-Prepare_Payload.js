@@ -142,6 +142,29 @@ const resolveLogPart = (part, isModelPart) => {
     return part; // text, functionCall, functionResponse, fileData, live inlineData: untouched
 };
 
+// n8n persists the event log as JSON, so a logged model reply is one JSON *string* — every
+// newline inside its field values escaped to the two-character sequence \n. The LLM must
+// never see that escaping: whenever a replayed text part parses as a JSON object/array,
+// re-render it as readable "key: value" text with real newlines restored. Anything that
+// isn't pure JSON (live instructions, image markers, fenced text) fails the shape check
+// or the parse and passes through verbatim.
+const renderJsonValue = (val) => {
+    if (typeof val === "string") return val;                              // raw — real newlines
+    if (val === null || typeof val !== "object") return String(val);
+    if (Array.isArray(val)) return val.map(renderJsonValue).join("\n");   // separator BETWEEN items only: 1 item ⇒ no newline
+    return Object.entries(val).map(([k, v]) => {
+        const r = renderJsonValue(v);
+        return r.includes("\n") ? `${k}:\n${r}` : `${k}: ${r}`;           // multi-line values start under their key
+    }).join("\n");
+};
+const restoreJsonText = (text) => {
+    if (typeof text !== "string") return text;
+    const t = text.trim();
+    const looksJson = (t.startsWith("{") && t.endsWith("}")) || (t.startsWith("[") && t.endsWith("]"));
+    if (!looksJson) return text;
+    try { return renderJsonValue(JSON.parse(t)); } catch (e) { return text; }
+};
+
 const flushQueue = () => {
     if (queue.length === 0) return;
 
@@ -167,7 +190,7 @@ const flushQueue = () => {
     }
 
     // Process the queue items into standard Gemini parts
-    let labeledAnyText = false;
+    let pushedAnyText = false; // across the queue: gates separators so the FIRST item never gets a leading newline
     queue.forEach((event) => {
         // The LIVE self-prompt stays unlabeled: the agent doesn't reliably know its own
         // registry name, so "[<own id>] said:" would read as a third party's words. This
@@ -176,24 +199,31 @@ const flushQueue = () => {
         // need delimiting. Replayed copies in later turns are unaffected (they surface
         // as model turns, which are never labeled anyway).
         const suppressLabel = event === currentPromptEvent && event.author === targetAgentId;
-        let labeledFirstTextOfEvent = false;
+        let firstTextOfEvent = true;
         event.parts.forEach((rawPart) => {
             // Swap sanitized image placeholders for text BEFORE the text/non-text split,
             // so markers get labeled and prefixed exactly like real text.
             const part = resolveLogPart(rawPart, isModelQueue);
             if (part.text !== undefined) {
-                let text = part.text;
-                // Apply the label to the FIRST text block of the event, if required
-                if (applyLabels && !suppressLabel && !labeledFirstTextOfEvent) {
-                    // ADK-style bracketed attribution. No "For context:" opener: with all
+                // Restore logged JSON to readable text (real newlines) before the LLM sees it.
+                let text = restoreJsonText(part.text);
+                if (firstTextOfEvent) {
+                    // ADK-style bracketed attribution, task-qualified so an agent that ran
+                    // several tasks — or the same task across a retry loop — replays as
+                    // distinguishable events. (The live prompt event carries no task field
+                    // and falls back to author-only.) No "For context:" opener: with all
                     // events squashed into one content, it could be read as applying to the
                     // final (live) instruction too, and we have no unambiguous delimiter.
-                    // The "[x] said:" labels themselves are the boundaries between events.
-                    const prefix = labeledAnyText === false ? `[${event.author}] said: ` : `\n[${event.author}] said: `;
-                    text = prefix + text;
-                    labeledAnyText = true;
-                    labeledFirstTextOfEvent = true;
+                    // Every event boundary also gets a plain "\n" separator — 2+ events
+                    // only, never before the first — so UNLABELED squashed events (e.g.
+                    // adjacent model-turn JSON replies) can't run together as {...}{...}.
+                    const label = (applyLabels && !suppressLabel)
+                        ? `[${event.author}${event.task ? " · " + event.task : ""}] said: `
+                        : "";
+                    text = (pushedAnyText ? "\n" : "") + label + text;
+                    firstTextOfEvent = false;
                 }
+                pushedAnyText = true;
                 contentParts.push({ text });
             } else {
                 // Push inlineData, functionCall, functionResponse, etc., completely untouched
