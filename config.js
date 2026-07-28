@@ -363,6 +363,7 @@ Your task is to design that first pass: the scaffolding.`
   },
 
   "architect": {
+    model_tier: "medium", // planner type
     history_scope: STAGE3_AGENTS,
     system_identity: `${GLOBAL_TASK_EXPLANATION}
 
@@ -384,7 +385,7 @@ A professional artist will draw an image over top of your composition; you just 
   },
 
   "builder": {
-    model_tier: "slow",
+    model_tier: "slow",  // coder type
     model_type: "text", // use more advanced agent to write code
     history_scope: STAGE3_AGENTS,
     system_identity: `${GLOBAL_TASK_EXPLANATION}
@@ -395,6 +396,7 @@ IDENTITY: You are the Senior Python Developer. You write clean, executable code.
   },
 
   "reviewer": {
+    model_tier: "medium", // reviews code ; give a little extra power
     history_scope: STAGE3_AGENTS,
     system_identity: `${GLOBAL_TASK_EXPLANATION}
 
