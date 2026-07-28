@@ -5,7 +5,7 @@
 
 ✔I want a way to label user prompts author as "user" as well as "system"; depending on whether our system or the end user originated them
 
-🔄 QUEUE PROCESSING & CONTENT FLUSHING was supposed to reconstruct multi-turn history, but does it handle json responses properly? If it's a single response, I think the json is fine, but if it's part of a multi-turn flattened into one user prompt, how should we display it?
+✔QUEUE PROCESSING & CONTENT FLUSHING was supposed to reconstruct multi-turn history, but does it handle json responses properly? If it's a single response, I think the json is fine, but if it's part of a multi-turn flattened into one user prompt, how should we display it?
 
 ✔Cost counter
 sharply cut run costs
