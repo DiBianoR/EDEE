@@ -102,11 +102,22 @@
   - loads a list of problems from a google sheets document, saves the results and metrics onto the sheet in real time
   - user sets request prompt and [optional]model speed, and the scaffolding image, final image, time taken, summary/report, and job history are all filled out on the worksheet.
 
-
-So far this billing cycle:
-- cost calculator, universal_agent_4_of_4_Cost_Calculator.js
-- simplify and move towards ADK-style session.events(history) & session.state
+*May:
+- Cost tracking
+  - cost calculator added to universal_agent
+  - model used is saved into the session events, so model/cost choices are auditable after a run
+- Major rewrite: simplify and move to ADK-style session.events(history) & session.state
+  - phases[] removed as a routing construct; tasks and agents are now flat, globally unique registries, each task naming its agent via assigned_agent
+  - history is a list of events {author, task, parts, actions, timestamp} instead of ad-hoc text
+  - history_scope is now an explicit list of event authors rather than keywords("none"/"phase"/"global"), so each agent's view can be tuned exactly
+  - {variable} templating resolved from session_state, and it throws on a missing variable instead of quietly sending a broken prompt
+  - universal agent collapsed from 4 code nodes to 3
+  - session history now written to the storage bucket as well as Firestore
 - integrate OpenAI image gen for img2img, potentially both cheaper & better
-
-working on now:
-I want my universal agent to be more elegant, simple, readable, general purpose, flexible, and more in-line with current state of the art design.
+- Debugging & observability
+  - per-agent debug toggle; the return envelope can carry the fully templated system prompt, user prompt, and raw response as readable text
+  - debug prompt renders the whole multi-turn context exactly as the model sees it, with image blobs tagged rather than dumped
+  - session_viewer.html and debug_viewer.html - paste in raw session json, get human readable history and prompts
+- Error handling
+  - unrecoverable errors now crash loudly instead of continuing silently in a broken state
+  - global error handler workflow updated to match
