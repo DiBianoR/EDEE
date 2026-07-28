@@ -202,7 +202,12 @@ const flushQueue = () => {
 const forceFlatten = (modelType === "img2img") && resolvedProvider === "openai";
 // Process events sequentially into the queue
 for (const event of eventsToProcess) {
-    const isModel = forceFlatten ? false : (event.author === targetAgentId);
+    // GUARD: the LIVE prompt is always the user turn eliciting this response, even when
+    // prompt_author === targetAgentId (an agent prompting itself). Without this it would
+    // classify as a model turn, and the request would end on role "model" — rejected by
+    // Gemini. Replayed in FUTURE turns the same event correctly surfaces as a model event
+    // and merges with its adjacent reply (self-talk: "I should do X" ... does X).
+    const isModel = forceFlatten ? false : (event !== currentPromptEvent && event.author === targetAgentId);
     // If the role switches (and the queue isn't empty), flush the existing queue
     if (currentIsModel !== null && isModel !== currentIsModel) {
         flushQueue();
