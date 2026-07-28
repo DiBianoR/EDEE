@@ -554,6 +554,7 @@ If the user merely implied an image, or mentioned things that COULD be drawn, an
   },
 
   "extract_math_and_visual": {
+	model_tier: "medium",  // It gets confused about requested vs implied on fast.
     assigned_agent: "problem_validation",
     history_scope: [],  // task-level override: this task starts cold
     instruction: `\
@@ -564,17 +565,21 @@ Does the input contain a specific, solvable math problem?
 Does the input contain descriptions of objects, situations, or geometries?
 Is a visual implied, but exactly what to draw TBD?
 Or does the user request a specific visual?
+
+Analyze the input according to each of those criteria, then decide the following:
+Does the input contain a specific, solvable math problem? An implied math problem is not enough.
+Does the user request a specific visual? An implied visual is not enough.
 `,
     schema: {
       "type": "OBJECT",
       "properties": {
-		"general_reasoning": { "type": "STRING", "description": "Analyze the input according to the criteria given." },
-        "math_reasoning": { "type": "STRING", "description": "Does the input contain a specific, solvable math problem?" },
+		"general_reasoning": { "type": "STRING", "description": "Analyze the input according to each of the 5 criteria given." },
+        "math_reasoning": { "type": "STRING", "description": "Does the input contain a specific, solvable math problem? An implied math problem is not enough." },
         "math_found": { "type": "BOOLEAN", "description": "True if a specific, solvable math problem is present." },
         "math_text": { "type": "STRING", "description": "The VERBATIM math problem text, excluding visual requests or anything else not directly part of the problem. null if no math problem found." },
 		"visual_reasoning": { "type": "STRING", "description": "Does the user request a specific visual? An implied visual is not enough." },
         "image_request_found": { "type": "BOOLEAN", "description": "True if a request for a specific visual is present." },
-        "visual_text": { "type": "STRING", "description": "The VERBATIM visual request, excluding the any part of the math problem or anything else not related to the visual. null if no visual request found." }
+        "visual_text": { "type": "STRING", "description": "The VERBATIM visual request, and only parts of any math problem related to what to depict. null if no visual request found." }
       },
       "required": ["general_reasoning", "math_reasoning", "math_found", "math_text", "visual_reasoning", "image_request_found", "visual_text"]
     }
@@ -634,7 +639,7 @@ Only mark INVALID if it is factually impossible to draw both.`,
     assigned_agent: "image_description",
     instruction: `\
 Original Query: {original_query}
-Math Problem: {problem}
+Math Problem: {math_text}
 
 1. Analyze the problem to understand the core concept.
 2. Determine if a technical diagram (Geometry, Graph, etc.) is needed, or if a simple illustrative image is better. You are part of a illustrative diagramming group - even for technical diagrams, you are generally to illustrate unless there is nothing appropriate to illustrate(for example many graphs are hard to illustrate usefully).
