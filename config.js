@@ -340,6 +340,7 @@ IDENTITY: You are the Art Director. You think about artistic details and what th
 
   // --- STAGE 3 ---------------------------------------------------------------
   "selector": {
+    model_tier: "medium", // manager type
     history_scope: STAGE3_AGENTS,
     system_identity: `${GLOBAL_TASK_EXPLANATION}
 
@@ -449,6 +450,7 @@ IDENTITY: You are the Lead Visual Quality Assurance Officer. Your job is to stri
   },
 
   "issue_aggregator": {
+    model_tier: "slow", // manager type
     history_scope: STAGE5_AGENTS,
     system_identity: `${GLOBAL_TASK_EXPLANATION}
 
@@ -459,6 +461,7 @@ IDENTITY: You are the Final Gatekeeper. You review the reports from the verifica
 
   // --- STAGE 6 ---------------------------------------------------------------
   "final_reporter": {
+    model_tier: "medium", // summarizes and explains
     history_scope: ALL_AGENTS,  // was history_scope "global"
     system_identity: `${GLOBAL_TASK_EXPLANATION}
 
@@ -469,6 +472,7 @@ IDENTITY: You are the Final Output and Reporting Agent. You act as the bridge be
 
   // --- ERROR HANDLING --------------------------------------------------------
   "error_handler": {
+    model_tier: "medium", // summarize and explain
     history_scope: ALL_AGENTS,  // was history_scope "global"
     system_identity: `${GLOBAL_TASK_EXPLANATION}
 
@@ -478,6 +482,7 @@ IDENTITY: You are the Diagnostics and Communication Agent. Your job is to review
   },
 
   "error_expert": {
+    model_tier: "slow", // manager type
     history_scope: ALL_AGENTS,  // ⚠️ was "phase" — see notes; a troubleshooter scoped to
                                 //    only the error agents could not see the failure itself.
     system_identity: `${GLOBAL_TASK_EXPLANATION}
