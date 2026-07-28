@@ -571,7 +571,7 @@ Or does the user request a specific visual?
 		"general_reasoning": { "type": "STRING", "description": "Analyze the input according to the criteria given." },
         "math_reasoning": { "type": "STRING", "description": "Does the input contain a specific, solvable math problem?" },
         "math_found": { "type": "BOOLEAN", "description": "True if a specific, solvable math problem is present." },
-        "math_text": { "type": "STRING", "description": "The VERBATIM math problem text, excluding visual requests or anything else not directly part of the problem. null if no math problem found." }
+        "math_text": { "type": "STRING", "description": "The VERBATIM math problem text, excluding visual requests or anything else not directly part of the problem. null if no math problem found." },
 		"visual_reasoning": { "type": "STRING", "description": "Does the user request a specific visual? An implied visual is not enough." },
         "image_request_found": { "type": "BOOLEAN", "description": "True if a request for a specific visual is present." },
         "visual_text": { "type": "STRING", "description": "The VERBATIM visual request, excluding the any part of the math problem or anything else not related to the visual. null if no visual request found." }
