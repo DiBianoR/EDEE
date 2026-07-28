@@ -2,6 +2,8 @@
 
 🔜As a manager type, error_expert should get a smarter model. Look for other manager types as well and see that they are at least medium.
 
+go through and limit scope of all agents, put managers anywhere a lot of data needs to be synthesized, or jobs need to be re-planned after errors.
+
 🔜Prompt events aren't replayed. Node 1 logs every prompt with author: "system", and scoping is by author, so putting "system" in any scope pulls in every system prompt from the whole run. And we need alternating prompts so either way it's illegal right? I think the desired behavior is only include user prompts that are in scope if the reply is also in scope. And if we have replies next to each other because we decided to scope-out prompts; we need to squash everything into one turn like we are already doing in some cases.
 
 🔜I want a way to label user prompts author as "user" as well as "system"; depending on whether our system or the end user originated them

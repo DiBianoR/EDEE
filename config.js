@@ -1007,9 +1007,7 @@ Analyze the generated Python Code.
 CHECKS:
 1. Are there syntax errors?
 2. Are forbidden libraries used?
-3. Is plt.axis('off') present?
-4. Are variables defined before use?
-5. Will the aspect ratio in the final image be accurate?`,
+3. Are variables defined before use?`,
     schema: {
       "type": "OBJECT",
       "properties": {
