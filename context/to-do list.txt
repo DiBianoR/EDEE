@@ -1,8 +1,5 @@
 🔜=priority  🛠=WIP  🌗=partway  ✔=Done
 
-🔜As a manager type, error_expert should get a smarter model. Look for other manager types as well and see that they are at least medium.
-
-go through and limit scope of all agents, put managers anywhere a lot of data needs to be synthesized, or jobs need to be re-planned after errors.
 
 🔜Prompt events aren't replayed. Node 1 logs every prompt with author: "system", and scoping is by author, so putting "system" in any scope pulls in every system prompt from the whole run. And we need alternating prompts so either way it's illegal right? I think the desired behavior is only include user prompts that are in scope if the reply is also in scope. And if we have replies next to each other because we decided to scope-out prompts; we need to squash everything into one turn like we are already doing in some cases.
 
@@ -18,6 +15,11 @@ sharply cut run costs
     🛠ADK-style session.events(history), session.state?
   🔜ChatGPT for image gen
   see if we can deny any loops without losses
+
+work on managerial agents
+  ✔As a manager type, error_expert should get a smarter model. Look for other manager types as well and see that they are at least medium.
+  go through and limit scope of all agents, put managers anywhere a lot of data needs to be synthesized, or jobs need to be re-planned after errors.
+  examine the workflow around each manager & apply DIRECTIVE_MANAGER if it makes sense
 
 chance to run without error 70%->90%
   good-enough result still beats a crash; cutting edge agents just give an apology too
