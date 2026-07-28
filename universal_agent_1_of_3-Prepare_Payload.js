@@ -169,6 +169,13 @@ const flushQueue = () => {
     // Process the queue items into standard Gemini parts
     let labeledAnyText = false;
     queue.forEach((event) => {
+        // The LIVE self-prompt stays unlabeled: the agent doesn't reliably know its own
+        // registry name, so "[<own id>] said:" would read as a third party's words. This
+        // forfeits the label-as-boundary for this one event, which is acceptable only
+        // because it is always the FINAL event of the request — nothing follows it to
+        // need delimiting. Replayed copies in later turns are unaffected (they surface
+        // as model turns, which are never labeled anyway).
+        const suppressLabel = event === currentPromptEvent && event.author === targetAgentId;
         let labeledFirstTextOfEvent = false;
         event.parts.forEach((rawPart) => {
             // Swap sanitized image placeholders for text BEFORE the text/non-text split,
@@ -177,7 +184,7 @@ const flushQueue = () => {
             if (part.text !== undefined) {
                 let text = part.text;
                 // Apply the label to the FIRST text block of the event, if required
-                if (applyLabels && !labeledFirstTextOfEvent) {
+                if (applyLabels && !suppressLabel && !labeledFirstTextOfEvent) {
                     // ADK-style bracketed attribution. No "For context:" opener: with all
                     // events squashed into one content, it could be read as applying to the
                     // final (live) instruction too, and we have no unambiguous delimiter.
