@@ -536,7 +536,7 @@ If there is only a request for a specific diagram, but no related math problem, 
 User Input: {original_query}
 
 Locate and extract the request for a specific diagram/image from the input, if present.
-1. Does the user request a specific image?
+1. Does the user request a specific visual?
 2. If YES: Extract description VERBATIM.
 3. If NO: Return null.
 If the user asked for something specific, the answer is YES.
@@ -546,10 +546,37 @@ If the user merely implied an image, or mentioned things that COULD be drawn, an
       "type": "OBJECT",
       "properties": {
         "visual_reasoning": { "type": "STRING", "description": "Analyze the input. Does the user describe how the image should look, or request a specific image?" },
-        "image_request": { "type": "BOOLEAN", "description": "True if visual instructions are present requesting a specific illustration." },
+        "image_request_found": { "type": "BOOLEAN", "description": "True if visual instructions are present requesting a specific illustration." },
         "visual_text": { "type": "STRING", "description": "The verbatim visual description, or null if none found." }
       },
       "required": ["visual_reasoning", "image_request", "visual_text"]
+    }
+  },
+
+  "extract_math_and_visual": {
+    assigned_agent: "problem_validation",
+    history_scope: [],  // task-level override: this task starts cold
+    instruction: `\
+User Input: \`\`\`{original_query}\`\`\`
+
+Does the input contain mathematical ideas?
+Does the input contain a specific, solvable math problem?
+Does the input contain descriptions of objects, situations, or geometries?
+Is a visual implied, but exactly what to draw TBD?
+Or does the user request a specific visual?
+`,
+    schema: {
+      "type": "OBJECT",
+      "properties": {
+		"general_reasoning": { "type": "STRING", "description": "Analyze the input according to the criteria given." },
+        "math_reasoning": { "type": "STRING", "description": "Does the input contain a specific, solvable math problem?" },
+        "math_found": { "type": "BOOLEAN", "description": "True if a specific, solvable math problem is present." },
+        "math_text": { "type": "STRING", "description": "The VERBATIM math problem text, excluding visual requests or anything else not directly part of the problem. null if no math problem found." }
+		"visual_reasoning": { "type": "STRING", "description": "Does the user request a specific visual? An implied visual is not enough." },
+        "image_request_found": { "type": "BOOLEAN", "description": "True if a request for a specific visual is present." },
+        "visual_text": { "type": "STRING", "description": "The VERBATIM visual request, excluding the any part of the math problem or anything else not related to the visual. null if no visual request found." }
+      },
+      "required": ["general_reasoning", "math_reasoning", "math_found", "math_text", "visual_reasoning", "image_request_found", "visual_text"]
     }
   },
 
