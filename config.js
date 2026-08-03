@@ -91,10 +91,27 @@ const modelRegistry = {
     }
   },
   "openai": {
+    // All three tiers run gpt-image-1.5 and differentiate on two knobs instead of on model
+    // name, because instruction-following (the thing our artist task actually stresses) lives
+    // in the model, while the cost spread lives in `quality`:
+    //   quality        → output latent budget, i.e. rendering detail. Square-image output
+    //                    tokens are 272 / 1,056 / 4,160 for low / medium / high — a ~15x cost
+    //                    swing on one model. OpenAI's default is "auto" (the model picks),
+    //                    which is why this is pinned explicitly: unpinned, the same task can
+    //                    bill ~$0.009 or ~$0.133 run to run.
+    //   input_fidelity → how finely the scaffolding is encoded into the conditioning context,
+    //                    NOT how strictly the model obeys it. "low" encodes the input at a
+    //                    ~512px-equivalent summary; "high" appends a fixed extra block of
+    //                    input tokens (4,160 square / 6,240 non-square, ~$0.033 at $8/1M) that
+    //                    re-encodes the same image at near-full detail. Coarse structure
+    //                    (layout, shapes, counts) survives "low" fine; small exact detail —
+    //                    our dimension labels — is what degrades, and the failure mode is a
+    //                    confidently misread number, not a visibly blurry one. Hence "high"
+    //                    everywhere except the cheapest tier.
     "img2img": {
-      "slow":   { url: "https://api.openai.com/v1/images/edits", model: "gpt-image-1.5" },
-      "medium": { url: "https://api.openai.com/v1/images/edits", model: "gpt-image-1-mini" },
-      "fast":   { url: "https://api.openai.com/v1/images/edits", model: "gpt-image-1-mini" }
+      "slow":   { url: "https://api.openai.com/v1/images/edits", model: "gpt-image-1.5", quality: "high",   input_fidelity: "high" },
+      "medium": { url: "https://api.openai.com/v1/images/edits", model: "gpt-image-1.5", quality: "medium", input_fidelity: "high" },
+      "fast":   { url: "https://api.openai.com/v1/images/edits", model: "gpt-image-1.5", quality: "low",    input_fidelity: "low"  }
     }
   }
 };

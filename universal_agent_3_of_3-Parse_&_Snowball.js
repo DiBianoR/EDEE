@@ -391,17 +391,27 @@ const cost_registry = {
   },
   // --- OpenAI image models (keyed by MODEL NAME, not URL: all tiers share
   //     /v1/images/edits; lookup falls back to requestBody.model below). Rates
-  //     are $/1M tokens split by modality, matching the usage.*_tokens_details shape. ---
+  //     are $/1M tokens split by modality, matching the usage.*_tokens_details shape.
+  //     Verified against the official model pricing pages 2026-08-03.
+  //
+  //     NOTE: these are RATES, not per-image prices — the per-image cost is driven by the
+  //     `quality` tier set in the config registry, which decides how many output tokens get
+  //     spent (272 / 1,056 / 4,160 for a square image at low / medium / high). On top of that,
+  //     input_fidelity="high" adds a fixed 4,160-token INPUT block per square image (6,240
+  //     non-square), i.e. ~$0.033/call on 1.5. Both land in usage.*_tokens_details, so the
+  //     math below already captures them; they just aren't visible in the rate table. ---
   "gpt-image-1.5": {
     input_text: 5.00,
     input_image: 8.00,
     output_text: 10.00,
     output_image: 32.00
   },
+  // Not currently routed to (all three OpenAI tiers run 1.5 and vary `quality`), kept so the
+  // lookup still prices correctly if a tier is pointed back at mini. Mini is image-output only
+  // — no text output rate is published, hence no output_text key.
   "gpt-image-1-mini": {
     input_text: 2.00,
-    input_image: 2.50,   // ⚠️ verify mini rates against the live pricing page before relying on them
-    output_text: 8.00,
+    input_image: 2.50,
     output_image: 8.00
   }
 };

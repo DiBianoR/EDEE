@@ -316,13 +316,18 @@ if (requestedTier === "no_model") {
 
 // === 🌐 DYNAMIC URL RESOLUTION (provider → type → tier) ===
     let model_name = null;  // OpenAI carries the model in the request BODY; the URL is shared across tiers
+    let model_quality = null;         // OpenAI `quality`: low|medium|high|auto (config-driven, see registry)
+    let model_input_fidelity = null;  // OpenAI `input_fidelity`: low|high
     try {
         const registryEntry = config.model_registry[resolvedProvider][modelType][requestedTier];
         if (!registryEntry) throw new Error("URL resolved to undefined.");
-        // Registry entries: bare URL string (Gemini) OR { url, model } (OpenAI, where every
-        // tier hits the same endpoint and the tier selects the model).
+        // Registry entries: bare URL string (Gemini) OR { url, model, quality, input_fidelity }
+        // (OpenAI, where every tier hits the same endpoint and the tier is expressed entirely
+        // through the body params).
         model_url = typeof registryEntry === "object" ? registryEntry.url : registryEntry;
         model_name = typeof registryEntry === "object" ? (registryEntry.model || null) : null;
+        model_quality = typeof registryEntry === "object" ? (registryEntry.quality || null) : null;
+        model_input_fidelity = typeof registryEntry === "object" ? (registryEntry.input_fidelity || null) : null;
         if (!model_url) throw new Error("URL resolved to undefined.");
     } catch (e) {
         throw new Error(`ROUTING ERROR: Failed to resolve model URL. Provider: '${resolvedProvider}', Type: '${modelType}', Tier: '${requestedTier}'.`);
@@ -355,13 +360,19 @@ if (requestedTier === "no_model") {
             ...(model_name ? { model: model_name } : {}),  // Node 3's cost lookup reads requestBody.model
             prompt: flatPrompt,
             ...(inputImages.length ? { images: inputImages } : {}),
+            // Pinned per tier in the registry. Unset, OpenAI defaults to "auto" and picks the
+            // output token budget itself — a ~15x per-image cost swing we'd have no control
+            // over. Valid on /images/generations too, so the no-input reroute below is safe.
+            ...(model_quality ? { quality: model_quality } : {}),
             size: "auto",         // scaffoldings are square today; revisit if aspect drift shows in QA
             output_format: "png"
         };
-        // input_fidelity=high anchors the scaffolding geometry, but the param is unsupported
-        // on gpt-image-1-mini (400s) and meaningless without an input image.
-        if (inputImages.length && model_name !== "gpt-image-1-mini") {
-            requestBody.input_fidelity = "high";
+        // input_fidelity controls how finely the scaffolding is encoded (see the registry note);
+        // "high" adds a fixed ~4,160-token input block for a square image. Config-driven per
+        // tier, but unsupported on gpt-image-1-mini (400s) and meaningless without an input
+        // image, so both cases fall through to the API default.
+        if (inputImages.length && model_input_fidelity && model_name !== "gpt-image-1-mini") {
+            requestBody.input_fidelity = model_input_fidelity;
         }
         // /images/edits REQUIRES at least one input image. The DIRECT_IMAGE_GEN path arrives
         // with none, so reroute to the text-to-image endpoint (same body minus `images`,
