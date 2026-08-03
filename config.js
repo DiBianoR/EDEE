@@ -625,7 +625,7 @@ Analyze for conflict.
 Check if the User's Visual Request contradicts the Math Problem (e.g., asking for a triangle when the problem is about a square).
 
 If the visual request is vague or stylistic, that is VALID.
-Only mark INVALID if it is factually impossible to draw both.`,
+Only mark INVALID if the requested diagram conflicts factually with the math problem.`,
     schema: {
       "type": "OBJECT",
       "properties": {
