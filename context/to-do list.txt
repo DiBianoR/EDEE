@@ -36,6 +36,8 @@ User Feedback
 🛠Empirical results - Would like 100 sample images of each sample problem, cost permitting. 10 of each is more realistic at current pricing.
   ✔Batch processing
 
+Field test and tune: propose_diagram, 
+
 🌗Add capabilities universal agent
   ✔Route workflow(decide which branch to take)
   ✔Close workflow(return success/failure and an explanation)

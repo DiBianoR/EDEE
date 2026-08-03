@@ -231,6 +231,7 @@ IDENTITY: You are a problem validation agent. Your job is to analyze the raw inc
   },
 
   "image_description": {
+	model_tier: "medium", // planner type
     history_scope: [],  // was history_scope "none"
     system_identity: `${GLOBAL_TASK_EXPLANATION}
 
@@ -620,8 +621,7 @@ Only mark INVALID if it is factually impossible to draw both.`,
     model_tier: "no_model",
     instruction: "Format the payload for the 'math_only' branch.",
     // ⚠️ CHANGED: the old result also set description: "${description}", but on this branch
-    // `description` does not exist yet — propose_diagram produces it immediately after.
-    // Referencing it here would throw a TEMPLATE ERROR in Node 1.
+    // propose_diagram already added it to session_state in the previous step
     result: { problem: "{math_text}" }
   },
 
