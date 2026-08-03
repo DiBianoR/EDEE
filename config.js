@@ -263,7 +263,7 @@ For example, a simple graph will have no artistic details step, and a stock illu
   },
 
   "dimension_expert": {
-    history_scope: STAGE2_AGENTS,
+    history_scope: [],  // "none"
     system_identity: `\
 ${GLOBAL_TASK_EXPLANATION}
 
@@ -273,7 +273,7 @@ IDENTITY: You are the Dimension Estimator. You ensure objects have realistic siz
   },
 
   "layout_expert": {
-    history_scope: STAGE2_AGENTS,
+    history_scope: [],  // "none"
     system_identity: `\
 ${GLOBAL_TASK_EXPLANATION}
 
@@ -283,7 +283,7 @@ IDENTITY: You are the Composition Planner. You manage space, composition, and la
   },
 
   "visual_director": {
-    history_scope: STAGE2_AGENTS,
+    history_scope: [],  // "none"
     system_identity: `\
 ${GLOBAL_TASK_EXPLANATION}
 
@@ -293,7 +293,7 @@ IDENTITY: You are the Visual Director. You control the camera and framing.`
   },
 
   "markup_specialist": {
-    history_scope: STAGE2_AGENTS,
+    history_scope: [],  // "none"
     system_identity: `\
 ${GLOBAL_TASK_EXPLANATION}
 
@@ -303,7 +303,7 @@ IDENTITY: You are the Markup Specialist. You handle labels and indicators.`
   },
 
   "educator": {
-    history_scope: STAGE2_AGENTS,
+    history_scope: [],  // "none"
     system_identity: `\
 ${GLOBAL_TASK_EXPLANATION}
 
@@ -665,7 +665,7 @@ Only mark INVALID if the requested diagram conflicts factually with the math pro
   "propose_diagram": {
     assigned_agent: "image_description",
     instruction: `\
-Original Query: {original_query}
+Original Query: \`\`\`{original_query}\`\`\`
 Math Problem: {math_text}
 
 1. Analyze the problem to understand the core concept.
@@ -686,7 +686,7 @@ You don't have to define dimensions, compositional details, specific coordinates
   "review_request": {
     assigned_agent: "image_detail_planner",
     instruction: `\
-Original Query: {original_query}
+Original Query: \`\`\`{original_query}\`\`\`
 Diagram Request: {description}
 
 Look at the Original Query and the latest Diagram Request. Decide whether your image generation should cover technical details, artistic details, or both.`,
@@ -704,7 +704,7 @@ Look at the Original Query and the latest Diagram Request. Decide whether your i
   "situational_planning": {
     assigned_agent: "image_detail_planner",
     instruction: `\
-Original Query: {original_query}
+Original Query: \`\`\`{original_query}\`\`\`
 Diagram Request: {description}
 
 Determine if we need to do any case-specific planning:
@@ -729,7 +729,8 @@ Determine if we need to do any case-specific planning:
   "estimate_dimensions": {
     assigned_agent: "dimension_expert",
     instruction: `\
-Original Query: {original_query}
+Original Query: \`\`\`{original_query}\`\`\`
+
 Diagram Request: {description}
 
 Check if the description has specific dimensions.
@@ -748,7 +749,7 @@ Check if the description has specific dimensions.
   "plan_composition": {
     assigned_agent: "layout_expert",
     instruction: `\
-Original Query: {original_query}
+Original Query: \`\`\`{original_query}\`\`\`
 Diagram Request: {description}
 
 Plan the layout.
@@ -768,7 +769,7 @@ Plan the layout.
   "plan_viewpoint": {
     assigned_agent: "visual_director",
     instruction: `\
-Original Query: {original_query}
+Original Query: \`\`\`{original_query}\`\`\`
 Diagram Request: {description}
 
 Determine the best viewing angle (e.g., side-view, cross-section, top-down, isometric, whatever) and ensure significant features are visible. That said, don't try to render a 3d/rotated illustration of a fundamentally 2d problem.`,
@@ -785,7 +786,7 @@ Determine the best viewing angle (e.g., side-view, cross-section, top-down, isom
   "plan_markings": {
     assigned_agent: "markup_specialist",
     instruction: `\
-Original Query: {original_query}
+Original Query: \`\`\`{original_query}\`\`\`
 Diagram Request: {description}
 
 Determine necessary mathematical markups: labels, measuring lines, angle arcs, or variables (x, y).
@@ -804,7 +805,7 @@ Assume the student can see both the diagram and the original problem. Does it ac
   "enhance_clarity": {
     assigned_agent: "educator",
     instruction: `\
-Original Query: {original_query}
+Original Query: \`\`\`{original_query}\`\`\`
 Diagram Request: {description}
 
 Optimize for explanation.
@@ -823,7 +824,7 @@ A good image should help illustrate & clarify the problem, but don't do the stud
   "plan_3d": {
     assigned_agent: "3d_specialist",
     instruction: `\
-Original Query: {original_query}
+Original Query: \`\`\`{original_query}\`\`\`
 Diagram Request: {description}
 
 Describe relative depths, camera angles, and key features that need to be visible to viewer.`,
@@ -840,7 +841,7 @@ Describe relative depths, camera angles, and key features that need to be visibl
   "plan_graph": {
     assigned_agent: "data_viz_expert",
     instruction: `\
-Original Query: {original_query}
+Original Query: \`\`\`{original_query}\`\`\`
 Diagram Request: {description}
 
 Define the graph type (bar, line, scatter). Set axis labels, ranges, and data point styles. Choose high-contrast colors.`,
@@ -857,7 +858,7 @@ Define the graph type (bar, line, scatter). Set axis labels, ranges, and data po
   "plan_object_arrangement": {
     assigned_agent: "arrangement_planner",
     instruction: `\
-Original Query: {original_query}
+Original Query: \`\`\`{original_query}\`\`\`
 Diagram Request: {description}
 
 1. Specify the number and type of objects.
@@ -876,7 +877,7 @@ Diagram Request: {description}
   "artistic_planning": {
     assigned_agent: "artistic_planner",
     instruction: `\
-Original Query: {original_query}
+Original Query: \`\`\`{original_query}\`\`\`
 Diagram Request: {description}
 
 Remember, the illustration is going to be generated in 2 passes, a geometric pass done via python followed by an artistic pass done via image gen. And your goal is a high quality illustration or illustrative diagram suitable for use in math textbooks. Plan details related the final artistic, aesthetically pleasing pass. If all the planning up until now has been about the geometric scaffolding and not the final result, fill in those details now. Any objects mentioned in the word problem that need to be drawn, anything not directly mentioned that should be drawn. We will be using state-of-the-art image gen, so we don't need to limit ourselves to what can be drawn with python for artistic planning. Any style, subject, or amount of detail is possible, at the proficiency of a master artist. You should try to make good use of this. It needs to be optimized for the requested task, but just don't consider artistic talent a limiting factor. In a later stage a senior art director will get another pass at this, so you don't need to describe every detail or design an image prompt. But decide what should be in the image in addition or superimposed on the geometric details, and roughly how it should be presented.
@@ -895,7 +896,7 @@ If the final artistic image is already planned, make corrections if necessary in
   "merge_plans": {
     assigned_agent: "image_detail_planner",
     instruction: `\
-Original Query: {original_query}
+Original Query: \`\`\`{original_query}\`\`\`
 Diagram Request: {description}
 
 SYNTHESIS TASK:
@@ -919,7 +920,7 @@ Remember, your job is to create high quality illustrative diagrams for word prob
   "review_description": {
     assigned_agent: "image_detail_planner",
     instruction: `\
-Original Query: {original_query}
+Original Query: \`\`\`{original_query}\`\`\`
 Diagram Request: {latest_description}
 
 CRITICAL REVIEW:
@@ -949,7 +950,7 @@ DECISION:
   "choose_path": {
     assigned_agent: "selector",
     instruction: `\
-Original Query: {original_query}
+Original Query: \`\`\`{original_query}\`\`\`
 Diagram Request: {latest_description}
 
 Analyze the 'Diagram Request'. Determine the generation strategy.
@@ -990,7 +991,7 @@ OPTIONS:
   "design_scaffolding": {
     assigned_agent: "scaffolding_designer",
     instruction: `\
-Original Query: {original_query}
+Original Query: \`\`\`{original_query}\`\`\`
 Diagram Request: {latest_description}
 
 Analyze the 'Diagram Request'. Strip away all the artistic flair, textures, and complex subjects, and describe ONLY the geometric shapes, lines, labels, and spatial boundaries that Python needs to plot. Keep things simple.
@@ -1017,7 +1018,7 @@ DIRECTIVES:
   "plan_logic": {
     assigned_agent: "architect",
     instruction: `\
-Original Query: {original_query}
+Original Query: \`\`\`{original_query}\`\`\`
 Diagram Request: {latest_description}
 
 Analyze the 'Original Query', 'Diagram Request', and especially the 'scaffolding_blueprint' from history. Plan the Python workflow.
@@ -1088,7 +1089,7 @@ CHECKS:
   "logic_check": {
     assigned_agent: "reviewer",
     instruction: `\
-Original Query: {original_query}
+Original Query: \`\`\`{original_query}\`\`\`
 Diagram Request: {latest_description}
 
 Compare the code against the 'Diagram Request' and 'Execution Plan'.
@@ -1110,7 +1111,7 @@ CHECKS:
   "verify_adherence": {
     assigned_agent: "inspector",
     instruction: `\
-Original Query: {original_query}
+Original Query: \`\`\`{original_query}\`\`\`
 Diagram Request: {latest_description}
 
 Compare the rendered image against the 'Diagram Request'.
@@ -1193,7 +1194,7 @@ CHECKS:
   "plan_finishing": {
     assigned_agent: "image_planner",
     instruction: `\
-Original Query: {original_query}
+Original Query: \`\`\`{original_query}\`\`\`
 Basic illustration request: {description}
 Underlying Math Problem: {problem}
 Base Diagram Requested & Drawn: {scaffolding_blueprint}
@@ -1231,7 +1232,7 @@ To summarize, you need everything that makes a well written image prompt, plus y
   "render_final": {
     assigned_agent: "artist",
     instruction: `\
-Original Query: {original_query}
+Original Query: \`\`\`{original_query}\`\`\`
 Basic illustration request: {description}
 Underlying Math Problem: {problem}
 Base Diagram Requested & Drawn: {scaffolding_blueprint}
@@ -1304,7 +1305,7 @@ Ensure the image is child-safe and developmentally appropriate for K-12 students
     assigned_agent: "image_verifier",
     model_tier: "slow", // use better model for technical question
     instruction: `\
-Original Query: {original_query}
+Original Query: \`\`\`{original_query}\`\`\`
 Math Problem: {problem}
 Diagram Request: {latest_description}
 
