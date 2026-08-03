@@ -106,7 +106,7 @@ You are part of the [Educational Diagram Engineering Engine] EDEE. Your job is t
 
 CORE DIRECTIVES:
 1. Precision: Diagrams must be technically correct in all respects, and not contain extraneous items, artifacts, or errors. They should have accurate dimensions & aspect ratio.
-2. Clarity: Output diagrams must be elegant, intuitive, clean, high-contrast, readable, and free of clutter. Do not try to draw 2d concepts on 3d/isometric images.
+2. Clarity: Output diagrams must be elegant, intuitive, clean, high-contrast, readable, and free of clutter. Do not try to draw 2d concepts as 3d/isometric images.
 3. Utility: Output diagrams must be educational and functional for their intended purpose. They shouldn't give away the answer to the problem, and they should give useful insight into the problem and/or relevant underlying concepts.
 4. Aesthetics: diagrams must be colorful, easy to look at, and in a style suitable to the task. Stick to artistic/illustration style rather than realism.
 5. Safety/Liability: Diagrams shouldn't contain anything that will obviously be deemed unsuitable for children. No need to nitpick, but use common sense.`;
@@ -222,8 +222,10 @@ const agents = {
 
   // --- STAGE 1 ---------------------------------------------------------------
   "problem_validation": {
-    history_scope: STAGE1_AGENTS,
-    system_identity: `${GLOBAL_TASK_EXPLANATION}
+	model_tier: "medium",  // It gets confused about requested vs implied on fast.
+    history_scope: [],  // "none"
+    system_identity: `\
+${GLOBAL_TASK_EXPLANATION}
 
 ${STAGE_1_CONTEXT}
 
@@ -232,8 +234,9 @@ IDENTITY: You are a problem validation agent. Your job is to analyze the raw inc
 
   "image_description": {
 	model_tier: "medium", // planner type
-    history_scope: [],  // was history_scope "none"
-    system_identity: `${GLOBAL_TASK_EXPLANATION}
+    history_scope: [],  // "none"
+    system_identity: `\
+${GLOBAL_TASK_EXPLANATION}
 
 ${STAGE_1_CONTEXT}
 
@@ -242,10 +245,11 @@ IDENTITY: You are an expert math educator and image planning agent. Your job is 
 
   // --- STAGE 2 ---------------------------------------------------------------
   "image_detail_planner": {
-    model_tier: "slow",
+    model_tier: "slow",  // manager type
     model_type: "text",
     history_scope: STAGE2_AGENTS,
-    system_identity: `${GLOBAL_TASK_EXPLANATION}
+    system_identity: `\
+${GLOBAL_TASK_EXPLANATION}
 
 ${STAGE_2_CONTEXT}
 
@@ -260,7 +264,8 @@ For example, a simple graph will have no artistic details step, and a stock illu
 
   "dimension_expert": {
     history_scope: STAGE2_AGENTS,
-    system_identity: `${GLOBAL_TASK_EXPLANATION}
+    system_identity: `\
+${GLOBAL_TASK_EXPLANATION}
 
 ${STAGE_2_CONTEXT}
 
@@ -269,7 +274,8 @@ IDENTITY: You are the Dimension Estimator. You ensure objects have realistic siz
 
   "layout_expert": {
     history_scope: STAGE2_AGENTS,
-    system_identity: `${GLOBAL_TASK_EXPLANATION}
+    system_identity: `\
+${GLOBAL_TASK_EXPLANATION}
 
 ${STAGE_2_CONTEXT}
 
@@ -278,7 +284,8 @@ IDENTITY: You are the Composition Planner. You manage space, composition, and la
 
   "visual_director": {
     history_scope: STAGE2_AGENTS,
-    system_identity: `${GLOBAL_TASK_EXPLANATION}
+    system_identity: `\
+${GLOBAL_TASK_EXPLANATION}
 
 ${STAGE_2_CONTEXT}
 
@@ -287,7 +294,8 @@ IDENTITY: You are the Visual Director. You control the camera and framing.`
 
   "markup_specialist": {
     history_scope: STAGE2_AGENTS,
-    system_identity: `${GLOBAL_TASK_EXPLANATION}
+    system_identity: `\
+${GLOBAL_TASK_EXPLANATION}
 
 ${STAGE_2_CONTEXT}
 
@@ -296,7 +304,8 @@ IDENTITY: You are the Markup Specialist. You handle labels and indicators.`
 
   "educator": {
     history_scope: STAGE2_AGENTS,
-    system_identity: `${GLOBAL_TASK_EXPLANATION}
+    system_identity: `\
+${GLOBAL_TASK_EXPLANATION}
 
 ${STAGE_2_CONTEXT}
 
@@ -305,7 +314,8 @@ IDENTITY: You are the Educational Enhancer. You optimize for student understandi
 
   "3d_specialist": {
     history_scope: STAGE2_AGENTS,
-    system_identity: `${GLOBAL_TASK_EXPLANATION}
+    system_identity: `\
+${GLOBAL_TASK_EXPLANATION}
 
 ${STAGE_2_CONTEXT}
 
@@ -314,7 +324,8 @@ IDENTITY: You are the 3D Modeling Specialist.`
 
   "data_viz_expert": {
     history_scope: STAGE2_AGENTS,
-    system_identity: `${GLOBAL_TASK_EXPLANATION}
+    system_identity: `\
+${GLOBAL_TASK_EXPLANATION}
 
 ${STAGE_2_CONTEXT}
 
@@ -323,7 +334,8 @@ IDENTITY: You are the Data Visualization Expert.`
 
   "arrangement_planner": {
     history_scope: STAGE2_AGENTS,
-    system_identity: `${GLOBAL_TASK_EXPLANATION}
+    system_identity: `\
+${GLOBAL_TASK_EXPLANATION}
 
 ${STAGE_2_CONTEXT}
 
@@ -332,7 +344,8 @@ IDENTITY: You are the Geometric Abstraction Artist.`
 
   "artistic_planner": {
     history_scope: STAGE2_AGENTS,
-    system_identity: `${GLOBAL_TASK_EXPLANATION}
+    system_identity: `\
+${GLOBAL_TASK_EXPLANATION}
 
 ${STAGE_2_CONTEXT}
 
@@ -343,7 +356,8 @@ IDENTITY: You are the Art Director. You think about artistic details and what th
   "selector": {
     model_tier: "medium", // manager type
     history_scope: STAGE3_AGENTS,
-    system_identity: `${GLOBAL_TASK_EXPLANATION}
+    system_identity: `\
+${GLOBAL_TASK_EXPLANATION}
 
 ${STAGE_3_CONTEXT}
 
@@ -352,7 +366,8 @@ IDENTITY: You are the Stage 3 Workflow Orchestrator. You decide the best technic
 
   "scaffolding_designer": {
     history_scope: STAGE3_AGENTS,
-    system_identity: `${GLOBAL_TASK_EXPLANATION}
+    system_identity: `\
+${GLOBAL_TASK_EXPLANATION}
 
 ${STAGE_3_CONTEXT}
 
@@ -366,7 +381,8 @@ Your task is to design that first pass: the scaffolding.`
   "architect": {
     model_tier: "medium", // planner type
     history_scope: STAGE3_AGENTS,
-    system_identity: `${GLOBAL_TASK_EXPLANATION}
+    system_identity: `\
+${GLOBAL_TASK_EXPLANATION}
 
 ${STAGE_3_CONTEXT}
 
@@ -389,7 +405,8 @@ A professional artist will draw an image over top of your composition; you just 
     model_tier: "slow",  // coder type
     model_type: "text", // use more advanced agent to write code
     history_scope: STAGE3_AGENTS,
-    system_identity: `${GLOBAL_TASK_EXPLANATION}
+    system_identity: `\
+${GLOBAL_TASK_EXPLANATION}
 
 ${STAGE_3_CONTEXT}
 
@@ -399,7 +416,8 @@ IDENTITY: You are the Senior Python Developer. You write clean, executable code.
   "reviewer": {
     model_tier: "medium", // reviews code ; give a little extra power
     history_scope: STAGE3_AGENTS,
-    system_identity: `${GLOBAL_TASK_EXPLANATION}
+    system_identity: `\
+${GLOBAL_TASK_EXPLANATION}
 
 ${STAGE_3_CONTEXT}
 
@@ -410,7 +428,8 @@ IDENTITY: You are the Lead Code Reviewer. You check for bugs and logic errors be
     model_tier: "slow",
     model_type: "view_img", // Override model for better vision
     history_scope: STAGE3_AGENTS,
-    system_identity: `${GLOBAL_TASK_EXPLANATION}
+    system_identity: `\
+${GLOBAL_TASK_EXPLANATION}
 
 ${STAGE_3_CONTEXT}
 
@@ -422,7 +441,8 @@ IDENTITY: You are the QA Vision Analyst. You check carefully for visual artifact
     model_tier: "slow",
     model_type: "view_img", // Using advanced model
     history_scope: STAGE4_AGENTS,
-    system_identity: `${GLOBAL_TASK_EXPLANATION}
+    system_identity: `\
+${GLOBAL_TASK_EXPLANATION}
 
 ${STAGE_4_CONTEXT}
 
@@ -433,7 +453,8 @@ IDENTITY: You are the Art Director. You convert technical descriptions into arti
     model_tier: "slow",
     model_type: "img2img", // Using the advanced model
     history_scope: STAGE4_AGENTS,
-    system_identity: `${GLOBAL_TASK_EXPLANATION}
+    system_identity: `\
+${GLOBAL_TASK_EXPLANATION}
 
 ${STAGE_4_CONTEXT}
 
@@ -445,7 +466,8 @@ IDENTITY: You are the Illustrator Engine.`
     model_tier: "medium",
     model_type: "view_img", // Override for high-fidelity vision checking
     history_scope: STAGE5_AGENTS,
-    system_identity: `${GLOBAL_TASK_EXPLANATION}
+    system_identity: `\
+${GLOBAL_TASK_EXPLANATION}
 
 ${STAGE_5_CONTEXT}
 
@@ -455,7 +477,8 @@ IDENTITY: You are the Lead Visual Quality Assurance Officer. Your job is to stri
   "issue_aggregator": {
     model_tier: "slow", // manager type
     history_scope: STAGE5_AGENTS,
-    system_identity: `${GLOBAL_TASK_EXPLANATION}
+    system_identity: `\
+${GLOBAL_TASK_EXPLANATION}
 
 ${STAGE_5_CONTEXT}
 
@@ -466,7 +489,8 @@ IDENTITY: You are the Final Gatekeeper. You review the reports from the verifica
   "final_reporter": {
     model_tier: "medium", // summarizes and explains
     history_scope: ALL_AGENTS,  // was history_scope "global"
-    system_identity: `${GLOBAL_TASK_EXPLANATION}
+    system_identity: `\
+${GLOBAL_TASK_EXPLANATION}
 
 ${STAGE_6_CONTEXT}
 
@@ -477,7 +501,8 @@ IDENTITY: You are the Final Output and Reporting Agent. You act as the bridge be
   "error_handler": {
     model_tier: "medium", // summarize and explain
     history_scope: ALL_AGENTS,  // was history_scope "global"
-    system_identity: `${GLOBAL_TASK_EXPLANATION}
+    system_identity: `\
+${GLOBAL_TASK_EXPLANATION}
 
 ${STAGE_ERROR_CONTEXT}
 
@@ -488,7 +513,8 @@ IDENTITY: You are the Diagnostics and Communication Agent. Your job is to review
     model_tier: "slow", // manager type
     history_scope: ALL_AGENTS,  // ⚠️ was "phase" — see notes; a troubleshooter scoped to
                                 //    only the error agents could not see the failure itself.
-    system_identity: `${GLOBAL_TASK_EXPLANATION}
+    system_identity: `\
+${GLOBAL_TASK_EXPLANATION}
 
 ${STAGE_ERROR_CONTEXT}
 
@@ -555,7 +581,6 @@ If the user merely implied an image, or mentioned things that COULD be drawn, an
   },
 
   "extract_math_and_visual": {
-	model_tier: "medium",  // It gets confused about requested vs implied on fast.
     assigned_agent: "problem_validation",
     history_scope: [],  // task-level override: this task starts cold
     instruction: `\
@@ -589,6 +614,8 @@ Does the user request a specific visual? An implied visual is not enough.
   "check_conflict": {
     assigned_agent: "problem_validation",
     instruction: `\
+User Input: \`\`\`{original_query}\`\`\`
+
 Math Problem: {math_text}
 
 Visual Request: {visual_text}
