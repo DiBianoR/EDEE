@@ -6,6 +6,16 @@ import matplotlib.pyplot as plt
 import io
 from flask import send_file
 
+# --- OUTPUT SHAPE TOGGLE (hardcoded for now; not yet a request/config parameter) ---
+# False: current behavior. Output is ~4:3 — bbox_inches='tight' trims to the AXES BOX (not
+#        to the drawn content), and set_aspect('equal', adjustable='datalim') below pins
+#        that box at matplotlib's default proportions (4.96 x 3.696 in = 1.342), padding
+#        the data limits instead. Shape is therefore constant whatever the scene is.
+# True:  force a 1:1 output by squaring the axes box itself, which is what the tight bbox
+#        actually measures. Data still renders at true 'equal' aspect, so non-square scenes
+#        gain whitespace bands rather than distorting.
+FORCE_SQUARE_CANVAS = False
+
 @functions_framework.http
 def render_plot(request):
     request_json = request.get_json(silent=True)
@@ -56,6 +66,10 @@ def render_plot(request):
             except ValueError:
                 # Failsafe if the axis is completely empty or corrupted
                 pass
+
+            # Square-output toggle (2D only; 3D already gets a cubic box above)
+            if FORCE_SQUARE_CANVAS and not hasattr(ax, 'get_zaxis'):
+                ax.set_box_aspect(1)
         
         # Save the result to the buffer with a transparent background
         plt.savefig(

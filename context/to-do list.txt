@@ -66,6 +66,8 @@ Let managers have more autonomy
   ✔Let them leave warning and error messages for user if there is an issue
   ✔Let them write to a log about issues they noticed with subordinates, for iterative process improvement later.
 
+Matplotlib's default figure 4:3 aspect ratio. -> toggle or have system choose between 4:3 and square images
+
 Agent Improvement/fixes
 New situational planning
   Isolate 3d/2d/isometric early
