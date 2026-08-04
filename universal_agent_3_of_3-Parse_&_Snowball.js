@@ -353,6 +353,48 @@ const cost_registry = {
     grounding_search_per_1k: 14.00,  // A customer-submitted request to Gemini may result in one or more queries to Google Search. You will be charged for each individual search query performed.
     grounding_maps_per_1k: 14.00
   },
+  "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent": {
+    input: 1.50,
+    output_text: 7.50,
+    cache_read: 0.15,
+    cache_storage_hourly: 1.00,
+    grounding_search_per_1k: 14.00,  // A customer-submitted request to Gemini may result in one or more queries to Google Search. You will be charged for each individual search query performed.
+    grounding_maps_per_1k: 14.00
+  },
+  "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent": {
+    input_default: 0.30, // single rate across text / image / video / audio (unlike 3.1 lite, no audio surcharge)
+    input_audio: 0.30,
+    output_text: 2.50,
+    cache_read_default: 0.03,
+    cache_read_audio: 0.03,
+    cache_storage_hourly: 1.00,
+    grounding_search_per_1k: 14.00,
+    grounding_maps_per_1k: 14.00
+  },
+  // --- Gemini image models (img2img tiers slow / medium / fast) ---
+  "https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-image:generateContent": {
+    // Inherits base text/image properties from Gemini 3.1 Pro
+    input: 2.00,
+    output_text: 12.00,
+    output_image: 120.00,   // 1120 tokens ⇒ ~$0.134 per 1K/2K image; 2000 tokens ⇒ ~$0.24 at 4K
+    grounding_search_per_1k: 14.00
+  },
+  "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-image:generateContent": {
+    input: 0.50,
+    output_text: 3.00,
+    output_image: 60.00,    // 1120 tokens ⇒ ~$0.067 per 1K image
+    grounding_search_per_1k: 14.00
+  },
+  "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite-image:generateContent": {
+    input: 0.25,
+    output_text: 1.50,
+    output_image: 30.00     // 1120 tokens ⇒ ~$0.0336 per 1K image
+    // No grounding rates published for this model.
+  },
+
+  // --- Superseded Gemini models: no longer routed to by the config registry, kept so cost
+  //     lookup still works if a tier is pointed back at them. (Scope ends at the OpenAI
+  //     block below, which has its own active/retired split.) ---
   "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent": {
     input: 1.50,
     output_text: 9.00,
@@ -371,44 +413,40 @@ const cost_registry = {
     grounding_search_per_1k: 14.00,
     grounding_maps_per_1k: 14.00
   },
-  "https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-image:generateContent": {
-    // Inherits base text/image properties from Gemini 3.1 Pro
-    input: 2.00,
-    output_text: 12.00,
-    output_image: 120.00,
-    grounding_search_per_1k: 14.00
-  },
-  "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-image:generateContent": {
-    input: 0.50,
-    output_text: 3.00,
-    output_image: 60.00,
-    grounding_search_per_1k: 14.00
-  },
   "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent": {
     input: 0.30,
     output_text: 2.50,   // Matched to base 2.5 Flash text output rate
-    output_image: 30.00
+    output_image: 30.00  // 1290 tokens ⇒ ~$0.039 per 1024x1024 image
   },
   // --- OpenAI image models (keyed by MODEL NAME, not URL: all tiers share
   //     /v1/images/edits; lookup falls back to requestBody.model below). Rates
   //     are $/1M tokens split by modality, matching the usage.*_tokens_details shape.
-  //     Verified against the official model pricing pages 2026-08-03.
+  //     Verified against the official model pricing pages 2026-08-04.
   //
   //     NOTE: these are RATES, not per-image prices — the per-image cost is driven by the
   //     `quality` tier set in the config registry, which decides how many output tokens get
-  //     spent (272 / 1,056 / 4,160 for a square image at low / medium / high). On top of that,
-  //     input_fidelity="high" adds a fixed 4,160-token INPUT block per square image (6,240
-  //     non-square), i.e. ~$0.033/call on 1.5. Both land in usage.*_tokens_details, so the
-  //     math below already captures them; they just aren't visible in the rate table. ---
+  //     spent (per square image, gpt-image-2 ≈ $0.006 / $0.053 / $0.211 at low / medium /
+  //     high; gpt-image-1.5 ≈ $0.009 / $0.034 / $0.133). gpt-image-2 also always encodes
+  //     input images at high fidelity (extra input tokens, no opt-out; on 1.5 the same
+  //     effect is the opt-in input_fidelity="high" block, ~$0.033/call). All of it lands in
+  //     usage.*_tokens_details, so the math below already captures it; it just isn't
+  //     visible in the rate table. ---
+  // Image-output only — text output is unpriced ("-" on the pricing page), hence no
+  // output_text key.
+  "gpt-image-2": {
+    input_text: 5.00,
+    input_image: 8.00,
+    output_image: 30.00
+  },
+  // --- Not currently routed to (all three OpenAI tiers run gpt-image-2 and vary `quality`),
+  //     kept so the lookup still prices correctly if a tier is pointed back at them.
+  //     Mini is image-output only like gpt-image-2; 1.5 does publish a text output rate. ---
   "gpt-image-1.5": {
     input_text: 5.00,
     input_image: 8.00,
     output_text: 10.00,
     output_image: 32.00
   },
-  // Not currently routed to (all three OpenAI tiers run 1.5 and vary `quality`), kept so the
-  // lookup still prices correctly if a tier is pointed back at mini. Mini is image-output only
-  // — no text output rate is published, hence no output_text key.
   "gpt-image-1-mini": {
     input_text: 2.00,
     input_image: 2.50,

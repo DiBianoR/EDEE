@@ -367,11 +367,12 @@ if (requestedTier === "no_model") {
             size: "auto",         // scaffoldings are square today; revisit if aspect drift shows in QA
             output_format: "png"
         };
-        // input_fidelity controls how finely the scaffolding is encoded (see the registry note);
-        // "high" adds a fixed ~4,160-token input block for a square image. Config-driven per
-        // tier, but unsupported on gpt-image-1-mini (400s) and meaningless without an input
-        // image, so both cases fall through to the API default.
-        if (inputImages.length && model_input_fidelity && model_name !== "gpt-image-1-mini") {
+        // input_fidelity controls how finely the scaffolding is encoded (see the registry note).
+        // Config-driven per tier, but only gpt-image-1.5 accepts it: gpt-image-1-mini 400s on
+        // it, and gpt-image-2 rejects it too (always encodes inputs at high fidelity). It's
+        // also meaningless without an input image. All three cases fall through to omitting it.
+        if (inputImages.length && model_input_fidelity &&
+            model_name !== "gpt-image-1-mini" && !String(model_name).startsWith("gpt-image-2")) {
             requestBody.input_fidelity = model_input_fidelity;
         }
         // /images/edits REQUIRES at least one input image. The DIRECT_IMAGE_GEN path arrives
