@@ -272,13 +272,7 @@ ${GLOBAL_TASK_EXPLANATION}
 
 ${STAGE_2_CONTEXT}
 
-IDENTITY: You are the image detail planner. You manage the task of transforming a general image description into an complete, detailed, unambiguous visual description.
-
-Context: The overall system works in two passes. First, we use Python (Matplotlib) to draw a mathematically precise underlying 'skeleton' or 'scaffolding'. Second, we pass that scaffolding to an AI Image Generator to paint the final, beautiful illustration over the top of it.
-
-Your task is to describe that second pass: the final result, including technical details, [basic] artistic details, or both, as warranted. You don't need to figure out things like medium, style or aesthetic, the artist will handle that, but a general description of the scene, including objects not mentioned in the problem, if any.
-
-For example, a simple graph will have no artistic details step, and a stock illustration of a supermarket has no technical measurements, but most of your requests will have both. Even on the graph example, you might decide to a decoration of some kind based on what the word problem is about`
+IDENTITY: You are the image detail planner. You manage the task of transforming a general image description into an complete, detailed, unambiguous visual description.`
   },
 
   "dimension_expert": {
@@ -308,7 +302,9 @@ ${GLOBAL_TASK_EXPLANATION}
 
 ${STAGE_2_CONTEXT}
 
-IDENTITY: You are the Visual Director. You control the camera and framing.`
+IDENTITY: You are the Visual Director. You control the camera and framing.
+- Your job on 3D problems is to ensure the viewpoint actually lets the user see the relevant features
+- Most problems are not 3D problems. In that case your role is less important, but 2D diagrams still have a viewpoint(side/top, etc.).`
   },
 
   "markup_specialist": {
@@ -328,7 +324,7 @@ ${GLOBAL_TASK_EXPLANATION}
 
 ${STAGE_2_CONTEXT}
 
-IDENTITY: You are the Educational Enhancer. You optimize for student understanding.`
+IDENTITY: You are an Educational Planning agent. You optimize for clarity, educational utility, and student understanding.`
   },
 
   "3d_specialist": {
@@ -362,6 +358,7 @@ IDENTITY: You are the Geometric Abstraction Artist.`
   },
 
   "artistic_planner": {
+    model_tier: "medium", // planner type
     history_scope: STAGE2_AGENTS,
     system_identity: `\
 ${GLOBAL_TASK_EXPLANATION}
@@ -706,17 +703,33 @@ You don't have to define dimensions, compositional details, specific coordinates
     assigned_agent: "image_detail_planner",
     instruction: `\
 Original Query: \`\`\`{original_query}\`\`\`
+
 Diagram Request: {description}
 
-Look at the Original Query and the latest Diagram Request. Decide whether your image generation should cover technical details, artistic details, or both.`,
+Look at the Original Query and the latest Diagram Request. Decide whether your image generation should cover technical details, artistic details, or both.
+
+Technical Details - numerical measurements, graphs, charts, geometry, specific numbers of objects, complex text markup or labels - any detail that is concrete and a generative image model might struggle to generate with mathematical precision.
+
+Artistic Details - illustrations, images of everyday objects - anything a simple python script might struggle to draw.
+
+An image model can handle simple text, but if it's multiple labels or specific locations, algorithmic placement is more appropriate.
+
+For example:
+- An image of a hamster running on a wheel would be ARTISTIC only, there are no measurements and AI can generate it reliably
+- a pie chart with some labels would be TECHNICAL only, there's nothing on it that a python script can't draw.
+- An image of 2 dogs, one red, one blue, with the red one riding on a skateboard would be a judgment call, but I'd categorize it as ARTISTIC because most modern models can handle a couple objects and their details, and there are no measurements.
+- An image of 7 dogs would be BOTH, we can't count on a model not to generate 6 or 9.
+- A 6 foot tall man running on a 6 foot long treadmill would be BOTH, AI can't generate precise measurements`,
     schema: {
       "type": "OBJECT",
       "properties": {
-        "reasoning": { "type": "STRING", "description": "Analyze the query and request. Explain why technical precision, artistic illustration, or both are required." },
+        "reasoning_technical": { "type": "STRING", "description": "Was anything requested that a generative image model might struggle to generate?" },
+        "reasoning_artistic": { "type": "STRING", "description": "Was anything requested that would require a generative image model to draw?" },
+        "reasoning_review_request": { "type": "STRING", "description": "Analyze the query and request. Explain why technical precision, artistic illustration, or both are required." },
         "requires_technical": { "type": "BOOLEAN", "description": "True if the image needs precise measurements, graphs, charts, geometry, or exact object counts." },
         "requires_artistic": { "type": "BOOLEAN", "description": "True if the image needs detailed illustrations, real-world objects, or aesthetic decorations." }
       },
-      "required": ["reasoning", "requires_technical", "requires_artistic"]
+      "required": ["reasoning_technical, reasoning_artistic, reasoning_review_request", "requires_technical", "requires_artistic"]
     }
   },
 
@@ -724,6 +737,7 @@ Look at the Original Query and the latest Diagram Request. Decide whether your i
     assigned_agent: "image_detail_planner",
     instruction: `\
 Original Query: \`\`\`{original_query}\`\`\`
+
 Diagram Request: {description}
 
 Determine if we need to do any case-specific planning:
@@ -769,12 +783,13 @@ Check if the description has specific dimensions.
     assigned_agent: "layout_expert",
     instruction: `\
 Original Query: \`\`\`{original_query}\`\`\`
+
 Diagram Request: {description}
 
 Plan the layout.
-1. How objects are arranged in the image.
-2. How objects are arranged relative to each other(e.g., 'V-shape'[for flock], 'a grid', 'a semicircle', 'a random cluster')
-3. Ensure they are visible and distinct, and [usually] non-overlapping.`,
+1. Describe how objects are arranged in the image.
+2. Describe how objects are arranged relative to each other(e.g., 'V-shape'[for flock], 'a grid', 'a semicircle', 'a random cluster')
+3. Multiple objects often should be visible and distinct, non-overlapping, etc. If this is such a situation, mention it.`,
     schema: {
       "type": "OBJECT",
       "properties": {
@@ -789,9 +804,16 @@ Plan the layout.
     assigned_agent: "visual_director",
     instruction: `\
 Original Query: \`\`\`{original_query}\`\`\`
+
 Diagram Request: {description}
 
-Determine the best viewing angle (e.g., side-view, cross-section, top-down, isometric, whatever) and ensure significant features are visible. That said, don't try to render a 3d/rotated illustration of a fundamentally 2d problem.`,
+- Study the problem and determine what features the student must be able to see clearly in able to solve it.
+- Determine the best viewing angle and ensure significant features are visible.
+- For 3D, make sure whatever the user needs to see is not rotated behind an object or occluded.
+- For 2D, you still usually decide side-view, cross-section, top-down, whatever
+- Isometric is tricky, if it is to be mathematically accurate, generally all math must take place along the ground plane, and that ground plane must be rendered in flat 2d, no perspective.
+- Do NOT try to render a 3d/rotated illustration of a fundamentally 2d problem.
+`,
     schema: {
       "type": "OBJECT",
       "properties": {
@@ -806,11 +828,16 @@ Determine the best viewing angle (e.g., side-view, cross-section, top-down, isom
     assigned_agent: "markup_specialist",
     instruction: `\
 Original Query: \`\`\`{original_query}\`\`\`
+
 Diagram Request: {description}
+
+What labels, if any, would this sort of diagram normally have?
+
+The student can see both the original problem and the diagram. Does reading the problem already convey all the information we need without labels? Does it actually warrant labels?
 
 Determine necessary mathematical markups: labels, measuring lines, angle arcs, or variables (x, y).
 Make sure all labels are visible, and accessible to the color-blind.
-Assume the student can see both the diagram and the original problem. Does it actually warrant labels? What labels wou this sort of diagram normally have? Does reading the problem already convey all the information we need without labels?`,
+`,
     schema: {
       "type": "OBJECT",
       "properties": {
@@ -825,11 +852,20 @@ Assume the student can see both the diagram and the original problem. Does it ac
     assigned_agent: "educator",
     instruction: `\
 Original Query: \`\`\`{original_query}\`\`\`
+
 Diagram Request: {description}
 
-Optimize for explanation.
-Should we highlight a specific part? Use specific colors to link concepts? Prioritize intuitive visuals.
-A good image should help illustrate & clarify the problem, but don't do the student's work for them, or give the answer to the problem.`,
+A good image should help illustrate & clarify the problem, but don't do the student's work for them, or give the answer to the problem.
+
+- Plan any additional details we need to make sure the image properly supplements the problem.
+- Anything we need to add or remove?
+- Is there something we should to to improve clarity?
+- Should we highlight a specific part? Use specific colors to link concepts?
+
+Prioritize intuitive visuals.
+
+If everything looks good already, just give it a pass.
+`,
     schema: {
       "type": "OBJECT",
       "properties": {
@@ -844,6 +880,7 @@ A good image should help illustrate & clarify the problem, but don't do the stud
     assigned_agent: "3d_specialist",
     instruction: `\
 Original Query: \`\`\`{original_query}\`\`\`
+
 Diagram Request: {description}
 
 Describe relative depths, camera angles, and key features that need to be visible to viewer.`,
@@ -861,6 +898,7 @@ Describe relative depths, camera angles, and key features that need to be visibl
     assigned_agent: "data_viz_expert",
     instruction: `\
 Original Query: \`\`\`{original_query}\`\`\`
+
 Diagram Request: {description}
 
 Define the graph type (bar, line, scatter). Set axis labels, ranges, and data point styles. Choose high-contrast colors.`,
@@ -878,6 +916,7 @@ Define the graph type (bar, line, scatter). Set axis labels, ranges, and data po
     assigned_agent: "arrangement_planner",
     instruction: `\
 Original Query: \`\`\`{original_query}\`\`\`
+
 Diagram Request: {description}
 
 1. Specify the number and type of objects.
@@ -897,9 +936,10 @@ Diagram Request: {description}
     assigned_agent: "artistic_planner",
     instruction: `\
 Original Query: \`\`\`{original_query}\`\`\`
+
 Diagram Request: {description}
 
-Remember, the illustration is going to be generated in 2 passes, a geometric pass done via python followed by an artistic pass done via image gen. And your goal is a high quality illustration or illustrative diagram suitable for use in math textbooks. Plan details related the final artistic, aesthetically pleasing pass. If all the planning up until now has been about the geometric scaffolding and not the final result, fill in those details now. Any objects mentioned in the word problem that need to be drawn, anything not directly mentioned that should be drawn. We will be using state-of-the-art image gen, so we don't need to limit ourselves to what can be drawn with python for artistic planning. Any style, subject, or amount of detail is possible, at the proficiency of a master artist. You should try to make good use of this. It needs to be optimized for the requested task, but just don't consider artistic talent a limiting factor. In a later stage a senior art director will get another pass at this, so you don't need to describe every detail or design an image prompt. But decide what should be in the image in addition or superimposed on the geometric details, and roughly how it should be presented.
+Your goal is a high quality illustration or illustrative diagram suitable for use in math textbooks. Plan details related the final artistic, aesthetically pleasing pass. Fill in any missing details - any objects mentioned in the word problem that need to be drawn, anything not directly mentioned that still should be drawn. We will be using state-of-the-art image gen, so we don't need to limit ourselves to what can be drawn with python for artistic planning. Any style, subject, or amount of detail is possible, at the proficiency of a master artist. You should try to make good use of this. It needs to be optimized for the requested task, but just don't consider artistic talent a limiting factor. In a later stage a senior art director will get another pass at this, so you don't need to describe every detail or design an image prompt. But decide what should be in the image in addition to or superimposed on the geometric details, and roughly how it should be presented.
 
 If the final artistic image is already planned, make corrections if necessary in line with these guidelines and your core directives, and add details if the description is too vague.`,
     schema: {
@@ -916,6 +956,7 @@ If the final artistic image is already planned, make corrections if necessary in
     assigned_agent: "image_detail_planner",
     instruction: `\
 Original Query: \`\`\`{original_query}\`\`\`
+
 Diagram Request: {description}
 
 SYNTHESIS TASK:
