@@ -18,6 +18,7 @@ sharply cut run costs
 
 work on managerial agents
   ✔As a manager type, error_expert should get a smarter model. Look for other manager types as well and see that they are at least medium.
+  ✔Use some methods from Gemini chain-of-thought samples
   go through and limit scope of all agents, put managers anywhere a lot of data needs to be synthesized, or jobs need to be re-planned after errors.
   examine the workflow around each manager & apply DIRECTIVE_MANAGER if it makes sense
 
