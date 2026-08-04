@@ -1014,16 +1014,16 @@ CRITICAL REVIEW:
 8. Is the style correct (clean, educational, etc.)?
 
 DECISION:
-- If PERFECT: Output 'ready_for_code' = true and return the original description verbatim.
-- If FLAWS: Output 'ready_for_code' = false and provide the FIXED description.`,
+- If PERFECT: Output 'ready_for_artist' = true and return the original description verbatim.
+- If FLAWS: Output 'ready_for_artist' = false and provide the FIXED description.`,
     schema: {
       "type": "OBJECT",
       "properties": {
         "critique": { "type": "STRING","description": "Your critical review." },
-        "ready_for_code": { "type": "BOOLEAN","description": "Your decision." },
+        "ready_for_artist": { "type": "BOOLEAN","description": "Your decision: Do we have a refined, detailed description ready for an artist to actually draw?" },
         "latest_description": { "type": "STRING", "description": "The corrected version (or the original if perfect)." }
       },
-      "required": ["critique", "ready_for_code", "latest_description"]
+      "required": ["critique", "ready_for_artist", "latest_description"]
     }
   },
 
