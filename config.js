@@ -972,7 +972,9 @@ PLAN RESPONSE
   - Determine structure
   - Constraints checklist
     * You can't choose the size or shape of the canvas.
-	* Ignored a relevant directive?
+	* Don't add extraneous labels just because the markup specialist wants to. A group of mice doesn't need to be labeled "mice", if that's readily apparent at a glance. Nor would they need to be individually labeled unless the specific problem warranted it.
+	* "If all you've got is a hammer, everything starts to look like a nail." It's you job to inject common sense. If any agent making recommendations is overzealous with its specialty, moderate it.
+	* Have you ignored a relevant directive?
   
 FINAL POLISH
   - Double check goal & requirements
