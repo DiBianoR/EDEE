@@ -272,7 +272,9 @@ ${GLOBAL_TASK_EXPLANATION}
 
 ${STAGE_2_CONTEXT}
 
-IDENTITY: You are the image detail planner. You manage the task of transforming a general image description into an complete, detailed, unambiguous visual description.`
+IDENTITY: You are the image detail planner. You manage the task of transforming a general image description into an complete, detailed, unambiguous visual description.
+
+- You are a manager. Your job is to review, synthesize, remove redundancies, review subordinates' decisions, address concerns, resolve conflicts/contradictions, double check correctness, and make the final call.`
   },
 
   "dimension_expert": {
@@ -959,21 +961,36 @@ Original Query: \`\`\`{original_query}\`\`\`
 
 Diagram Request: {description}
 
-SYNTHESIS TASK:
-1. Review the entire Project History and all Specialist plans.
-2. Resolve any conflicts (e.g., if Composition says 'center' but 3D says 'isometric', decide which wins).
-3. Merge, reduce, and simplify all instructions into a SINGLE, dense, rendering-ready visual description.
-4. Ensure the final text covers: Layout, Composition, Dimensions, Coordinates, Shapes, Colors, Viewpoint, Labels, and specific Math Details wherever necessary.
-5. That said, don't try to render a 3d/rotated illustration of a fundamentally 2d problem, it's harder to code, and it can be confusing to the viewer. No unnecessary perspective transformations that affect the scale of any geometric elements. So artsy isometric trees on a map would be fine, as long as the height of the trees was not part of the problem. Top down trees would be fine too, after mathematical constraints are satisfied, the artist will probably go with whatever is most aesthetically pleasing. This limits us artistically, but the artist needs to work within the limits of the educator, not vice-versa. If any of you planners did suggest rendering a 2d problem in 3d, I urge you to reconsider.
+SYNTHESIZE FINDINGS:
+  - Review the entire Project History and all Specialist plans.
+  - Resolve any conflicts (e.g., if Composition says 'center' but 3D says 'isometric', decide which wins).
+  - Merge, reduce, and simplify all instructions into a SINGLE, dense, rendering-ready visual description.
+  - Ensure the final text covers: Layout, Composition, Dimensions, Coordinates, Shapes, Colors, Viewpoint, Labels, and specific Math Details wherever necessary.
+  - Don't try to render a 3d/rotated illustration of a fundamentally 2d problem, it's harder to code, and it can be confusing to the viewer. No unnecessary perspective transformations that affect the scale of any geometric elements. So artsy isometric trees on a map would be fine, as long as the height of the trees was not part of the problem. Top down trees would be fine too, after mathematical constraints are satisfied, the artist will probably go with whatever is most aesthetically pleasing. This limits us artistically, but the artist needs to work within the limits of the educator, not vice-versa. If any of you planners did suggest rendering a 2d problem in 3d, I urge you to reconsider.
 
-Remember, your job is to create high quality illustrative diagrams for word problems in math textbooks, in line with your core directives. Your output should describe such.`,
+PLAN RESPONSE
+  - determine structure
+
+FINAL POLISH
+  - double check goal & requirements
+  - double check for missed instructions.
+  - self review & correction
+  - Ensure formatting
+
+OUTPUT
+  - refined, detailed description ready for an artist to actually draw
+
+Remember, your job is to create high quality illustrative diagrams for word problems in math textbooks, in line with your core directives. Your output should describe such a diagram.`,
     schema: {
       "type": "OBJECT",
       "properties": {
-        "conflict_resolution_notes": { "type": "STRING" },
-        "latest_description": { "type": "STRING", "description": "Final detailed prompt for the artist/illustrator." }
+        "conflict_resolution_notes": { "type": "STRING", "description": "Are there conflicts to resolve?" },
+        "synthesize_findings": { "type": "STRING", "description": "compile, simplify, and reason about the findings" },
+        "plan_response": { "type": "STRING", "description": "determine structure for final response" },
+        "final_polish": { "type": "STRING", "description": "review and correction" },
+        "latest_description": { "type": "STRING", "description": "OUTPUT: Final detailed prompt for the artist/illustrator." }
       },
-      "required": ["conflict_resolution_notes", "latest_description"]
+      "required": ["conflict_resolution_notes", "synthesize_findings", "plan_response", "final_polish", "latest_description"]
     }
   },
 
@@ -981,6 +998,7 @@ Remember, your job is to create high quality illustrative diagrams for word prob
     assigned_agent: "image_detail_planner",
     instruction: `\
 Original Query: \`\`\`{original_query}\`\`\`
+
 Diagram Request: {latest_description}
 
 CRITICAL REVIEW:
@@ -993,13 +1011,13 @@ CRITICAL REVIEW:
 8. Is the style correct (clean, educational, etc.)?
 
 DECISION:
-- If PERFECT: Output 'ready_for_code' = true.
+- If PERFECT: Output 'ready_for_code' = true and return the original description verbatim.
 - If FLAWS: Output 'ready_for_code' = false and provide the FIXED description.`,
     schema: {
       "type": "OBJECT",
       "properties": {
-        "critique": { "type": "STRING" },
-        "ready_for_code": { "type": "BOOLEAN" },
+        "critique": { "type": "STRING","description": "Your critical review." },
+        "ready_for_code": { "type": "BOOLEAN","description": "Your decision." },
         "latest_description": { "type": "STRING", "description": "The corrected version (or the original if perfect)." }
       },
       "required": ["critique", "ready_for_code", "latest_description"]
