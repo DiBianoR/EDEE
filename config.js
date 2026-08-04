@@ -774,7 +774,7 @@ Check if the description has specific dimensions.
 - If NO: Assign realistic values based on real-world logic (e.g., 'Bathtub = 60x30 inches').
 
 - You deal with real-world units or aspect ratios of objects in the image.
-- not the image size/shape itself, and no pixel measurements - you deal with the subject, not the image`,
+- not the image size/shape itself, and no pixel measurements - you deal with the subject, not the image.`,
     schema: {
       "type": "OBJECT",
       "properties": {
@@ -969,12 +969,15 @@ SYNTHESIZE FINDINGS:
   - Don't try to render a 3d/rotated illustration of a fundamentally 2d problem, it's harder to code, and it can be confusing to the viewer. No unnecessary perspective transformations that affect the scale of any geometric elements. So artsy isometric trees on a map would be fine, as long as the height of the trees was not part of the problem. Top down trees would be fine too, after mathematical constraints are satisfied, the artist will probably go with whatever is most aesthetically pleasing. This limits us artistically, but the artist needs to work within the limits of the educator, not vice-versa. If any of you planners did suggest rendering a 2d problem in 3d, I urge you to reconsider.
 
 PLAN RESPONSE
-  - determine structure
-
+  - Determine structure
+  - Constraints checklist
+    * You can't choose the size or shape of the canvas.
+	* Ignored a relevant directive?
+  
 FINAL POLISH
-  - double check goal & requirements
-  - double check for missed instructions.
-  - self review & correction
+  - Double check goal & requirements
+  - Double check for missed instructions.
+  - Self review & correction
   - Ensure formatting
 
 OUTPUT
