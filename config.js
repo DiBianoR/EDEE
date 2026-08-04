@@ -330,6 +330,7 @@ IDENTITY: You are an Educational Planning agent. You optimize for clarity, educa
   },
 
   "3d_specialist": {
+	model_tier: "medium", // planner type
     history_scope: STAGE2_AGENTS,
     system_identity: `\
 ${GLOBAL_TASK_EXPLANATION}
@@ -340,6 +341,7 @@ IDENTITY: You are the 3D Modeling Specialist.`
   },
 
   "data_viz_expert": {
+	model_tier: "medium", // planner type
     history_scope: STAGE2_AGENTS,
     system_identity: `\
 ${GLOBAL_TASK_EXPLANATION}
@@ -350,6 +352,7 @@ IDENTITY: You are the Data Visualization Expert.`
   },
 
   "arrangement_planner": {
+	model_tier: "medium", // planner type
     history_scope: STAGE2_AGENTS,
     system_identity: `\
 ${GLOBAL_TASK_EXPLANATION}
@@ -360,6 +363,7 @@ IDENTITY: You are the Geometric Abstraction Artist.`
   },
 
   "artistic_planner": {
+	model_tier: "medium", // planner type
     model_tier: "medium", // planner type
     history_scope: STAGE2_AGENTS,
     system_identity: `\
@@ -767,7 +771,10 @@ Diagram Request: {description}
 
 Check if the description has specific dimensions.
 - If YES: Confirm them.
-- If NO: Assign realistic values based on real-world logic (e.g., 'Bathtub = 60x30 inches').`,
+- If NO: Assign realistic values based on real-world logic (e.g., 'Bathtub = 60x30 inches').
+
+- You deal with real-world units or aspect ratios of objects in the image.
+- not the image size/shape itself, and no pixel measurements - you deal with the subject, not the image`,
     schema: {
       "type": "OBJECT",
       "properties": {
@@ -987,7 +994,7 @@ Remember, your job is to create high quality illustrative diagrams for word prob
     }
   },
 
-  "review_description": {
+  "review_description": {  //  original_query & description visible in self-history, but we repeat them here for clarity
     assigned_agent: "image_detail_planner",
     instruction: `\
 Original Query: \`\`\`{original_query}\`\`\`
