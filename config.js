@@ -712,7 +712,7 @@ Look at the Original Query and the latest Diagram Request. Decide whether your i
 
 Technical Details - numerical measurements, graphs, charts, geometry, specific numbers of objects, complex text markup or labels - any detail that is concrete and a generative image model might struggle to generate with mathematical precision.
 
-Artistic Details - illustrations, images of everyday objects - anything a simple python script might struggle to draw.
+Artistic Details - illustrations, images of everyday objects, textures, backgrounds - anything a simple python script might struggle to draw.
 
 An image model can handle simple text, but if it's multiple labels or specific locations, algorithmic placement is more appropriate.
 
@@ -721,7 +721,8 @@ For example:
 - a pie chart with some labels would be TECHNICAL only, there's nothing on it that a python script can't draw.
 - An image of 2 dogs, one red, one blue, with the red one riding on a skateboard would be a judgment call, but I'd categorize it as ARTISTIC because most modern models can handle a couple objects and their details, and there are no measurements.
 - An image of 7 dogs would be BOTH, we can't count on a model not to generate 6 or 9.
-- A 6 foot tall man running on a 6 foot long treadmill would be BOTH, AI can't generate precise measurements`,
+- A 6 foot tall man running on a 6 foot long treadmill would be BOTH, AI can't generate precise measurements
+- A 2' cubic packing box is BOTH, a drawing library can certainly generate a cube, but a picture of a cube is NOT a picture of a packing box. The box would need cardboard texture, possibly markings, maybe some image background so you can tell what it is, etc.`,
     schema: {
       "type": "OBJECT",
       "properties": {
@@ -731,17 +732,13 @@ For example:
         "requires_technical": { "type": "BOOLEAN", "description": "True if the image needs precise measurements, graphs, charts, geometry, or exact object counts." },
         "requires_artistic": { "type": "BOOLEAN", "description": "True if the image needs detailed illustrations, real-world objects, or aesthetic decorations." }
       },
-      "required": ["reasoning_technical, reasoning_artistic, reasoning_review_request", "requires_technical", "requires_artistic"]
+      "required": ["reasoning_technical", "reasoning_artistic", "reasoning_review_request", "requires_technical", "requires_artistic"]
     }
   },
 
-  "situational_planning": {
+  "situational_planning": {  //  original_query & description visible in self-history
     assigned_agent: "image_detail_planner",
     instruction: `\
-Original Query: \`\`\`{original_query}\`\`\`
-
-Diagram Request: {description}
-
 Determine if we need to do any case-specific planning:
 1) Are there 3D solids or features in our image, particularly in the technical description?
 2) Does it involve drawing graphs?
@@ -954,13 +951,9 @@ If the final artistic image is already planned, make corrections if necessary in
     }
   },
 
-  "merge_plans": {
+  "merge_plans": {  //  original_query & description visible in self-history
     assigned_agent: "image_detail_planner",
     instruction: `\
-Original Query: \`\`\`{original_query}\`\`\`
-
-Diagram Request: {description}
-
 SYNTHESIZE FINDINGS:
   - Review the entire Project History and all Specialist plans.
   - Resolve any conflicts (e.g., if Composition says 'center' but 3D says 'isometric', decide which wins).
