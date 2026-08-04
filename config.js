@@ -363,7 +363,6 @@ IDENTITY: You are the Geometric Abstraction Artist.`
   },
 
   "artistic_planner": {
-	model_tier: "medium", // planner type
     model_tier: "medium", // planner type
     history_scope: STAGE2_AGENTS,
     system_identity: `\
@@ -387,6 +386,7 @@ IDENTITY: You are the Stage 3 Workflow Orchestrator. You decide the best technic
   },
 
   "scaffolding_designer": {
+	model_tier: "medium", // planner type
     history_scope: STAGE3_AGENTS,
     system_identity: `\
 ${GLOBAL_TASK_EXPLANATION}
@@ -447,7 +447,7 @@ IDENTITY: You are the Lead Code Reviewer. You check for bugs and logic errors be
   },
 
   "inspector": {
-    model_tier: "slow",
+    model_tier: "medium",  // optimize visual understanding, go task by task if we need more/less
     model_type: "view_img", // Override model for better vision
     history_scope: STAGE3_AGENTS,
     system_identity: `\
@@ -1193,6 +1193,7 @@ CHECKS:
 
   "verify_adherence": {
     assigned_agent: "inspector",
+	model_tier: "slow",  //  particularly in-depth task
     instruction: `\
 Original Query: \`\`\`{original_query}\`\`\`
 Diagram Request: {latest_description}
