@@ -222,7 +222,7 @@ const STAGE1_AGENTS = ["problem_validation", "image_description"];
 const STAGE2_AGENTS = ["image_detail_planner", "dimension_expert", "layout_expert", "visual_director",
                        "markup_specialist", "educator", "3d_specialist", "data_viz_expert",
                        "arrangement_planner", "artistic_planner"];
-const STAGE3_AGENTS = ["selector", "scaffolding_designer", "architect", "builder", "reviewer", "inspector"];
+const STAGE3_AGENTS = ["selector", "scaffolding_designer", "architect", "builder", "reviewer", "inspector", "inspection_manager"];
 const STAGE4_AGENTS = ["image_planner", "artist"];
 const STAGE5_AGENTS = ["image_verifier", "issue_aggregator"];
 const STAGE6_AGENTS = ["final_reporter"];
@@ -376,7 +376,7 @@ IDENTITY: You are the Art Director. You think about artistic details and what th
   // --- STAGE 3 ---------------------------------------------------------------
   "selector": {
     model_tier: "medium", // manager type
-    history_scope: STAGE3_AGENTS,
+    history_scope: [],  // "none"
     system_identity: `\
 ${GLOBAL_TASK_EXPLANATION}
 
@@ -455,7 +455,24 @@ ${GLOBAL_TASK_EXPLANATION}
 
 ${STAGE_3_CONTEXT}
 
-IDENTITY: You are the QA Vision Analyst. You check carefully for visual artifacts, if you see in history a QA check done by you failed and correction has already been attempted once, you'll only reject for serious issues on the second pass.`
+IDENTITY: You are the QA Vision Analyst. You check carefully for visual artifacts and defects.
+- You are one of several inspection passes feeding the QA Inspection Manager, who reviews all reports together and makes the final accept/reject call.
+- Report every issue you find, honestly and completely, tagging each with a severity: MINOR, MAJOR, or CRITICAL.
+- Do not soften findings or adjust your standards based on retry count — leniency decisions belong to the manager, and your reports are useless to them if they can't trust the severities.`
+  },
+
+  "inspection_manager": {
+    model_tier: "slow",  // manager type
+    model_type: "text",  // consolidates the inspector's text reports; flip to "view_img" if it should re-check the image itself
+    history_scope: STAGE3_AGENTS,
+    system_identity: `\
+${GLOBAL_TASK_EXPLANATION}
+
+${STAGE_3_CONTEXT}
+
+IDENTITY: You are the QA Inspection Manager. The QA Vision Analyst files separate inspection reports on each rendered base diagram (adherence, perspective, overlaps, artifacts); you review them together and make the final accept/reject call.
+
+${DIRECTIVE_MANAGER}`
   },
 
   // --- STAGE 4 ---------------------------------------------------------------
@@ -1034,6 +1051,7 @@ DECISION:
     assigned_agent: "selector",
     instruction: `\
 Original Query: \`\`\`{original_query}\`\`\`
+
 Diagram Request: {latest_description}
 
 Analyze the 'Diagram Request'. Determine the generation strategy.
@@ -1075,6 +1093,7 @@ OPTIONS:
     assigned_agent: "scaffolding_designer",
     instruction: `\
 Original Query: \`\`\`{original_query}\`\`\`
+
 Diagram Request: {latest_description}
 
 Analyze the 'Diagram Request'. Strip away all the artistic flair, textures, and complex subjects, and describe ONLY the geometric shapes, lines, labels, and spatial boundaries that Python needs to plot. Keep things simple.
@@ -1206,13 +1225,15 @@ CHECKS:
 - Are labels legible and correctly placed?
 - Are the colors/styles generally correct?
 - Do relative sizes match the problem?
-- Are vertices properly connected?`,
+- Are vertices properly connected?
+
+Report EVERY discrepancy found, tagging each MINOR, MAJOR, or CRITICAL. You are advisory: the QA Inspection Manager makes the final accept/reject call from your report. Write 'No issues found.' in critique if the image is clean.`,
     schema: {
       "type": "OBJECT",
       "properties": {
         "analysis": { "type": "STRING", "description": "What objects do you see?" },
-        "critique": { "type": "STRING", "description": "Discrepancies from the request." },
-        "passed_adherence": { "type": "BOOLEAN" }
+        "critique": { "type": "STRING", "description": "Discrepancies from the request, each tagged MINOR/MAJOR/CRITICAL, or 'No issues found.'" },
+        "passed_adherence": { "type": "BOOLEAN", "description": "Your recommendation; the manager makes the final call." }
       },
       "required": ["analysis", "critique", "passed_adherence"]
     }
@@ -1224,13 +1245,15 @@ CHECKS:
 Detect and troubleshoot problems with 3d perspective:
 - Is a fundamentally 2d problem drawn in 3d? Unless the image request specifically asked you to do this, you should probably go back and rewrite your code.
 - If the diagram is 3d and needs to be, is perspective wonky, or interfering with measurement accuracy? Are things in the foreground aligned or superimposed incorrectly with things in the background, or measuring lines lined up with the wrong parts of 3d objects?
-- is anything else related to perspective irregular? note it in analysis.`,
+- is anything else related to perspective irregular? note it in analysis.
+
+Report EVERY problem found, tagging each MINOR, MAJOR, or CRITICAL. You are advisory: the QA Inspection Manager makes the final accept/reject call from your report. Write 'No issues found.' in critique if perspective is sound (or the image is simply flat 2d, which is usually correct).`,
     schema: {
       "type": "OBJECT",
       "properties": {
-        "analysis": { "type": "STRING", "description": "What objects do you see?" },
-        "critique": { "type": "STRING", "description": "Discrepancies from the request." },
-        "passed_perspective": { "type": "BOOLEAN" }
+        "analysis": { "type": "STRING", "description": "Assessment of the image's dimensionality (2d vs 3d) and spatial coherence." },
+        "critique": { "type": "STRING", "description": "Perspective problems, each tagged MINOR/MAJOR/CRITICAL, or 'No issues found.'" },
+        "passed_perspective": { "type": "BOOLEAN", "description": "Your recommendation; the manager makes the final call." }
       },
       "required": ["analysis", "critique", "passed_perspective"]
     }
@@ -1243,13 +1266,15 @@ Analyze the text labels and object placement.
 CHECKS:
 1. Is any text overlapping a line or object?
 2. Is any text cut off at the edge?
-3. Are objects overlapping in a way that obscures meaning?`,
+3. Are objects overlapping in a way that obscures meaning?
+
+Report EVERY overlap or cut-off found, tagging each MINOR, MAJOR, or CRITICAL. You are advisory: the QA Inspection Manager makes the final accept/reject call from your report. Write 'No issues found.' in critique if placement is clean.`,
     schema: {
       "type": "OBJECT",
       "properties": {
         "analysis": { "type": "STRING", "description": "Assessment of spacing and labels." },
-        "critique": { "type": "STRING", "description": "Locations of overlaps/cut-offs." },
-        "passed_overlaps": { "type": "BOOLEAN" }
+        "critique": { "type": "STRING", "description": "Locations of overlaps/cut-offs, each tagged MINOR/MAJOR/CRITICAL, or 'No issues found.'" },
+        "passed_overlaps": { "type": "BOOLEAN", "description": "Your recommendation; the manager makes the final call." }
       },
       "required": ["analysis", "critique", "passed_overlaps"]
     }
@@ -1262,15 +1287,59 @@ Check for technical rendering failures.
 CHECKS:
 1. Is the image blank or white?
 2. Are axes, ticks, or grids visible (They must be HIDDEN)?
-3. Is the aspect ratio distorted (circles looking like ovals)?`,
+3. Is the aspect ratio distorted (circles looking like ovals)?
+
+Report EVERY glitch found, tagging each MINOR, MAJOR, or CRITICAL (a blank image is always CRITICAL). You are advisory: the QA Inspection Manager makes the final accept/reject call from your report. Write 'No issues found.' in critique if the render is clean.`,
     schema: {
       "type": "OBJECT",
       "properties": {
         "analysis": { "type": "STRING" },
-        "critique": { "type": "STRING", "description": "List of technical glitches." },
-        "passed_artifacts": { "type": "BOOLEAN" }
+        "critique": { "type": "STRING", "description": "List of technical glitches, each tagged MINOR/MAJOR/CRITICAL, or 'No issues found.'" },
+        "passed_artifacts": { "type": "BOOLEAN", "description": "Your recommendation; the manager makes the final call." }
       },
       "required": ["analysis", "critique", "passed_artifacts"]
+    }
+  },
+
+  "consolidate_inspection": {
+    assigned_agent: "inspection_manager",
+    // Runs AFTER the four inspector tasks so their reports are in Project History.
+    // Replaces the old 4-boolean branch: n8n branches on passed_inspection alone.
+    // {inspection_retry_count} is the EXISTING stage-3 counter: cfg18 (architect -
+    // plan_logic) initializes it with a `|| 0` guard at the top of the coding loop,
+    // and cfg63 increments it just before this task runs, so it reads 1/2/3. It must
+    // be incremented BEFORE this task, not after — the manager can't apply the
+    // attempt-based leniency rules if it can't see the attempt number.
+    instruction: `\
+Original Query: \`\`\`{original_query}\`\`\`
+
+Diagram Request: {latest_description}
+
+Inspection Attempt: {inspection_retry_count} of 3
+
+The QA Vision Analyst has filed four inspection reports on the rendered base diagram: adherence, perspective, overlaps, and artifacts. Review them in the Project History and make the final accept/reject call.
+
+SYNTHESIZE:
+- Weigh every reported issue by its severity tag AND by whether it actually harms the diagram's Precision, Clarity, or Utility. Inspectors sometimes inflate severity to appear useful.
+- The inspectors' passed flags are recommendations, not verdicts. If a critique is nitpicking, contradicts another report, or flags something acceptable, overrule it. If reports conflict, resolve the conflict yourself.
+- Remember this base diagram is scaffolding: a professional artist will paint the final illustration over it. Cosmetic blemishes the artistic pass will cover don't matter; geometric/mathematical defects will be locked in, and do.
+
+DECISION LOGIC (by Inspection Attempt):
+- Attempt 1: Reject for any MAJOR or CRITICAL issue you confirm, or an accumulation of MINOR issues that together justify a redraw.
+- Attempt 2: Reject only for issues that genuinely damage mathematical accuracy or readability. Wave minor blemishes through.
+- Attempt 3 or later: This is the last try — pass a good-enough image rather than quibble over minor details. Reject ONLY if the image is truly unusable: blank, unreadable, or mathematically wrong in a way that would mislead a student.
+
+If rejecting, write fix_instructions as specific, actionable directions for the coding team: what is wrong, where, and what the corrected output should look like. Prioritize the most severe issues rather than relaying every nitpick.
+If passing with known flaws, record them in notes so downstream stages can compensate.`,
+    schema: {
+      "type": "OBJECT",
+      "properties": {
+        "analysis": { "type": "STRING", "description": "Review of the four inspection reports: which issues are real, severities confirmed or overruled, conflicts resolved, and reasoning toward the verdict." },
+        "passed_inspection": { "type": "BOOLEAN", "description": "FINAL CALL: true = base diagram proceeds to the artistic stage." },
+        "notes": { "type": "STRING", "description": "Known imperfections being waved through, for downstream stages. Empty string if none." },
+        "fix_instructions": { "type": "STRING", "description": "If rejected: specific corrections for the next coding attempt. Empty string if passed." }
+      },
+      "required": ["analysis", "passed_inspection", "notes", "fix_instructions"]
     }
   },
 
@@ -1603,7 +1672,7 @@ const config = {
     },
 
   // === ⚙️ PROVIDER & MODEL ROUTING ===
-  "provider_by_type": { text: "google", view_img: "google", img2img: "google" },
+  "provider_by_type": { text: "google", view_img: "google", img2img: "openai" },
   "model_registry": modelRegistry,
 
   // Default tiers if an agent doesn't specify one
@@ -1661,6 +1730,11 @@ return [{
     session_state: incoming.session_state || {
       original_query: incoming.original_query,
       scaffolding_blueprint: "No scaffolding image."
+      // NOTE: consolidate_inspection templates {inspection_retry_count}, which is NOT
+      // seeded here. It arrives as a top-level field from cfg63 (which Node 1 sweeps
+      // into session_state) on every pass, and cfg18 guarantees it upstream. Seeding a
+      // default would silently mask a broken cfg63 expression as "attempt 0" — better
+      // to let Node 1 throw a TEMPLATE ERROR into the error handler.
     },
     session_events: incoming.session_events || []
   }
