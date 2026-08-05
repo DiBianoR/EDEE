@@ -602,7 +602,7 @@ If there is only a request for a specific diagram, but no related math problem, 
 
   "extract_visual": {
     assigned_agent: "problem_validation",
-    history_scope: [],  // task-level override: this task starts cold
+	history_scope: ["problem_validation"],  //  to see the previous decision
     instruction: `\
 User Input: {original_query}
 
@@ -710,6 +710,7 @@ Only mark INVALID if the requested diagram conflicts factually with the math pro
     assigned_agent: "image_description",
     instruction: `\
 Original Query: \`\`\`{original_query}\`\`\`
+
 Math Problem: {math_text}
 
 1. Analyze the problem to understand the core concept.
