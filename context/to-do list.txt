@@ -78,6 +78,7 @@ Study and integrate paper banana - feature matching
 Test how well image readers perceive different issues
 Ask grad students to list failure modes
 Revise System Architecture and Components - finish top level add sub diagrams / details
+OpenAI text prompts. Right now openai is img2img only(/v1/images/edits), which takes a flat prompt string, so Node 1's forceFlatten squashes all history into one labeled user turn. To use openai for text/view_img we'd need a contents->messages translation(role model->assistant, systemInstruction->system message, inlineData->image_url parts) alongside the existing image translation. forceFlatten is already gated on modelType==="img2img" so it stays off for the chat path; the queue processor would emit proper alternating turns as-is.
 Experiment with coteach
   - Closed source vs. our open source
   - Limited application to proprietary materials
