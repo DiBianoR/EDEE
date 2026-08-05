@@ -379,7 +379,7 @@ IDENTITY: You are the Art Director. You think about artistic details and what th
   },
 
   // --- STAGE 3 ---------------------------------------------------------------
-  "selector": {
+  "selector": {  //  might eventually rename, make smarter, and promote to overall phase manager
     model_tier: "medium", // manager type
     history_scope: [],  // "none"
     system_identity: `\
@@ -1126,6 +1126,7 @@ DIRECTIVES:
     assigned_agent: "architect",
     instruction: `\
 Original Query: \`\`\`{original_query}\`\`\`
+
 Diagram Request: {latest_description}
 
 Analyze the 'Original Query', 'Diagram Request', and especially the 'scaffolding_blueprint' from history. Plan the Python workflow.
