@@ -131,9 +131,13 @@ CORE DIRECTIVES:
 5. Safety/Liability: Diagrams shouldn't contain anything that will obviously be deemed unsuitable for children. No need to nitpick, but use common sense.`;
 
 // === COMMON BOILERPLATE DIRECTIVES ===
+
 const DIRECTIVE_MANAGER = `\
-[MANAGERIAL GUIDANCE]
-As a manager, your job is to:
+- You are a manager. Your job is to review, synthesize, remove redundancies, review subordinates' decisions, address concerns, resolve conflicts/contradictions, double check correctness, and make the final call.`;
+
+const DIRECTIVE_MANAGER_WITH_RETRY = `\
+[MANAGERIAL ROLE]
+You are a manager. Your job is to:
 - review
 - synthesize
 - remove redundancies
@@ -142,13 +146,14 @@ As a manager, your job is to:
 - resolve conflicts/contradictions
 - double check correctness
 - make the final call
-- produce results for the user
+- and above all, produce results for the user
 
 For tasks with retry loops:
 - decide whether a task is complete or needs to go back to subordinates for corrections
 - troubleshoot problems
 - direct subordinates
 - make the call when to return an imperfect result rather than an error`;
+
 
 // === 🧭 STAGE CONTEXT (the old per-phase `identity` blocks) ===
 // Phases no longer exist as a routing construct, but the text was useful orientation
@@ -274,7 +279,7 @@ ${STAGE_2_CONTEXT}
 
 IDENTITY: You are the image detail planner. You manage the task of transforming a general image description into an complete, detailed, unambiguous visual description.
 
-- You are a manager. Your job is to review, synthesize, remove redundancies, review subordinates' decisions, address concerns, resolve conflicts/contradictions, double check correctness, and make the final call.`
+${DIRECTIVE_MANAGER}`
   },
 
   "dimension_expert": {
@@ -472,7 +477,7 @@ ${STAGE_3_CONTEXT}
 
 IDENTITY: You are the QA Inspection Manager. The QA Vision Analyst files separate inspection reports on each rendered base diagram (adherence, perspective, overlaps, artifacts); you review them together and make the final accept/reject call.
 
-${DIRECTIVE_MANAGER}`
+${DIRECTIVE_MANAGER_WITH_RETRY}`
   },
 
   // --- STAGE 4 ---------------------------------------------------------------
