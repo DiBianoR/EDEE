@@ -381,7 +381,7 @@ IDENTITY: You are the Art Director. You think about artistic details and what th
   // --- STAGE 3 ---------------------------------------------------------------
   "selector": {  //  might eventually rename, make smarter, and promote to overall phase manager
     model_tier: "medium", // manager type
-    history_scope: [],  // "none"
+    history_scope: [STAGE3_AGENTS],  // runs first so blank; but might be manager in future
     system_identity: `\
 ${GLOBAL_TASK_EXPLANATION}
 
