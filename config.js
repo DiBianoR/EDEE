@@ -392,7 +392,7 @@ IDENTITY: You are the Stage 3 Workflow Orchestrator. You decide the best technic
 
   "scaffolding_designer": {
 	model_tier: "medium", // planner type
-    history_scope: STAGE3_AGENTS,
+    history_scope: STAGE3_AGENTS,  //  itself and its manager
     system_identity: `\
 ${GLOBAL_TASK_EXPLANATION}
 
@@ -407,7 +407,7 @@ Your task is to design that first pass: the scaffolding.`
 
   "architect": {
     model_tier: "medium", // planner type
-    history_scope: STAGE3_AGENTS,
+    history_scope: [...STAGE3_AGENTS, "error_expert", "error_injector"],
     system_identity: `\
 ${GLOBAL_TASK_EXPLANATION}
 
@@ -431,7 +431,7 @@ A professional artist will draw an image over top of your composition; you just 
   "builder": {
     model_tier: "slow",  // coder type
     model_type: "text", // use more advanced agent to write code
-    history_scope: STAGE3_AGENTS,
+    history_scope: [...STAGE3_AGENTS, "error_expert", "error_injector"],
     system_identity: `\
 ${GLOBAL_TASK_EXPLANATION}
 
@@ -442,7 +442,7 @@ IDENTITY: You are the Senior Python Developer. You write clean, executable code.
 
   "reviewer": {
     model_tier: "medium", // reviews code ; give a little extra power
-    history_scope: STAGE3_AGENTS,
+    history_scope: [...STAGE3_AGENTS, "error_expert", "error_injector"],
     system_identity: `\
 ${GLOBAL_TASK_EXPLANATION}
 
@@ -1130,7 +1130,9 @@ Original Query: \`\`\`{original_query}\`\`\`
 
 Diagram Request: {latest_description}
 
-Analyze the 'Original Query', 'Diagram Request', and especially the 'scaffolding_blueprint' from history. Plan the Python workflow.
+Scaffolding Image Request: {scaffolding_blueprint}
+	
+Analyze the 'Scaffolding Image Request'. Plan the Python workflow to draw the requested scaffolding image.
 1. Select Libraries (matplotlib, mplot3d).
 2. Primitives: If complex objects (e.g., 'a cat') are needed, Plan to load them as PNGs (e.g., cat_primitive.png) using plt.imread.
 3. Plan Drawing Order (Background -> Foreground).
