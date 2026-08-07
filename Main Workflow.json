@@ -2967,7 +2967,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// 1. Grab the ADK envelope\nconst {\n  config,\n  session_state: sessionState = {},\n  session_events: sessionEvents = []\n} = items[0].json;\n\n// 2. Normalize the booleans (parsed fields live in session_state now)\nconst hasMath = sessionState.math_found === true;\nconst hasVisual = sessionState.image_request === true;\n\n// 3. The Decision Logic — payload formatting (problem/description/status) is\n//    handled by the per-branch no_model format_* tasks, so we ONLY pick a route.\nlet validation_route = \"neither\";\nif (hasMath && hasVisual) validation_route = \"ready\";\nelse if (hasMath) validation_route = \"math_only\";\nelse if (hasVisual) validation_route = \"visual_only\";\n\n// 4. Envelope through untouched; validation_route rides at top level for the Switch.\nreturn [{\n  json: {\n    validation_route,\n    config,\n    session_state: sessionState,\n    session_events: sessionEvents\n  }\n}];"
+        "jsCode": "// 1. Grab the ADK envelope\nconst {\n  config,\n  session_state: sessionState = {},\n  session_events: sessionEvents = []\n} = items[0].json;\n\n// 2. Normalize the booleans (parsed fields live in session_state now)\nconst hasMath = sessionState.math_found === true;\nconst hasVisual = sessionState.image_request_found === true;\n\n// 3. The Decision Logic — payload formatting (problem/description/status) is\n//    handled by the per-branch no_model format_* tasks, so we ONLY pick a route.\nlet validation_route = \"neither\";\nif (hasMath && hasVisual) validation_route = \"ready\";\nelse if (hasMath) validation_route = \"math_only\";\nelse if (hasVisual) validation_route = \"visual_only\";\n\n// 4. Envelope through untouched; validation_route rides at top level for the Switch.\nreturn [{\n  json: {\n    validation_route,\n    config,\n    session_state: sessionState,\n    session_events: sessionEvents\n  }\n}];"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -4257,7 +4257,7 @@
                 },
                 "conditions": [
                   {
-                    "leftValue": "={{ $json.session_state.ready_for_code }}",
+                    "leftValue": "={{ $json.session_state.ready_for_artist }}",
                     "rightValue": "",
                     "operator": {
                       "type": "boolean",
@@ -5749,7 +5749,7 @@
             {
               "id": "cd74b9e9-66a5-4373-94f1-7f4d2b4f104e",
               "name": "inspection_retry_count",
-              "value": "={{ $('cfg52').item.json.inspection_retry_count }}",
+              "value": "={{ $('cfg63').item.json.inspection_retry_count }}",
               "type": "number"
             },
             {
@@ -6182,7 +6182,7 @@
                 },
                 "conditions": [
                   {
-                    "leftValue": "={{ $json.session_state.inspections_passed }}",
+                    "leftValue": "={{ $json.session_state.passed_inspection }}",
                     "rightValue": "",
                     "operator": {
                       "type": "boolean",
@@ -6208,7 +6208,7 @@
                 "conditions": [
                   {
                     "id": "e95af3e8-62aa-4bd8-8cdd-c94b215bc7ca",
-                    "leftValue": "={{ $json.session_state.inspections_passed !== true && $('cfg52').item.json.inspection_retry_count >= 3 }}",
+                    "leftValue": "={{ $json.session_state.passed_inspection !== true && $('cfg63').item.json.inspection_retry_count >= 3 }}",
                     "rightValue": 4,
                     "operator": {
                       "type": "boolean",
@@ -6233,7 +6233,7 @@
                 "conditions": [
                   {
                     "id": "8aefa716-1e2c-47a0-97b2-800eabf449cd",
-                    "leftValue": "={{ $json.session_state.inspections_passed !== true && $('cfg52').item.json.inspection_retry_count < 3 }}",
+                    "leftValue": "={{ $json.session_state.passed_inspection !== true && $('cfg63').item.json.inspection_retry_count < 3 }}",
                     "rightValue": "",
                     "operator": {
                       "type": "boolean",
@@ -6254,41 +6254,11 @@
       "type": "n8n-nodes-base.switch",
       "typeVersion": 3.4,
       "position": [
-        2512,
+        2544,
         1680
       ],
       "id": "5be7d3c0-e3d7-4a89-a915-a94dd6e75a97",
       "name": "inspections passed?"
-    },
-    {
-      "parameters": {
-        "assignments": {
-          "assignments": [
-            {
-              "id": "7714c5f1-c771-4eff-977c-0fe86402b218",
-              "name": "inspections_passed",
-              "value": "={{ $json.session_state.passed_adherence === true && $json.session_state.passed_perspective === true && $json.session_state.passed_overlaps === true && $json.session_state.passed_artifacts === true }}",
-              "type": "boolean"
-            },
-            {
-              "id": "ae4afc26-751a-494a-a857-252f3c3c4e6d",
-              "name": "inspection_retry_count",
-              "value": "={{ ($('cfg18').item.json.inspection_retry_count || 0) + 1 }}",
-              "type": "number"
-            }
-          ]
-        },
-        "includeOtherFields": true,
-        "options": {}
-      },
-      "type": "n8n-nodes-base.set",
-      "typeVersion": 3.4,
-      "position": [
-        2384,
-        1696
-      ],
-      "id": "12a28035-ff1a-4dc8-abd7-68665040f128",
-      "name": "cfg52"
     },
     {
       "parameters": {
@@ -6623,6 +6593,188 @@
       ],
       "id": "d9fee9d5-b448-49c9-86df-05568900456d",
       "name": "scaffolding_designer - inject_constraints"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "b1a7c3d2-0e64-4a19-8f55-2d9b7c1e0a31",
+              "name": "query_index",
+              "value": 1,
+              "type": "number"
+            },
+            {
+              "id": "c2b8d4e3-1f75-4b2a-9066-3eac8d2f1b42",
+              "name": "job_id",
+              "value": "ca4eadd4-28fe-45d6-b160-1329edd80366",
+              "type": "string"
+            },
+            {
+              "id": "d3c9e5f4-2086-4c3b-a177-4fbd9e3a2c53",
+              "name": "style_preference",
+              "value": "casual_mobile",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -5184,
+        1296
+      ],
+      "id": "4fedd1be-dfa7-49c2-809a-3c9c2c2a4489",
+      "name": "Select Query"
+    },
+    {
+      "parameters": {
+        "jsCode": "// =====================================================================\n//  QUERY LIBRARY + PAYLOAD BUILDER\n//\n//  Pick a query by setting \"query_index\" in the \"Select Query\" node.\n//  Indexes are 1-based and match the // n comments below.\n//\n//  To add a query: append another backtick-quoted string to QUERIES.\n//  Multi-line text needs no \\n escaping inside backticks.\n// =====================================================================\n\nconst QUERIES = [\n\n// 1\n`Problem: A cereal box says that now it contains 20% more. Originally, it came with 18.5 ounces of cereal. How much cereal does the box come with now?\n\nIllustration: rectangular prism cereal box with top 1/6 shaded`,\n\n// 2\n`Problem: A scientist is studying the genes that determine the color of a mouse’s fur. When two mice with brown fur breed, there is a 25% chance that each baby will have white fur. For the experiment to continue, the scientist needs at least 2 out of 5 baby mice to have white fur. To simulate this situation, a coin can be flipped twice for each baby mouse. If the coin lands heads up both times, it represents a mouse with white fur.\nAny other result represents a mouse with brown fur.\n\nIllustration: 6 brown and 2 white mice`,\n\n// 3\n`Problem: For example, here is a scale drawing of a park where the scale is 1 cm to 90 m. The rectangle is 10 cm by 4 cm, so the actual dimensions of the park are 900 m by 360 m.\n\nIllustration: rectangle park with 10:4 side ratio`,\n\n// 4\n`Problem: Sliced orange: 20 centimeters\n\nIllustration: Half or a spherical orange [if possible: with a tape measure wrapped around it reading 20 cm for its circumference]`,\n\n// 5\n`Problem: Suppose we have two bags. One contains 1 star block and 4 moon blocks. The other contains 3 star blocks and 1 moon block.\nIf we select 1 block at random from each, what is the probability that we will get 2 star blocks or 2 moon blocks? To answer this question, we can draw a tree diagram to see all of the possible outcomes.\n\nIllustration: One bag with 4 moon blocks and 1 star block, one bag with 3 star blocks and one moon block`,\n\n// 6\n`Problem: The field inside a running track is made up of a rectangle that is 84.39 m long and 73 m wide, together with a half circle at each end.\n\nIllustration: a rectangle that is 84.39 m long and 73 m wide, together with a half circle at each end. There is then a track drawn around it that is 9.76m wide.`,\n\n// 7\n`Problem: What temperature is shown on each thermometer?\n\nIllustration: A vertical Celsius thermometer ranging from -5 to 10, that shows 4 degrees as its reading`,\n\n// 8\n`Problem: Here is a scale drawing of an average seventh-grade student’s foot next to a scale drawing of a foot belonging to the person with the largest feet in the world. Estimate the length of the larger foot.\n\nIllustration: Two images of feet that are approximately in a 2:3 ratio in terms of their lengths`,\n\n// 9\n`Problem: Which three spinners go together? Why do they go together?\n\nIllustration: A circular spinner with 1/4 shaded green, 1/12 shaded blue, 1/10 shaded red, 17/30 shaded yellow.`,\n\n// 10\n`Problem: Estimate the length of each pencil.\n\nIllustration: A ruler that goes from 0 to 20 cm. On top, there is a pencil measuring 5.5 cm. and on bottom, there is a pencil measuring 18 cm.`,\n\n// 11\n`Problem: Fluffy the poodle has arthritis and can't jump. A 5 foot long dog ramp leads up to a 3 foot high bed. How many feet is the base of the ramp from the foot of the bed?\n\nIllustration: Draw the scene I've described, and a right-angled triangle illustrating the relationship between the dog ramp, the height of the bed, and the distance of the ramp's base from the bed. The hypotenuse represents the ramp, one vertical leg represents the height of the bed, and the horizontal leg represents the distance from the base of the ramp to the foot of the bed.`,\n\n// 12 problem only\n`Fluffy the poodle has arthritis and can't jump. A 5 foot long dog ramp leads up to a 3 foot high bed. How many feet is the base of the ramp from the foot of the bed?`,\n\n// 13 diagram request only\n`Fluffy the poodle has arthritis and can't jump. A 5 foot long dog ramp leads up to a 3 foot high bed. Draw the scene I've described, and a right-angled triangle illustrating the relationship between the dog ramp, the height of the bed, and the distance of the ramp's base from the bed. The hypotenuse represents the ramp, one vertical leg represents the height of the bed, and the horizontal leg represents the distance from the base of the ramp to the foot of the bed.`,\n\n// 14 neither\n`The prize, which will be announced in October, is one of six Nobel awards handed out by five Swedish academic bodies and a Norwegian committee.`,\n\n// 15 simple image request\n`I don't really have a math problem for you as such; jut make me a nice image of a cubic orange please`,\n\n];\n\n// ---------------------------------------------------------------------\n//  Nothing to edit below this line.\n// ---------------------------------------------------------------------\n\nconst sel = $('Select Query').first().json;\n\nconst uuid = () =>\n  (typeof crypto !== 'undefined' && crypto.randomUUID)\n    ? crypto.randomUUID()\n    : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {\n        const r = (Math.random() * 16) | 0;\n        return (c === 'x' ? r : (r & 0x3) | 0x8).toString(16);\n      });\n\nconst raw = String(sel.query_index ?? '').trim();\nconst n = raw === '' ? 1 : Number(raw);\n\nif (!Number.isInteger(n) || n < 1 || n > QUERIES.length) {\n  throw new Error(\n    `query_index must be a whole number from 1 to ${QUERIES.length}, got \"${raw}\".\\n` +\n    QUERIES.map((q, i) => `${i + 1}. ${q.split('\\n')[0].slice(0, 70)}`).join('\\n')\n  );\n}\n\nconst jobId = String(sel.job_id ?? '').trim() || uuid();\nconst style = String(sel.style_preference ?? '').trim() || 'casual_mobile';\n\nconsole.log(`Query ${n}/${QUERIES.length} | job_id=${jobId}\\n${QUERIES[n - 1].split('\\n')[0]}`);\n\nreturn [{\n  json: {\n    original_query: QUERIES[n - 1],\n    job_id: jobId,\n    style_preference: style,\n  },\n}];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -4992,
+        1296
+      ],
+      "id": "ac9d4c3a-368a-48b8-a668-fb1b4e419793",
+      "name": "Mock Input1"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "b9c862f9-17c0-4923-968c-f57c35859a6e",
+              "name": "PHASE_ID",
+              "value": "1",
+              "type": "string"
+            },
+            {
+              "id": "385b162f-1005-4d8e-b94a-6be27224b7d3",
+              "name": "AGENT_ID",
+              "value": "problem_validation",
+              "type": "string"
+            },
+            {
+              "id": "16b09845-a443-436c-bde4-b8bf509bc238",
+              "name": "TASK_ID",
+              "value": "extract_math_and_visual",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -4400,
+        1968
+      ],
+      "id": "2115b277-cd32-4140-9358-5cf21e449a15",
+      "name": "cfg60"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "UReLQDgBIPpb9P4f",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/UReLQDgBIPpb9P4f",
+          "cachedResultName": "EDEE — Universal Agent Sub-Workflow"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        -4272,
+        1968
+      ],
+      "id": "601e6529-6d85-4c10-a6d5-478c53a510d1",
+      "name": "problem_validation - extract_math_and_visual"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "b9c862f9-17c0-4923-968c-f57c35859a6e",
+              "name": "PHASE_ID",
+              "value": "3",
+              "type": "string"
+            },
+            {
+              "id": "385b162f-1005-4d8e-b94a-6be27224b7d3",
+              "name": "AGENT_ID",
+              "value": "inspection_manager",
+              "type": "string"
+            },
+            {
+              "id": "16b09845-a443-436c-bde4-b8bf509bc238",
+              "name": "TASK_ID",
+              "value": "consolidate_inspection",
+              "type": "string"
+            },
+            {
+              "id": "667d4fbe-9283-410b-8584-3a45d3a38546",
+              "name": "inspection_retry_count",
+              "value": "={{ ($('cfg18').item.json.inspection_retry_count || 0) + 1 }}",
+              "type": "number"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        2304,
+        1696
+      ],
+      "id": "4103ada3-95db-4dc4-a241-17f570991a2a",
+      "name": "cfg63"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "UReLQDgBIPpb9P4f",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/UReLQDgBIPpb9P4f",
+          "cachedResultName": "EDEE — Universal Agent Sub-Workflow"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        2432,
+        1696
+      ],
+      "id": "83930e46-a940-444d-ad05-fc7ac04a9e16",
+      "name": "inspection_manager - consolidate_inspection"
     }
   ],
   "connections": {
@@ -6776,20 +6928,14 @@
     },
     "Mock Input": {
       "main": [
-        [
-          {
-            "node": "Set API Key",
-            "type": "main",
-            "index": 0
-          }
-        ]
+        []
       ]
     },
     "When clicking ‘Execute workflow’": {
       "main": [
         [
           {
-            "node": "Mock Input",
+            "node": "Select Query",
             "type": "main",
             "index": 0
           }
@@ -6811,7 +6957,7 @@
       "main": [
         [
           {
-            "node": "cfg1",
+            "node": "cfg60",
             "type": "main",
             "index": 0
           }
@@ -7262,7 +7408,7 @@
       "main": [
         [
           {
-            "node": "cfg52",
+            "node": "cfg63",
             "type": "main",
             "index": 0
           }
@@ -7518,13 +7664,7 @@
     },
     "problem_validation - extract_visual": {
       "main": [
-        [
-          {
-            "node": "problem_validation - Logic Router",
-            "type": "main",
-            "index": 0
-          }
-        ]
+        []
       ]
     },
     "problem_validation - Logic Router": {
@@ -8420,17 +8560,6 @@
         ]
       ]
     },
-    "cfg52": {
-      "main": [
-        [
-          {
-            "node": "inspections passed?",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
     "error_expert - troubleshoot_visual": {
       "main": [
         [
@@ -8527,6 +8656,72 @@
         [
           {
             "node": "cfg34",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Select Query": {
+      "main": [
+        [
+          {
+            "node": "Mock Input1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mock Input1": {
+      "main": [
+        [
+          {
+            "node": "Set API Key",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "cfg60": {
+      "main": [
+        [
+          {
+            "node": "problem_validation - extract_math_and_visual",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "problem_validation - extract_math_and_visual": {
+      "main": [
+        [
+          {
+            "node": "problem_validation - Logic Router",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "cfg63": {
+      "main": [
+        [
+          {
+            "node": "inspection_manager - consolidate_inspection",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "inspection_manager - consolidate_inspection": {
+      "main": [
+        [
+          {
+            "node": "inspections passed?",
             "type": "main",
             "index": 0
           }
