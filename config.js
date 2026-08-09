@@ -198,14 +198,14 @@ Focus: Analyzing the pipeline's history when a critical error, crash, or unrecov
 // their situational_planning boolean. The "cfg inject constraints" n8n node composes
 // whichever subset is flagged true and hands the joined text to inject_constraints.
 const DIRECTIVE_3D = `\
-[3D RENDERING CONSTRAINTS]:
+3D RENDERING CONSTRAINTS:
 - Analyze the scene for 3D logic. Ensure depth cues (shading, perspective) are defined.
 - 3D objects should be opaque and shaded. Prefer solid objects to transparent skeletons unless the problem statement suggests otherwise.
 - Generate objects at angles and positions suitable for viewing as examples. Important features of 3D objects must be visible, not facing away from the user.
 - Ensure geometric shapes are at the right scale, angle, and realistic dimensions to denote the actual real-world object they represent. In other words, estimate the length, width, and height of a real example of the object, and ensure the aspect ratio in your code is similar.`;
 
 const DIRECTIVE_PRIMITIVES = `\
-[COMPOSITION & PRIMITIVE CONSTRAINTS]:
+COMPOSITION & PRIMITIVE CONSTRAINTS:
 - Break down complex objects into geometric primitives (e.g., 'circles for cats', 'white rounded rectangles for sheep').
 - If an object can be modeled precisely by a few simple primitives, use them. If in doubt, fall back to circles to denote approximate size and location.
 - Different classes of objects must be assigned distinctly different colors or different primitives.
@@ -227,7 +227,7 @@ const STAGE1_AGENTS = ["problem_validation", "image_description"];
 const STAGE2_AGENTS = ["image_detail_planner", "dimension_expert", "layout_expert", "visual_director",
                        "markup_specialist", "educator", "3d_specialist", "data_viz_expert",
                        "arrangement_planner", "artistic_planner"];
-const STAGE3_AGENTS = ["selector", "scaffolding_designer", "architect", "builder", "reviewer", "inspector", "inspection_manager"];
+const STAGE3_AGENTS = ["selector", "scaffolding_designer", "coder", "reviewer", "review_manager", "inspector", "inspection_manager"];
 const STAGE4_AGENTS = ["image_planner", "artist"];
 const STAGE5_AGENTS = ["image_verifier", "issue_aggregator"];
 const STAGE6_AGENTS = ["final_reporter"];
@@ -271,7 +271,9 @@ IDENTITY: You are an expert math educator and image planning agent. Your job is 
   "image_detail_planner": {
     model_tier: "slow",  // manager type
     model_type: "text",
-    history_scope: STAGE2_AGENTS,
+    // + error agents: this agent revises its own work in a retry loop, so it must be
+    // able to see error_expert diagnoses / error_injector reports when it loops back.
+    history_scope: [...STAGE2_AGENTS, "error_expert", "error_injector"],
     system_identity: `\
 ${GLOBAL_TASK_EXPLANATION}
 
@@ -381,7 +383,7 @@ IDENTITY: You are the Art Director. You think about artistic details and what th
   // --- STAGE 3 ---------------------------------------------------------------
   "selector": {  //  might eventually rename, make smarter, and promote to overall phase manager
     model_tier: "medium", // manager type
-    history_scope: [STAGE3_AGENTS],  // runs first so blank; but might be manager in future
+    history_scope: STAGE3_AGENTS,  // runs first so blank; but might be manager in future
     system_identity: `\
 ${GLOBAL_TASK_EXPLANATION}
 
@@ -392,7 +394,7 @@ IDENTITY: You are the Stage 3 Workflow Orchestrator. You decide the best technic
 
   "scaffolding_designer": {
 	model_tier: "medium", // planner type
-    history_scope: STAGE3_AGENTS,  //  itself and its manager
+    history_scope: ["selector","scaffolding_designer"],  //  itself and its predecessor
     system_identity: `\
 ${GLOBAL_TASK_EXPLANATION}
 
@@ -405,15 +407,16 @@ Context: The overall system works in two passes. First, we use Python (Matplotli
 Your task is to design that first pass: the scaffolding.`
   },
 
-  "architect": {
-    model_tier: "medium", // planner type
-    history_scope: [...STAGE3_AGENTS, "error_expert", "error_injector"],
+  "coder": {
+    model_tier: "slow",  // coder type (write_code default; plan_logic overrides to medium)
+    model_type: "text", // use more advanced agent to write code
+    history_scope: ["scaffolding_designer", "coder", "review_manager", "inspection_manager", "error_expert", "error_injector"],
     system_identity: `\
 ${GLOBAL_TASK_EXPLANATION}
 
 ${STAGE_3_CONTEXT}
 
-IDENTITY: You are the Lead Architect. You plan data structures, plotting strategies, and primitive usage.
+IDENTITY: You are the Senior Python Developer. For each diagram you first plan the data structures, plotting strategy, and primitive usage, then write clean, executable code implementing your plan.
 Your general objectives are:
 - generate the right number of objects in the right positions
 - don't generate unnecessary axes, grids, skeletons, or weird markings. 3d objects should be opaque and  shaded, or avoided in favor of 2d where possible.
@@ -428,33 +431,43 @@ These are general guidelines, use common sense depending on the individual diagr
 A professional artist will draw an image over top of your composition; you just need to get the composition correct. You can reason for a couple paragraphs before you start coding to think through the problem, first to plan out the composition, then to determine how to code it. Explicitly state the realistic dimensions of any objects in real-world units if dimensions were not given. Explicitly discuss composition, particularly placement. Composition should discuss what primitives/shapes we want to use, why, layout, spacing, relative scale, angle, relative position, and anything else relevant to getting everything in the right place so a professional artist can draw over top of it.`
   },
 
-  "builder": {
-    model_tier: "slow",  // coder type
-    model_type: "text", // use more advanced agent to write code
-    history_scope: [...STAGE3_AGENTS, "error_expert", "error_injector"],
+  "reviewer": {
+    model_tier: "medium", // default for logic_check; syntax_check overrides to fast, math_check to slow
+    // Each review pass is a cold, independent read: everything the reviewer needs is
+    // templated directly into each task's prompt, and the separate review passes must
+    // not see (and anchor on) each other's findings. Its replies are still visible to
+    // review_manager and the coder via THEIR scopes.
+    history_scope: [],
     system_identity: `\
 ${GLOBAL_TASK_EXPLANATION}
 
 ${STAGE_3_CONTEXT}
 
-IDENTITY: You are the Senior Python Developer. You write clean, executable code.`
+IDENTITY: You are the Lead Code Reviewer. You run independent review passes on generated Python code before execution.
+- Each review task is a standalone check: everything you need is in the prompt. Confine your report to the specific concern you were asked to check.
+- You are advisory: the Code Review Manager consolidates your reports and makes the final go/no-go call.
+- Report every issue found, tagged MINOR, MAJOR, or CRITICAL. Do not soften findings, and do not pad reports with nitpicks to appear useful.`
   },
 
-  "reviewer": {
-    model_tier: "medium", // reviews code ; give a little extra power
-    history_scope: [...STAGE3_AGENTS, "error_expert", "error_injector"],
+  "review_manager": {
+    model_tier: "slow",  // manager type
+    // + error agents: it directs the coding retry loop, so it should see prior
+    // error_expert diagnoses and error_injector execution reports to judge progress.
+    history_scope: ["coder", "reviewer", "review_manager", "inspection_manager", "error_expert", "error_injector"],
     system_identity: `\
 ${GLOBAL_TASK_EXPLANATION}
 
 ${STAGE_3_CONTEXT}
 
-IDENTITY: You are the Lead Code Reviewer. You check for bugs and logic errors before execution.`
+IDENTITY: You are the Code Review Manager. The Lead Code Reviewer files separate review reports on each generated Python script (syntax, logic, mathematics); you review them together, alongside the code itself, and make the final go/no-go call before execution.
+
+${DIRECTIVE_MANAGER_WITH_RETRY}`
   },
 
   "inspector": {
     model_tier: "medium",  // optimize visual understanding, go task by task if we need more/less
     model_type: "view_img", // Override model for better vision
-    history_scope: STAGE3_AGENTS,
+    history_scope: [],
     system_identity: `\
 ${GLOBAL_TASK_EXPLANATION}
 
@@ -469,7 +482,9 @@ IDENTITY: You are the QA Vision Analyst. You check carefully for visual artifact
   "inspection_manager": {
     model_tier: "slow",  // manager type
     model_type: "text",  // consolidates the inspector's text reports; flip to "view_img" if it should re-check the image itself
-    history_scope: STAGE3_AGENTS,
+    // + error agents: it directs the inspection retry loop, so it should see prior
+    // error_expert diagnoses to judge whether retries are making progress.
+    history_scope: ["scaffolding_designer", "inspector", "inspection_manager", "error_expert", "error_injector"],
     system_identity: `\
 ${GLOBAL_TASK_EXPLANATION}
 
@@ -484,7 +499,9 @@ ${DIRECTIVE_MANAGER_WITH_RETRY}`
   "image_planner": {
     model_tier: "slow",
     model_type: "view_img", // Using advanced model
-    history_scope: STAGE4_AGENTS,
+    // + error agents: revises its prompts when the stage-4/5 loop rejects an image, so
+    // it must see error_expert diagnoses (troubleshoot_visual) from failed attempts.
+    history_scope: [...STAGE4_AGENTS, "error_expert", "error_injector"],
     system_identity: `\
 ${GLOBAL_TASK_EXPLANATION}
 
@@ -496,7 +513,8 @@ IDENTITY: You are the Art Director. You convert technical descriptions into arti
   "artist": {
     model_tier: "slow",
     model_type: "img2img", // Using the advanced model
-    history_scope: STAGE4_AGENTS,
+    // + error agents: redraws after rejections, so it should see what went wrong.
+    history_scope: [...STAGE4_AGENTS, "error_expert", "error_injector"],
     system_identity: `\
 ${GLOBAL_TASK_EXPLANATION}
 
@@ -520,7 +538,9 @@ IDENTITY: You are the Lead Visual Quality Assurance Officer. Your job is to stri
 
   "issue_aggregator": {
     model_tier: "slow", // manager type
-    history_scope: STAGE5_AGENTS,
+    // + error agents: re-decides after stage-4 retries, so it should see the
+    // error_expert diagnoses issued between its attempts.
+    history_scope: [...STAGE5_AGENTS, "error_expert", "error_injector"],
     system_identity: `\
 ${GLOBAL_TASK_EXPLANATION}
 
@@ -567,7 +587,7 @@ IDENTITY: You are the Error Diagnosis Agent. Your job is to review the complete 
 
   "error_injector": {
     history_scope: [],
-    system_identity: "IDENTITY: System utility for safely formatting and logging errors into the project history."
+    system_identity: "IDENTITY: System utility for safely formatting and logging errors into the project history."  // aka sessionEvents
   }
 };
 
@@ -582,7 +602,7 @@ const tasks = {
     assigned_agent: "problem_validation",
     history_scope: [],  // task-level override: this task starts cold
     instruction: `\
-User Input: {original_query}
+User Input: \`\`\`{original_query}\`\`\`
 
 Locate and extract the problem from the input, if present.
 1. Does the input contain a math problem?
@@ -604,7 +624,7 @@ If there is only a request for a specific diagram, but no related math problem, 
     assigned_agent: "problem_validation",
 	history_scope: ["problem_validation"],  //  to see the previous decision
     instruction: `\
-User Input: {original_query}
+User Input: \`\`\`{original_query}\`\`\`
 
 Locate and extract the request for a specific diagram/image from the input, if present.
 1. Does the user request a specific visual?
@@ -1080,33 +1100,50 @@ OPTIONS:
   "inject_constraints": {
     assigned_agent: "scaffolding_designer",
     model_tier: "no_model",
-    instruction: "Apply situational constraints.",
+    instruction: `\
+[STAGE-3 BRIEFING]
+Original Query: \`\`\`{original_query}\`\`\`
+
+Diagram Request: {latest_description}
+
+Context: The overall system works in two passes. First, we use Python (Matplotlib) to draw a mathematically precise underlying 'skeleton' or 'scaffolding'. Second, we pass that scaffolding to an AI Image Generator to paint the final, beautiful illustration over the top of it.
+
+Your task is to design that first pass: the scaffolding.
+
+[SITUATIONAL DIRECTIVES]:
+{situational_directives}`,
     // Directives are consumed from HISTORY (the event this task logs), not from state —
     // hoist keeps the big text from persisting in session_state after the turn.
-    hoist_result_fields: ["situational_directives"],
+    hoist_result_fields: ["problem_briefing", "situational_directives"],
+    // ⚠️ THIS TASK IS NOW ALSO THE STAGE-3 BRIEFING and must run UNCONDITIONALLY
+    // (the old "no situational?" gate in n8n must be removed). It logs one event —
+    // authored by scaffolding_designer, so visible to every stage-3 agent whose scope
+    // includes it — carrying the original query, the finalized diagram request, and
+    // any situational directives. Downstream stage-3 prompts (design_scaffolding,
+    // plan_logic) no longer template {original_query}/{latest_description}; they read
+    // this event instead, so retries don't re-duplicate the text. (The reviewer is
+    // the exception: its scope is empty, so its prompts stay fully self-contained.)
+    //
     // The "cfg inject constraints" n8n node composes any subset of
     // config.directive_library (based on the situational_planning booleans in
-    // session_state) into a top-level `situational_directives` field. Node 1 sweeps
-    // it into session_state, and this result templates it back out — logging the
-    // composed text as a scaffolding_designer event so design_scaffolding sees it
-    // in Project History. Replaces the old fixed inject_3d_constraints /
-    // inject_primitives_constraints / inject_multiple_constraints trio, which
-    // couldn't scale to arbitrary subsets.
-    result: { situational_directives: "{situational_directives}" }
+    // session_state) into a top-level `situational_directives` field — it must now
+    // ALWAYS set that field, using "None." when no flags are true, or Node 1 throws
+    // a TEMPLATE ERROR. Node 1 sweeps it into session_state and this result templates
+    // it back out. original_query / latest_description re-assign their own existing
+    // session_state values (harmless), so they are deliberately NOT hoisted.
+    result: {
+      response: "Context and situational directives locked in."
+    }
   },
 
   "design_scaffolding": {
     assigned_agent: "scaffolding_designer",
     instruction: `\
-Original Query: \`\`\`{original_query}\`\`\`
-
-Diagram Request: {latest_description}
-
 Analyze the 'Diagram Request'. Strip away all the artistic flair, textures, and complex subjects, and describe ONLY the geometric shapes, lines, labels, and spatial boundaries that Python needs to plot. Keep things simple.
 
 DIRECTIVES:
 1. Identify the Math: What counts, shapes, graphs, grids, lines, or angles are part of the problem and must be perfectly accurate? These must be plotted.
-2. Check for Situational Directives: Look at the most recent entries in your 'Project History'. If you previously injected '[3D RENDERING CONSTRAINTS]' or '[COMPOSITION & PRIMITIVE CONSTRAINTS]', you MUST follow them implicitly when designing this scaffolding. If present, they supersede these general directives in case of conflict.
+2. Check for Situational Directives: If you have [SITUATIONAL DIRECTIVES], you MUST follow them implicitly when designing this scaffolding. If present, they supersede these general directives in case of conflict.
 3. Abstract Complex Objects: If the request asks for a "farmer standing next to a tractor", you do not plot a farmer. If their precise positions/sizes etc. are part of the word problem, you should have situational directives to follow. If their positions do not need to be pixel perfect, you can leave them off, the artist will add them later. You generally do not need to draw objects that are not part of the math problem, the artist can handle them.
 4. Output Format: Provide a clear, structured blueprint of exactly what shapes to draw, where to place them relative to each other, and what colors/labels to use for the underlying Python plot. Do NOT write code.
 5. Keep it simple and elegant -> Precision, Clarity, Utility. The artist is very skilled and can add details later. You only need to show
@@ -1124,19 +1161,20 @@ DIRECTIVES:
   },
 
   "plan_logic": {
-    assigned_agent: "architect",
+    assigned_agent: "coder",
+    model_tier: "medium", // planning turn; the agent-default slow tier is reserved for write_code
     instruction: `\
-Original Query: \`\`\`{original_query}\`\`\`
-
-Diagram Request: {latest_description}
-
 Scaffolding Image Request: {scaffolding_blueprint}
-	
+
 Analyze the 'Scaffolding Image Request'. Plan the Python workflow to draw the requested scaffolding image.
+
 1. Select Libraries (matplotlib, mplot3d).
 2. Primitives: If complex objects (e.g., 'a cat') are needed, Plan to load them as PNGs (e.g., cat_primitive.png) using plt.imread.
 3. Plan Drawing Order (Background -> Foreground).
-4. Style Strategy (colors, alpha).`,
+4. Style Strategy (colors, alpha).
+
+- If this is not your first attempt, begin your reasoning by stating what failed and how this new plan fixes it.
+- If the error history shows the scaffolding blueprint itself is flawed, you may deviate from it — note the deviation explicitly.`,
     schema: {
       "type": "OBJECT",
       "properties": {
@@ -1150,10 +1188,11 @@ Analyze the 'Scaffolding Image Request'. Plan the Python workflow to draw the re
   },
 
   "write_code": {
-    assigned_agent: "builder",
+    assigned_agent: "coder",
     // python_code is big and single-use: the executor reads it directly off this turn's
-    // output, and reviewers see it via scoped history. Hoist it to a top-level field so it
-    // never enters session_state and isn't copied into every downstream envelope.
+    // output, and the reviewer tasks template it via {python_code} (the hoisted field
+    // rides top-level into the next call, where Node 1 sweeps it into session_state).
+    // Hoisting keeps it out of THIS turn's state envelope.
     hoist_result_fields: ["python_code"],
     instruction: `\
 Write the Python code based on the execution plan.
@@ -1180,18 +1219,32 @@ STRICT CONSTRAINTS:
 
   "syntax_check": {
     assigned_agent: "reviewer",
+    model_tier: "fast", // mechanical check; the sandbox is the real syntax authority — this just saves a doomed run
+    // RE-HOIST: Node 1 sweeps the incoming top-level python_code into session_state so
+    // {python_code} can resolve. Without re-hoisting, it would STAY in session_state
+    // from here on — exactly what write_code's hoist exists to prevent. Re-hoisting
+    // lifts it back to top-level, so it keeps riding hop-to-hop through the review
+    // chain and never settles into the persistent state envelope.
+    hoist_result_fields: ["python_code"],
     instruction: `\
-Analyze the generated Python Code.
+Python Code:
+\`\`\`
+{python_code}
+\`\`\`
+
+Analyze the Python Code above.
 CHECKS:
 1. Are there syntax errors?
 2. Are forbidden libraries used?
-3. Are variables defined before use?`,
+3. Are variables defined before use?
+
+Report EVERY error found, tagged MINOR, MAJOR, or CRITICAL. You are advisory: the Code Review Manager makes the final call from your report. Write 'No issues found.' in critique if the code is clean.`,
     schema: {
       "type": "OBJECT",
       "properties": {
         "analysis": { "type": "STRING" },
-        "critique": { "type": "STRING", "description": "List of technical errors." },
-        "passed_syntax": { "type": "BOOLEAN" }
+        "critique": { "type": "STRING", "description": "List of technical errors, each tagged MINOR/MAJOR/CRITICAL, or 'No issues found.'" },
+        "passed_syntax": { "type": "BOOLEAN", "description": "Your recommendation; the manager makes the final call." }
       },
       "required": ["analysis", "critique", "passed_syntax"]
     }
@@ -1199,23 +1252,106 @@ CHECKS:
 
   "logic_check": {
     assigned_agent: "reviewer",
+    hoist_result_fields: ["python_code"],  // see syntax_check — keeps the script out of session_state
     instruction: `\
 Original Query: \`\`\`{original_query}\`\`\`
+
 Diagram Request: {latest_description}
 
-Compare the code against the 'Diagram Request' and 'Execution Plan'.
+Scaffolding Image Request: {scaffolding_blueprint}
+
+Python Code:
+\`\`\`
+{python_code}
+\`\`\`
+
+Compare the code against the 'Scaffolding Image Request'.
 CHECKS:
-1. Does it draw ALL requested objects?
+1. Does it draw ALL objects the blueprint requires?
 2. Are colors/styles correct?
-3. Is the logic sound for the specific math problem?`,
+3. Is the logic sound for the specific math problem?
+
+Report EVERY discrepancy found, tagged MINOR, MAJOR, or CRITICAL. You are advisory: the Code Review Manager makes the final call from your report. Write 'No issues found.' in critique if the code is faithful.`,
     schema: {
       "type": "OBJECT",
       "properties": {
         "analysis": { "type": "STRING" },
-        "critique": { "type": "STRING", "description": "List of logic discrepancies." },
-        "passed_logic": { "type": "BOOLEAN" }
+        "critique": { "type": "STRING", "description": "List of logic discrepancies, each tagged MINOR/MAJOR/CRITICAL, or 'No issues found.'" },
+        "passed_logic": { "type": "BOOLEAN", "description": "Your recommendation; the manager makes the final call." }
       },
       "required": ["analysis", "critique", "passed_logic"]
+    }
+  },
+
+  "math_check": {
+    assigned_agent: "reviewer",
+    model_tier: "slow", // deep reasoning: last line of defense on mathematical correctness before render
+    // Last consumer of {python_code}: hoisting here drops it from session_state for good.
+    // consolidate_review doesn't template it — review_manager sees the script in the
+    // coder's reply via scoped history. The executor never reads the envelope at all;
+    // it pulls the code straight off the write_code node by name.
+    hoist_result_fields: ["python_code"],
+    instruction: `\
+Original Query: \`\`\`{original_query}\`\`\`
+
+Math Problem: {problem}
+
+Diagram Request: {latest_description}
+
+Scaffolding Image Request: {scaffolding_blueprint}
+
+Python Code:
+\`\`\`
+{python_code}
+\`\`\`
+
+Verify the MATHEMATICS of the diagram this code will draw. Work from the Math Problem itself — recompute everything yourself rather than trusting upstream descriptions.
+CHECKS:
+1. Recompute every quantity the code hard-codes (coordinates, lengths, angles, counts, areas, plotted values). Do they match what the problem's math actually implies?
+2. Does the drawn geometry correctly represent the relationships in the problem (proportions, ratios, parallelism, tangency, adjacency, counts)?
+3. Do any drawn labels or numbers contradict the problem, or each other?
+4. UPSTREAM ERRORS: If the Diagram Request itself contains a math mistake that slipped through earlier stages, flag it — you are the last check before this gets drawn, and a correct implementation of a wrong description is still wrong.
+
+Report EVERY error found, tagged MINOR, MAJOR, or CRITICAL — a mathematical misrepresentation is at least MAJOR. You are advisory: the Code Review Manager makes the final call from your report. Write 'No issues found.' in critique if the math is sound.`,
+    schema: {
+      "type": "OBJECT",
+      "properties": {
+        "analysis": { "type": "STRING", "description": "Your independent recomputation of the problem's quantities and how the code compares." },
+        "critique": { "type": "STRING", "description": "Mathematical errors found, each tagged MINOR/MAJOR/CRITICAL, or 'No issues found.'" },
+        "passed_math": { "type": "BOOLEAN", "description": "Your recommendation; the manager makes the final call." }
+      },
+      "required": ["analysis", "critique", "passed_math"]
+    }
+  },
+
+  "consolidate_review": {
+    assigned_agent: "review_manager",
+    // Runs AFTER syntax_check, logic_check, and math_check so their reports are in
+    // sessionEvents (it also sees the code itself via the coder's reply). Replaces
+    // the old passed_syntax && passed_logic branch: n8n branches on passed_review alone.
+    // {coding_retry_count} is set by cfg18 at the top of each coding attempt, so it
+    // already reads 1/2/3 by the time this task runs.
+    instruction: `\
+The Code Reviewer has filed several independent review reports on the generated Python script: syntax, logic, and mathematics. Review them alongside the code itself, and make the final go/no-go call before execution.
+
+SYNTHESIZE:
+- Weigh every reported issue by its severity tag AND by whether it would actually damage the rendered scaffolding's Precision, Clarity, or Utility. Reviewers sometimes inflate severity to appear useful.
+- The reviewer's passed flags are recommendations, not verdicts. Overrule nitpicks and false alarms; resolve conflicts between reports yourself.
+- The script's output is scaffolding a professional artist will paint over. Complaints about style or elegance don't matter; only mathematical utility.
+- Attempt 3 or later: Last try — wave through anything cosmetic.
+- a confirmed mathematical error is never waved through — a diagram that misrepresents the problem's math is worse than no diagram. Likewise never pass code that will clearly crash.
+
+If rejecting, write fix_instructions as specific, actionable directions for the coder: what is wrong, where in the code, and what correct looks like. Prioritize the most severe issues rather than relaying every nitpick.
+If passing with known flaws, record them in notes so downstream stages can compensate.`,
+    schema: {
+      "type": "OBJECT",
+      "properties": {
+        "analysis": { "type": "STRING", "description": "Review of the three reports: which issues are real, severities confirmed or overruled, conflicts resolved, and reasoning toward the verdict." },
+        "passed_review": { "type": "BOOLEAN", "description": "FINAL CALL: true = the script proceeds to execution." },
+        "notes": { "type": "STRING", "description": "Known imperfections being waved through, for downstream stages. Empty string if none." },
+        "fix_instructions": { "type": "STRING", "description": "If rejected: specific corrections for the coder's next attempt. Empty string if passed." }
+      },
+      "required": ["analysis", "passed_review", "notes", "fix_instructions"]
     }
   },
 
@@ -1224,9 +1360,13 @@ CHECKS:
 	model_tier: "slow",  //  particularly in-depth task
     instruction: `\
 Original Query: \`\`\`{original_query}\`\`\`
+
 Diagram Request: {latest_description}
 
-Compare the rendered image against the 'Diagram Request'.
+Scaffolding Image Request: {scaffolding_blueprint}
+
+Compare the rendered image against the 'Scaffolding Image Request'.
+
 CHECKS:
 - Are all necessary objects present?
 - Does the illustration accurately represent the geometry/graph described in the original request?
@@ -1244,13 +1384,19 @@ Report EVERY discrepancy found, tagging each MINOR, MAJOR, or CRITICAL. You are 
         "critique": { "type": "STRING", "description": "Discrepancies from the request, each tagged MINOR/MAJOR/CRITICAL, or 'No issues found.'" },
         "passed_adherence": { "type": "BOOLEAN", "description": "Your recommendation; the manager makes the final call." }
       },
-      "required": ["analysis", "critique", "passed_adherence"]
+      "required": ["analysis", "critique", "passed_adherence_check"]
     }
   },
 
   "verify_perspective": {
     assigned_agent: "inspector",
     instruction: `\
+Original Query: \`\`\`{original_query}\`\`\`
+
+Diagram Request: {latest_description}
+
+Scaffolding Image Request: {scaffolding_blueprint}
+
 Detect and troubleshoot problems with 3d perspective:
 - Is a fundamentally 2d problem drawn in 3d? Unless the image request specifically asked you to do this, you should probably go back and rewrite your code.
 - If the diagram is 3d and needs to be, is perspective wonky, or interfering with measurement accuracy? Are things in the foreground aligned or superimposed incorrectly with things in the background, or measuring lines lined up with the wrong parts of 3d objects?
@@ -1264,7 +1410,7 @@ Report EVERY problem found, tagging each MINOR, MAJOR, or CRITICAL. You are advi
         "critique": { "type": "STRING", "description": "Perspective problems, each tagged MINOR/MAJOR/CRITICAL, or 'No issues found.'" },
         "passed_perspective": { "type": "BOOLEAN", "description": "Your recommendation; the manager makes the final call." }
       },
-      "required": ["analysis", "critique", "passed_perspective"]
+      "required": ["analysis", "critique", "passed_perspective_check"]
     }
   },
 
@@ -1285,18 +1431,20 @@ Report EVERY overlap or cut-off found, tagging each MINOR, MAJOR, or CRITICAL. Y
         "critique": { "type": "STRING", "description": "Locations of overlaps/cut-offs, each tagged MINOR/MAJOR/CRITICAL, or 'No issues found.'" },
         "passed_overlaps": { "type": "BOOLEAN", "description": "Your recommendation; the manager makes the final call." }
       },
-      "required": ["analysis", "critique", "passed_overlaps"]
+      "required": ["analysis", "critique", "passed_overlaps_check"]
     }
   },
 
   "detect_artifacts": {
     assigned_agent: "inspector",
     instruction: `\
+Scaffolding Image Request: {scaffolding_blueprint}
+
 Check for technical rendering failures.
 CHECKS:
 1. Is the image blank or white?
-2. Are axes, ticks, or grids visible (They must be HIDDEN)?
-3. Is the aspect ratio distorted (circles looking like ovals)?
+2. Are axes, ticks, or grids visible? (unless Scaffolding Image Request specifically asked)
+3. Is the aspect ratio distorted? (circles looking like ovals)
 
 Report EVERY glitch found, tagging each MINOR, MAJOR, or CRITICAL (a blank image is always CRITICAL). You are advisory: the QA Inspection Manager makes the final accept/reject call from your report. Write 'No issues found.' in critique if the render is clean.`,
     schema: {
@@ -1306,7 +1454,7 @@ Report EVERY glitch found, tagging each MINOR, MAJOR, or CRITICAL (a blank image
         "critique": { "type": "STRING", "description": "List of technical glitches, each tagged MINOR/MAJOR/CRITICAL, or 'No issues found.'" },
         "passed_artifacts": { "type": "BOOLEAN", "description": "Your recommendation; the manager makes the final call." }
       },
-      "required": ["analysis", "critique", "passed_artifacts"]
+      "required": ["analysis", "critique", "passed_artifacts_check"]
     }
   },
 
@@ -1314,29 +1462,19 @@ Report EVERY glitch found, tagging each MINOR, MAJOR, or CRITICAL (a blank image
     assigned_agent: "inspection_manager",
     // Runs AFTER the four inspector tasks so their reports are in Project History.
     // Replaces the old 4-boolean branch: n8n branches on passed_inspection alone.
-    // {inspection_retry_count} is the EXISTING stage-3 counter: cfg18 (architect -
+    // {inspection_retry_count} is the EXISTING stage-3 counter: cfg18 (coder -
     // plan_logic) initializes it with a `|| 0` guard at the top of the coding loop,
     // and cfg63 increments it just before this task runs, so it reads 1/2/3. It must
     // be incremented BEFORE this task, not after — the manager can't apply the
     // attempt-based leniency rules if it can't see the attempt number.
     instruction: `\
-Original Query: \`\`\`{original_query}\`\`\`
-
-Diagram Request: {latest_description}
-
-Inspection Attempt: {inspection_retry_count} of 3
-
-The QA Vision Analyst has filed four inspection reports on the rendered base diagram: adherence, perspective, overlaps, and artifacts. Review them in the Project History and make the final accept/reject call.
+The QA Vision Analyst has filed several inspection reports on the rendered base diagram: adherence, perspective, overlaps, and artifacts. Review them in the Project History and make the final accept/reject call.
 
 SYNTHESIZE:
 - Weigh every reported issue by its severity tag AND by whether it actually harms the diagram's Precision, Clarity, or Utility. Inspectors sometimes inflate severity to appear useful.
 - The inspectors' passed flags are recommendations, not verdicts. If a critique is nitpicking, contradicts another report, or flags something acceptable, overrule it. If reports conflict, resolve the conflict yourself.
 - Remember this base diagram is scaffolding: a professional artist will paint the final illustration over it. Cosmetic blemishes the artistic pass will cover don't matter; geometric/mathematical defects will be locked in, and do.
-
-DECISION LOGIC (by Inspection Attempt):
-- Attempt 1: Reject for any MAJOR or CRITICAL issue you confirm, or an accumulation of MINOR issues that together justify a redraw.
-- Attempt 2: Reject only for issues that genuinely damage mathematical accuracy or readability. Wave minor blemishes through.
-- Attempt 3 or later: This is the last try — pass a good-enough image rather than quibble over minor details. Reject ONLY if the image is truly unusable: blank, unreadable, or mathematically wrong in a way that would mislead a student.
+- Attempt 3 or later: pass a good-enough image rather than quibble over minor details. Reject ONLY if the image is truly unusable: blank, unreadable, or mathematically wrong in a way that would mislead a student.
 
 If rejecting, write fix_instructions as specific, actionable directions for the coding team: what is wrong, where, and what the corrected output should look like. Prioritize the most severe issues rather than relaying every nitpick.
 If passing with known flaws, record them in notes so downstream stages can compensate.`,
