@@ -299,11 +299,17 @@ if (requestedTier === "no_model") {
     skipApi = true;
     model_url = "no_model";
 
-    const rawResult = taskBlueprint.result;
+    // A task supplies its canned payload as `result` OR `textResult` (result wins if
+    // both). Both are objects of named fields, templated identically and merged into
+    // sessionState identically — the choice only controls how Node 3 logs the event:
+    //   result     → JSON.stringify (field names carry the structure)
+    //   textResult → plain text: "<name>: <value>" lines; a single field logs just
+    //                its value, name omitted
+    const rawResult = taskBlueprint.result !== undefined ? taskBlueprint.result : taskBlueprint.textResult;
     if (rawResult === undefined) {
-        throw new Error(`CONFIGURATION ERROR: Task '${currentTaskId}' requested tier 'no_model' but defines no 'result'.`);
+        throw new Error(`CONFIGURATION ERROR: Task '${currentTaskId}' requested tier 'no_model' but defines no 'result' or 'textResult'.`);
     }
-    // result is an object; we template its string leaves, so there is no JSON to escape or parse.
+    // result/textResult is an object; we template its string leaves, so there is no JSON to escape or parse.
     noModelResult = templateObject(rawResult, sessionState);
 
 } else {

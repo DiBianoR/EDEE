@@ -82,8 +82,24 @@ let finalImageBase64_mimeType = null;
 
 if (skipApi) {
     // --- PATH A: no_model. Synthesize a Gemini-shaped part, as if constrained generation sent it. ---
+    // How the event text is rendered depends on which config key supplied the payload:
+    //   result     → JSON.stringify, analogous to a model's constrained-JSON output
+    //                (format_*_branch: the field names carry the structure).
+    //   textResult → plain text, analogous to a model's prose output: "<name>: <value>"
+    //                fields separated by newlines — or, for a single field, just the
+    //                value with the name omitted (inject_constraints, log_error).
+    // sessionState still gets the full named-field object either way.
     parsedResult = noModelResult;
-    eventParts = [{ text: JSON.stringify(noModelResult) }];
+    if (config.tasks[task_id]?.result === undefined && config.tasks[task_id]?.textResult !== undefined) {
+        const entries = Object.entries(noModelResult || {});
+        eventParts = [{
+            text: entries.length === 1
+                ? String(entries[0][1])
+                : entries.map(([k, v]) => `${k}: ${typeof v === "string" ? v : JSON.stringify(v)}`).join("\n")
+        }];
+    } else {
+        eventParts = [{ text: JSON.stringify(noModelResult) }];
+    }
 
 } else if (outputType === "image_blob" && (resolvedProvider || "google") === "openai") {
     // --- PATH B2: OpenAI image edit (/v1/images/edits). Response shape:

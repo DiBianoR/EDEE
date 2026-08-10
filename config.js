@@ -3,7 +3,10 @@
 //
 // CONTRACT (everything Node 1 / Node 3 actually reads):
 //   config.tasks[task_id]   → { assigned_agent, instruction, schema?, model_tier?,
-//                               model_type?, history_scope?, result?, terminal_mode? }
+//                               model_type?, history_scope?, result?/textResult?, terminal_mode? }
+//   no_model payloads: `result` logs as JSON (like constrained generation);
+//   `textResult` logs as plain text — "<name>: <value>" lines, or just the value
+//   when there is a single field. Both template and merge into state identically.
 //   config.agents[agent_id] → { system_identity, history_scope, model_tier?, model_type? }
 //   config.model_registry / provider_by_type / default_*_tier / maximum_*_tier
 //   config.api_keys / job_id / enable_gui_logging / gui_webhook_url
@@ -1128,8 +1131,9 @@ OPTIONS:
     // (same idiom as {retry_directives} in plan_logic), so it sits flush against the
     // last line below and contributes nothing at all when it is "". The n8n node must
     // ALWAYS set the field — "" when no flags are true — or Node 1 throws a TEMPLATE
-    // ERROR resolving the result below.
-    result: {
+    // ERROR resolving the payload below.
+    // textResult (single field): the event logs as the briefing text itself, raw.
+    textResult: {
       problem_briefing: `\
 [STAGE-3 BRIEFING]
 Original Query: \`\`\`{original_query}\`\`\`
@@ -1810,7 +1814,8 @@ Walk through the problem logically:
     instruction: "Record pipeline error into history.",
     // ⚠️ {error_text} must be supplied by the orchestrator (as a top-level field, which
     // Node 1 sweeps into session_state via externalVars). If it is absent, Node 1 throws.
-    result: { error_report: "{error_text}" }
+    // textResult (single field): stack traces / multi-line errors log as raw text.
+    textResult: { error_report: "{error_text}" }
   }
 };
 
