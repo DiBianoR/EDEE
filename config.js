@@ -1113,16 +1113,22 @@ OPTIONS:
     instruction: "Log the stage-3 briefing and situational constraints.",
     // hoist: problem_briefing is consumed from the logged EVENT, not from state —
     // hoisting keeps the big text from settling into session_state after the turn.
-    hoist_result_fields: ["problem_briefing"],
+    // situational_directives is listed too: it arrives as a top-level field from the
+    // n8n compose node and Node 1 sweeps it into state, and hoist checks sessionState
+    // (not just result keys), so naming it here is what keeps it from settling in.
+    hoist_result_fields: ["problem_briefing", "situational_directives"],
     // ⚠️ STAGE-3 BRIEFING — The briefing lives in the RESULT, which is logged as a
     // scaffolding_designer event — so every stage-3 agent whose scope includes
     // scaffolding_designer sees one copy of the problem context in history.
     // `instruction`: prompts only replay for the agent that authored the reply.
     //
     // The "cfg inject constraints" n8n node composes the flagged subset of
-    // config.directive_library into a top-level `situational_directives` field. It
-    // must ALWAYS set that field — "None." when no flags are true — or Node 1 throws
-    // a TEMPLATE ERROR resolving the result below.
+    // config.directive_library into a top-level `situational_directives` field. That
+    // field carries its OWN leading newlines and "[SITUATIONAL DIRECTIVES]:" header
+    // (same idiom as {retry_directives} in plan_logic), so it sits flush against the
+    // last line below and contributes nothing at all when it is "". The n8n node must
+    // ALWAYS set the field — "" when no flags are true — or Node 1 throws a TEMPLATE
+    // ERROR resolving the result below.
     result: {
       problem_briefing: `\
 [STAGE-3 BRIEFING]
@@ -1132,10 +1138,7 @@ Diagram Request: {latest_description}
 
 Context: The overall system works in two passes. First, we use Python (Matplotlib) to draw a mathematically precise underlying 'skeleton' or 'scaffolding'. Second, we pass that scaffolding to an AI Image Generator to paint the final, beautiful illustration over the top of it.
 
-Your task is to design that first pass: the scaffolding.
-
-[SITUATIONAL DIRECTIVES]:
-{situational_directives}`
+Your task is to design that first pass: the scaffolding.{situational_directives}`
     }
   },
 
