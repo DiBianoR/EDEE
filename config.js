@@ -212,6 +212,16 @@ COMPOSITION & PRIMITIVE CONSTRAINTS:
 - Placements (random, in a grid, etc.) and spacing must be reasonable and make sense with respect to the problem description. Ensure no unintentional overlaps.
 - Think about real-world environments: A flock of geese might be in a V-shape; objects being compared for height should be side-by-side with their bases level.`;
 
+// Retry-only prompt block for plan_logic. Lives in session_state as {retry_directives}:
+// cfg18 defaults it to "" (first attempt sees nothing), and the n8n retry paths back
+// into cfg18 set it to config.retry_directive_library.plan_logic — so retry framing
+// costs zero tokens and zero attention until there has actually been a failure.
+// Leading newlines are intentional: {retry_directives} sits flush against the last
+// instruction line, so an empty value adds nothing at all.
+const DIRECTIVE_PLAN_RETRY = `\
+
+
+- Begin your reasoning by stating what failed in the previous attempt, and how your new plan will fix it.`;
 
 // === 📜 HISTORY SCOPE GROUPS ===
 // history_scope is now a list of EVENT AUTHORS. An agent sees an event only if the
@@ -1100,7 +1110,21 @@ OPTIONS:
   "inject_constraints": {
     assigned_agent: "scaffolding_designer",
     model_tier: "no_model",
-    instruction: `\
+    instruction: "Log the stage-3 briefing and situational constraints.",
+    // hoist: problem_briefing is consumed from the logged EVENT, not from state —
+    // hoisting keeps the big text from settling into session_state after the turn.
+    hoist_result_fields: ["problem_briefing"],
+    // ⚠️ STAGE-3 BRIEFING — The briefing lives in the RESULT, which is logged as a
+    // scaffolding_designer event — so every stage-3 agent whose scope includes
+    // scaffolding_designer sees one copy of the problem context in history.
+    // `instruction`: prompts only replay for the agent that authored the reply.
+    //
+    // The "cfg inject constraints" n8n node composes the flagged subset of
+    // config.directive_library into a top-level `situational_directives` field. It
+    // must ALWAYS set that field — "None." when no flags are true — or Node 1 throws
+    // a TEMPLATE ERROR resolving the result below.
+    result: {
+      problem_briefing: `\
 [STAGE-3 BRIEFING]
 Original Query: \`\`\`{original_query}\`\`\`
 
@@ -1111,28 +1135,7 @@ Context: The overall system works in two passes. First, we use Python (Matplotli
 Your task is to design that first pass: the scaffolding.
 
 [SITUATIONAL DIRECTIVES]:
-{situational_directives}`,
-    // Directives are consumed from HISTORY (the event this task logs), not from state —
-    // hoist keeps the big text from persisting in session_state after the turn.
-    hoist_result_fields: ["problem_briefing", "situational_directives"],
-    // ⚠️ THIS TASK IS NOW ALSO THE STAGE-3 BRIEFING and must run UNCONDITIONALLY
-    // (the old "no situational?" gate in n8n must be removed). It logs one event —
-    // authored by scaffolding_designer, so visible to every stage-3 agent whose scope
-    // includes it — carrying the original query, the finalized diagram request, and
-    // any situational directives. Downstream stage-3 prompts (design_scaffolding,
-    // plan_logic) no longer template {original_query}/{latest_description}; they read
-    // this event instead, so retries don't re-duplicate the text. (The reviewer is
-    // the exception: its scope is empty, so its prompts stay fully self-contained.)
-    //
-    // The "cfg inject constraints" n8n node composes any subset of
-    // config.directive_library (based on the situational_planning booleans in
-    // session_state) into a top-level `situational_directives` field — it must now
-    // ALWAYS set that field, using "None." when no flags are true, or Node 1 throws
-    // a TEMPLATE ERROR. Node 1 sweeps it into session_state and this result templates
-    // it back out. original_query / latest_description re-assign their own existing
-    // session_state values (harmless), so they are deliberately NOT hoisted.
-    result: {
-      response: "Context and situational directives locked in."
+{situational_directives}`
     }
   },
 
@@ -1163,6 +1166,10 @@ DIRECTIVES:
   "plan_logic": {
     assigned_agent: "coder",
     model_tier: "medium", // planning turn; the agent-default slow tier is reserved for write_code
+    // {retry_directives}: supplied by n8n — cfg18 must default it to "" (same `|| `
+    // idiom as the counters); the retry paths set it to
+    // config.retry_directive_library.plan_logic. The directive text carries its own
+    // leading newlines, so it sits flush against the last line here.
     instruction: `\
 Scaffolding Image Request: {scaffolding_blueprint}
 
@@ -1171,10 +1178,7 @@ Analyze the 'Scaffolding Image Request'. Plan the Python workflow to draw the re
 1. Select Libraries (matplotlib, mplot3d).
 2. Primitives: If complex objects (e.g., 'a cat') are needed, Plan to load them as PNGs (e.g., cat_primitive.png) using plt.imread.
 3. Plan Drawing Order (Background -> Foreground).
-4. Style Strategy (colors, alpha).
-
-- If this is not your first attempt, begin your reasoning by stating what failed and how this new plan fixes it.
-- If the error history shows the scaffolding blueprint itself is flawed, you may deviate from it — note the deviation explicitly.`,
+4. Style Strategy (colors, alpha).{retry_directives}`,
     schema: {
       "type": "OBJECT",
       "properties": {
@@ -1845,6 +1849,15 @@ const config = {
   "directive_library": {
     "needs_3d_planning": DIRECTIVE_3D,
     "needs_arrangement_planning": DIRECTIVE_PRIMITIVES
+  },
+
+  // === 🔁 RETRY DIRECTIVE LIBRARY ===
+  // Canonical retry-only prompt blocks, keyed by the task that consumes them. The n8n
+  // retry Set nodes reference these (e.g. {{ $json.config.retry_directive_library.plan_logic }})
+  // instead of duplicating prose inside n8n. Separate from directive_library so the
+  // "cfg inject constraints" flag-composer never picks these up by accident.
+  "retry_directive_library": {
+    "plan_logic": DIRECTIVE_PLAN_RETRY
   },
 
   // === 📚 REGISTRIES (the flat ADK contract Node 1 reads) ===
