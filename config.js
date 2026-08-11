@@ -240,7 +240,7 @@ const STAGE1_AGENTS = ["problem_validation", "image_description"];
 const STAGE2_AGENTS = ["image_detail_planner", "dimension_expert", "layout_expert", "visual_director",
                        "markup_specialist", "educator", "3d_specialist", "data_viz_expert",
                        "arrangement_planner", "artistic_planner"];
-const STAGE3_AGENTS = ["selector", "scaffolding_designer", "coder", "reviewer", "review_manager", "inspector", "inspection_manager"];
+const STAGE3_AGENTS = ["selector", "scaffolding_manager", "scaffolding_designer", "coder", "reviewer", "review_manager", "inspector", "inspection_manager"];
 const STAGE4_AGENTS = ["image_planner", "artist"];
 const STAGE5_AGENTS = ["image_verifier", "issue_aggregator"];
 const STAGE6_AGENTS = ["final_reporter"];
@@ -405,9 +405,23 @@ ${STAGE_3_CONTEXT}
 IDENTITY: You are the Stage 3 Workflow Orchestrator. You decide the best technical approach.`
   },
 
+  "scaffolding_manager": {
+    // Authors the stage-3 briefing event (inject_constraints, no_model) that later
+    // stage-3 agents read in place of scaffolding_designer's design conversation.
+    // model_tier / identity only matter if it ever gains model-backed tasks.
+    model_tier: "medium",
+    history_scope: STAGE3_AGENTS,
+    system_identity: `\
+${GLOBAL_TASK_EXPLANATION}
+
+${STAGE_3_CONTEXT}
+
+IDENTITY: You are the Scaffolding Manager. You brief the stage-3 team (original problem, diagram request, situational constraints) and oversee the scaffolding design.`
+  },
+
   "scaffolding_designer": {
 	model_tier: "medium", // planner type
-    history_scope: ["selector","scaffolding_designer"],  //  itself and its predecessor
+    history_scope: ["selector", "scaffolding_manager", "scaffolding_designer"],  // its manager's briefing, its predecessor, and itself
     system_identity: `\
 ${GLOBAL_TASK_EXPLANATION}
 
@@ -423,7 +437,7 @@ Your task is to design that first pass: the scaffolding.`
   "coder": {
     model_tier: "slow",  // coder type (write_code default; plan_logic overrides to medium)
     model_type: "text", // use more advanced agent to write code
-    history_scope: ["scaffolding_designer", "coder", "review_manager", "inspection_manager", "error_expert", "error_injector"],
+    history_scope: ["scaffolding_manager", "coder", "review_manager", "inspection_manager", "error_expert", "error_injector"],
     system_identity: `\
 ${GLOBAL_TASK_EXPLANATION}
 
@@ -466,7 +480,7 @@ IDENTITY: You are the Lead Code Reviewer. You run independent review passes on g
     model_tier: "slow",  // manager type
     // + error agents: it directs the coding retry loop, so it should see prior
     // error_expert diagnoses and error_injector execution reports to judge progress.
-    history_scope: ["coder", "reviewer", "review_manager", "inspection_manager", "error_expert", "error_injector"],
+    history_scope: ["scaffolding_manager", "coder", "reviewer", "review_manager", "inspection_manager", "error_expert", "error_injector"],
     system_identity: `\
 ${GLOBAL_TASK_EXPLANATION}
 
@@ -497,7 +511,7 @@ IDENTITY: You are the QA Vision Analyst. You check carefully for visual artifact
     model_type: "text",  // consolidates the inspector's text reports; flip to "view_img" if it should re-check the image itself
     // + error agents: it directs the inspection retry loop, so it should see prior
     // error_expert diagnoses to judge whether retries are making progress.
-    history_scope: ["scaffolding_designer", "inspector", "inspection_manager", "error_expert", "error_injector"],
+    history_scope: ["scaffolding_manager", "inspector", "inspection_manager", "error_expert", "error_injector"],
     system_identity: `\
 ${GLOBAL_TASK_EXPLANATION}
 
@@ -1111,7 +1125,7 @@ OPTIONS:
   },
 
   "inject_constraints": {
-    assigned_agent: "scaffolding_designer",
+    assigned_agent: "scaffolding_manager",
     model_tier: "no_model",
     instruction: "Log the stage-3 briefing and situational constraints.",
     // hoist: problem_briefing is consumed from the logged EVENT, not from state —
@@ -1121,8 +1135,10 @@ OPTIONS:
     // (not just result keys), so naming it here is what keeps it from settling in.
     hoist_result_fields: ["problem_briefing", "situational_directives"],
     // ⚠️ STAGE-3 BRIEFING — The briefing lives in the RESULT, which is logged as a
-    // scaffolding_designer event — so every stage-3 agent whose scope includes
-    // scaffolding_designer sees one copy of the problem context in history.
+    // scaffolding_manager event — so every stage-3 agent whose scope includes
+    // scaffolding_manager sees one copy of the problem context in history, WITHOUT
+    // seeing scaffolding_designer's design conversation (agents that need the
+    // blueprint get it templated into their prompts instead).
     // `instruction`: prompts only replay for the agent that authored the reply.
     //
     // The "cfg inject constraints" n8n node composes the flagged subset of
@@ -1343,6 +1359,8 @@ Report EVERY error found, tagged MINOR, MAJOR, or CRITICAL — a mathematical mi
     // {coding_retry_count} is set by cfg18 at the top of each coding attempt, so it
     // already reads 1/2/3 by the time this task runs.
     instruction: `\
+Scaffolding Image Request: {scaffolding_blueprint}
+
 The Code Reviewer has filed several independent review reports on the generated Python script: syntax, logic, and mathematics. Review them alongside the code itself, and make the final go/no-go call before execution.
 
 SYNTHESIZE:
@@ -1393,7 +1411,7 @@ Report EVERY discrepancy found, tagging each MINOR, MAJOR, or CRITICAL. You are 
       "properties": {
         "analysis": { "type": "STRING", "description": "What objects do you see?" },
         "critique": { "type": "STRING", "description": "Discrepancies from the request, each tagged MINOR/MAJOR/CRITICAL, or 'No issues found.'" },
-        "passed_adherence": { "type": "BOOLEAN", "description": "Your recommendation; the manager makes the final call." }
+        "passed_adherence_check": { "type": "BOOLEAN", "description": "Your recommendation; the manager makes the final call." }
       },
       "required": ["analysis", "critique", "passed_adherence_check"]
     }
@@ -1419,7 +1437,7 @@ Report EVERY problem found, tagging each MINOR, MAJOR, or CRITICAL. You are advi
       "properties": {
         "analysis": { "type": "STRING", "description": "Assessment of the image's dimensionality (2d vs 3d) and spatial coherence." },
         "critique": { "type": "STRING", "description": "Perspective problems, each tagged MINOR/MAJOR/CRITICAL, or 'No issues found.'" },
-        "passed_perspective": { "type": "BOOLEAN", "description": "Your recommendation; the manager makes the final call." }
+        "passed_perspective_check": { "type": "BOOLEAN", "description": "Your recommendation; the manager makes the final call." }
       },
       "required": ["analysis", "critique", "passed_perspective_check"]
     }
@@ -1440,7 +1458,7 @@ Report EVERY overlap or cut-off found, tagging each MINOR, MAJOR, or CRITICAL. Y
       "properties": {
         "analysis": { "type": "STRING", "description": "Assessment of spacing and labels." },
         "critique": { "type": "STRING", "description": "Locations of overlaps/cut-offs, each tagged MINOR/MAJOR/CRITICAL, or 'No issues found.'" },
-        "passed_overlaps": { "type": "BOOLEAN", "description": "Your recommendation; the manager makes the final call." }
+        "passed_overlaps_check": { "type": "BOOLEAN", "description": "Your recommendation; the manager makes the final call." }
       },
       "required": ["analysis", "critique", "passed_overlaps_check"]
     }
@@ -1463,7 +1481,7 @@ Report EVERY glitch found, tagging each MINOR, MAJOR, or CRITICAL (a blank image
       "properties": {
         "analysis": { "type": "STRING" },
         "critique": { "type": "STRING", "description": "List of technical glitches, each tagged MINOR/MAJOR/CRITICAL, or 'No issues found.'" },
-        "passed_artifacts": { "type": "BOOLEAN", "description": "Your recommendation; the manager makes the final call." }
+        "passed_artifacts_check": { "type": "BOOLEAN", "description": "Your recommendation; the manager makes the final call." }
       },
       "required": ["analysis", "critique", "passed_artifacts_check"]
     }
@@ -1479,6 +1497,8 @@ Report EVERY glitch found, tagging each MINOR, MAJOR, or CRITICAL (a blank image
     // be incremented BEFORE this task, not after — the manager can't apply the
     // attempt-based leniency rules if it can't see the attempt number.
     instruction: `\
+Scaffolding Image Request: {scaffolding_blueprint}
+
 The QA Vision Analyst has filed several inspection reports on the rendered base diagram: adherence, perspective, overlaps, and artifacts. Review them in the Project History and make the final accept/reject call.
 
 SYNTHESIZE:
