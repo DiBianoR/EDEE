@@ -1,5 +1,6 @@
 🔜=priority  🛠=WIP  🌗=partway  ✔=Done
 
+special instructions for rulers & tickmarks
 
 ✔Prompt events aren't replayed. Node 1 logs every prompt with author: "system", and scoping is by author, so putting "system" in any scope pulls in every system prompt from the whole run. And we need alternating prompts so either way it's illegal right? I think the desired behavior is only include user prompts that are in scope if the reply is also in scope. And if we have replies next to each other because we decided to scope-out prompts; we need to squash everything into one turn like we are already doing in some cases.
 
