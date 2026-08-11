@@ -1690,6 +1690,20 @@ Verify mathematical precision.
     }
   },
 
+  // DEFERRED GUARDRAIL (2026-08, revisit during the phase 4-5 revamp):
+  // A rejection here can only re-run phase 4 (plan_finishing → render_final) — the base
+  // diagram is frozen after phase 3, and phase 3 already QA'd it with no information we
+  // don't have. So fix_instructions must be actionable by the Art Director/artist
+  // (prompt changes); matplotlib/coordinate edits are dead letters (this exact failure
+  // burned two ~$0.15 renders in the 2026-08-11 running-track run, where leaked phase-3
+  // error_expert context was replayed as "fixes" for code that never re-runs).
+  // Candidate instruction line: "The base diagram's layout was approved upstream — do
+  // not reject for traits inherited from it; reject only for defects the artistic pass
+  // introduced." TRADEOFF before adding it: now that the artist actually receives the
+  // scaffold as an img2img anchor (2026-08 image-plumbing fix), it faithfully preserves
+  // scaffold flaws (e.g. crossed dimension lines) instead of freelancing repairs, so an
+  // "inherited traits are pre-approved" rule locks those flaws into the final image;
+  // without it, the loop can keep rejecting good-faith renders for upstream sins.
   "aggregate_feedback": {
     assigned_agent: "issue_aggregator",
     instruction: `\

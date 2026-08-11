@@ -114,6 +114,19 @@ if (isImageRead && base64_img_string && base64_img_string_mime) {
             data: base64_img_string
         }
     });
+} else if (isImageRead) {
+    // An image-capable task ran with no image attached. Historically this failed
+    // SILENTLY and the model confabulated detailed reviews of images it never saw. Prefix a
+    // marker so the model won't hallucinate — and so the logged prompt event makes
+    // the missing attachment obvious in the session log / debug viewer.
+    // Wording differs by type: for img2img an absent input can be a legitimate mode
+    // (DIRECT_IMAGE_GEN draws from text alone), and the artist's instruction tells
+    // it to DRAW an error message when its briefing is missing — a "warning" here
+    // could trigger that, so img2img gets a neutral note instead.
+    currentParts[0].text =
+        (isImageGen ? "[note: no input image attached — generate from the text description alone]"
+                    : "[warning: no image attached to this vision request]")
+        + "\n\n" + currentParts[0].text;
 }
 const currentPromptEvent = {
     author: promptAuthor,
