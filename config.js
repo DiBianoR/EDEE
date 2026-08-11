@@ -1237,10 +1237,9 @@ STRICT CONSTRAINTS:
     schema: {
       "type": "OBJECT",
       "properties": {
-        "python_code": { "type": "STRING", "description": "The complete, runnable Python script." },
-        "explanation": { "type": "STRING", "description": "Brief explanation of the plotting logic." }
+		"python_code": { "type": "STRING", "description": "The complete, runnable Python script." }
       },
-      "required": ["python_code", "explanation"]
+      "required": ["python_code"]
     }
   },
 
