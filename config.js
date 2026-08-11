@@ -511,7 +511,7 @@ IDENTITY: You are the QA Vision Analyst. You check carefully for visual artifact
     model_type: "text",  // consolidates the inspector's text reports; flip to "view_img" if it should re-check the image itself
     // + error agents: it directs the inspection retry loop, so it should see prior
     // error_expert diagnoses to judge whether retries are making progress.
-    history_scope: ["scaffolding_manager", "inspector", "inspection_manager", "error_expert", "error_injector"],
+    history_scope: ["scaffolding_manager", "scaffolding_designer", "coder", "inspector", "inspection_manager", "error_expert", "error_injector"],
     system_identity: `\
 ${GLOBAL_TASK_EXPLANATION}
 
@@ -1158,7 +1158,8 @@ Diagram Request: {latest_description}
 
 Context: The overall system works in two passes. First, we use Python (Matplotlib) to draw a mathematically precise underlying 'skeleton' or 'scaffolding'. Second, we pass that scaffolding to an AI Image Generator to paint the final, beautiful illustration over the top of it.
 
-Your task is to design that first pass: the scaffolding.{situational_directives}`
+Your task is to design that first pass: the scaffolding.
+{situational_directives}`
     }
   },
 
@@ -1366,7 +1367,7 @@ SYNTHESIZE:
 - Weigh every reported issue by its severity tag AND by whether it would actually damage the rendered scaffolding's Precision, Clarity, or Utility. Reviewers sometimes inflate severity to appear useful.
 - The reviewer's passed flags are recommendations, not verdicts. Overrule nitpicks and false alarms; resolve conflicts between reports yourself.
 - The script's output is scaffolding a professional artist will paint over. Complaints about style or elegance don't matter; only mathematical utility.
-- Attempt 3 or later: Last try — wave through anything cosmetic.
+- Attempt 3 or later: Last try — wave through anything cosmetic, a good-enough result is better than a failure.
 - a confirmed mathematical error is never waved through — a diagram that misrepresents the problem's math is worse than no diagram. Likewise never pass code that will clearly crash.
 
 If rejecting, write fix_instructions as specific, actionable directions for the coder: what is wrong, where in the code, and what correct looks like. Prioritize the most severe issues rather than relaying every nitpick.
@@ -1408,7 +1409,7 @@ Report EVERY discrepancy found, tagging each MINOR, MAJOR, or CRITICAL. You are 
     schema: {
       "type": "OBJECT",
       "properties": {
-        "analysis": { "type": "STRING", "description": "What objects do you see?" },
+        "analysis": { "type": "STRING", "description": "Describe what you see in detail. What objects you see, how they look, how they relate, etc." },
         "critique": { "type": "STRING", "description": "Discrepancies from the request, each tagged MINOR/MAJOR/CRITICAL, or 'No issues found.'" },
         "passed_adherence_check": { "type": "BOOLEAN", "description": "Your recommendation; the manager makes the final call." }
       },
@@ -1471,8 +1472,9 @@ Scaffolding Image Request: {scaffolding_blueprint}
 Check for technical rendering failures.
 CHECKS:
 1. Is the image blank or white?
-2. Are axes, ticks, or grids visible? (unless Scaffolding Image Request specifically asked)
+2. Are axes, ticks, or grids visible? (They shouldn't be, unless Scaffolding Image Request specifically asked)
 3. Is the aspect ratio distorted? (circles looking like ovals)
+4. Any other obvious glitches or artifacts
 
 Report EVERY glitch found, tagging each MINOR, MAJOR, or CRITICAL (a blank image is always CRITICAL). You are advisory: the QA Inspection Manager makes the final accept/reject call from your report. Write 'No issues found.' in critique if the render is clean.`,
     schema: {
@@ -1496,12 +1498,11 @@ Report EVERY glitch found, tagging each MINOR, MAJOR, or CRITICAL (a blank image
     // be incremented BEFORE this task, not after — the manager can't apply the
     // attempt-based leniency rules if it can't see the attempt number.
     instruction: `\
-Scaffolding Image Request: {scaffolding_blueprint}
-
 The QA Vision Analyst has filed several inspection reports on the rendered base diagram: adherence, perspective, overlaps, and artifacts. Review them in the Project History and make the final accept/reject call.
 
 SYNTHESIZE:
 - Weigh every reported issue by its severity tag AND by whether it actually harms the diagram's Precision, Clarity, or Utility. Inspectors sometimes inflate severity to appear useful.
+- visual inspectors can also occasionally hallucinate. If the code clearly contradicts what they say they are seeing, even after you've looked for the issue, you'll have to make a decision about which is more credible.
 - The inspectors' passed flags are recommendations, not verdicts. If a critique is nitpicking, contradicts another report, or flags something acceptable, overrule it. If reports conflict, resolve the conflict yourself.
 - Remember this base diagram is scaffolding: a professional artist will paint the final illustration over it. Cosmetic blemishes the artistic pass will cover don't matter; geometric/mathematical defects will be locked in, and do.
 - Attempt 3 or later: pass a good-enough image rather than quibble over minor details. Reject ONLY if the image is truly unusable: blank, unreadable, or mathematically wrong in a way that would mislead a student.
