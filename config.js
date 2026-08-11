@@ -622,6 +622,14 @@ IDENTITY: You are the Error Diagnosis Agent. Your job is to review the complete 
 // =============================================================================
 // 📋 TASK REGISTRY  (flat; every task names its agent via `assigned_agent`)
 // =============================================================================
+// ⚠️ TODO — propertyOrdering: Gemini structured output does not GUARANTEE the order
+// in which schema keys are generated unless the schema carries a "propertyOrdering"
+// array. Every review/inspection schema below deliberately lists analysis/critique
+// BEFORE its passed_* verdict so the model reasons before it judges; today Gemini
+// happens to follow `properties` declaration order, but that is not contractual.
+// When we harden this, add "propertyOrdering": ["analysis", "critique", ...] to each
+// schema — Node 1 hands taskBlueprint.schema to generationConfig as-is, so the field
+// flows through with no harness change.
 const tasks = {
 
   // --- STAGE 1: Validation & Initial Planning --------------------------------
@@ -1159,6 +1167,8 @@ Diagram Request: {latest_description}
 Context: The overall system works in two passes. First, we use Python (Matplotlib) to draw a mathematically precise underlying 'skeleton' or 'scaffolding'. Second, we pass that scaffolding to an AI Image Generator to paint the final, beautiful illustration over the top of it.
 
 Your task is to design that first pass: the scaffolding.
+
+STANDALONE RULE: The scaffolding will normally be painted over, but it must stand on its own — a complete, legible diagram with accurate geometry and readable labels, good enough to ship as the final illustration if the artistic pass added nothing. Plain is fine; incomplete or cryptic is not. The artist adds beauty, never correctness.
 {situational_directives}`
     }
   },
