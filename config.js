@@ -455,7 +455,7 @@ Your general objectives are:
 - make sure the dimensions are correct in the diagram, and it is not stretched or squashed. Also make sure the edges aren't cut off in the figure, the limits(xmin, xmax, ymin, ymax, etc.) need to be a bit larger than the object.
 
 These are general guidelines, use common sense depending on the individual diagram requested.
-A professional artist will draw an image over top of your composition; you just need to get the composition correct. You can reason for a couple paragraphs before you start coding to think through the problem, first to plan out the composition, then to determine how to code it. Explicitly state the realistic dimensions of any objects in real-world units if dimensions were not given. Explicitly discuss composition, particularly placement. Composition should discuss what primitives/shapes we want to use, why, layout, spacing, relative scale, angle, relative position, and anything else relevant to getting everything in the right place so a professional artist can draw over top of it.`
+A professional artist will draw an image over top of your composition; you just need to get the composition correct. You can reason for a couple paragraphs before you start coding to think through the problem, first to plan out the composition, then to determine how to code it. Explicitly state the realistic dimensions of any objects in real-world units if dimensions were not given. Explicitly discuss composition, particularly placement. Composition should discuss what primitives/shapes we want to use & why, layout, spacing, relative scale, angle, relative position, and anything else relevant to getting everything in the right place so a professional artist can draw over top of it.`
   },
 
   "reviewer": {
@@ -1199,7 +1199,7 @@ Scaffolding Image Request: {scaffolding_blueprint}
 Analyze the 'Scaffolding Image Request'. Plan the Python workflow to draw the requested scaffolding image.
 
 1. Select Libraries (matplotlib, mplot3d).
-2. Primitives: If complex objects (e.g., 'a cat') are needed, Plan to load them as PNGs (e.g., cat_primitive.png) using plt.imread.
+2. Primitives: If complex objects (e.g., 'a cat') are needed, plan to use simplified placeholders, shapes, or load them as PNGs (e.g., cat_primitive.png) using plt.imread.
 3. Plan Drawing Order (Background -> Foreground).
 4. Style Strategy (colors, alpha).{retry_directives}`,
     schema: {
@@ -1207,7 +1207,7 @@ Analyze the 'Scaffolding Image Request'. Plan the Python workflow to draw the re
       "properties": {
         "reasoning": { "type": "STRING", "description": "Analysis of the requirements." },
         "required_libraries": { "type": "ARRAY", "items": { "type": "STRING" } },
-        "required_primitives": { "type": "ARRAY", "items": { "type": "STRING" }, "description": "List of PNG filenames needed (e.g. ['cat.png'])." },
+        "required_primitives": { "type": "ARRAY", "items": { "type": "STRING" }, "description": "List PNG filenames if needed (e.g. ['cat.png'])." },
         "execution_plan": { "type": "STRING", "description": "Step-by-step logic for the coder." }
       },
       "required": ["reasoning", "required_libraries", "required_primitives", "execution_plan"]
