@@ -10,7 +10,7 @@
       "typeVersion": 1,
       "position": [
         1136,
-        1152
+        864
       ],
       "id": "917727a0-ba43-48ba-bb3c-2718043e08ed",
       "name": "Sticky Note11"
@@ -1596,6 +1596,12 @@
               "name": "TASK_ID",
               "value": "choose_path",
               "type": "string"
+            },
+            {
+              "id": "ef297446-518f-4a93-91f4-bf601c5eaea0",
+              "name": "retry_directives",
+              "value": "",
+              "type": "string"
             }
           ]
         },
@@ -1652,7 +1658,7 @@
             {
               "id": "385b162f-1005-4d8e-b94a-6be27224b7d3",
               "name": "AGENT_ID",
-              "value": "architect",
+              "value": "coder",
               "type": "string"
             },
             {
@@ -1678,6 +1684,12 @@
               "name": "inspection_retry_count",
               "value": "={{ $json.inspection_retry_count || 0 }}",
               "type": "number"
+            },
+            {
+              "id": "69d62acc-96f6-49fa-83b2-1139d246c09e",
+              "name": "retry_directives",
+              "value": "={{ $json.retry_directives || $json.session_state.retry_directives || \"\" }}",
+              "type": "string"
             }
           ]
         },
@@ -1706,13 +1718,19 @@
             {
               "id": "385b162f-1005-4d8e-b94a-6be27224b7d3",
               "name": "AGENT_ID",
-              "value": "builder",
+              "value": "coder",
               "type": "string"
             },
             {
               "id": "16b09845-a443-436c-bde4-b8bf509bc238",
               "name": "TASK_ID",
               "value": "write_code",
+              "type": "string"
+            },
+            {
+              "id": "adc3bf9c-2a02-42e3-b64d-4dbe864c2238",
+              "name": "retry_directives",
+              "value": "={{ $json.config.retry_directive_library.plan_logic }}",
               "type": "string"
             }
           ]
@@ -1728,63 +1746,6 @@
       ],
       "id": "33ee865c-2732-40ea-be40-cbf99ab72396",
       "name": "cfg19"
-    },
-    {
-      "parameters": {
-        "workflowId": {
-          "__rl": true,
-          "value": "UReLQDgBIPpb9P4f",
-          "mode": "list",
-          "cachedResultUrl": "/workflow/UReLQDgBIPpb9P4f",
-          "cachedResultName": "EDEE — Universal Agent Sub-Workflow"
-        },
-        "workflowInputs": {
-          "mappingMode": "defineBelow",
-          "value": {},
-          "matchingColumns": [],
-          "schema": [],
-          "attemptToConvertTypes": false,
-          "convertFieldsToString": true
-        },
-        "options": {}
-      },
-      "type": "n8n-nodes-base.executeWorkflow",
-      "typeVersion": 1.3,
-      "position": [
-        944,
-        1376
-      ],
-      "id": "eb69c4c4-5764-4fad-9abd-1407797a040c",
-      "name": "architect - plan_logic"
-    },
-    {
-      "parameters": {
-        "workflowId": {
-          "__rl": true,
-          "value": "UReLQDgBIPpb9P4f",
-          "mode": "list",
-          "cachedResultUrl": "/workflow/UReLQDgBIPpb9P4f",
-          "cachedResultName": "EDEE — Universal Agent Sub-Workflow"
-        },
-        "workflowInputs": {
-          "mappingMode": "defineBelow",
-          "value": {},
-          "matchingColumns": [],
-          "schema": [],
-          "attemptToConvertTypes": false,
-          "convertFieldsToString": true
-        },
-        "options": {}
-      },
-      "type": "n8n-nodes-base.executeWorkflow",
-      "typeVersion": 1.3,
-      "position": [
-        944,
-        1568
-      ],
-      "id": "a7bfbee4-2e50-4acf-9bbf-d3bb12ab0e74",
-      "name": "builder - write_code",
-      "retryOnFail": true
     },
     {
       "parameters": {
@@ -1817,7 +1778,7 @@
       "typeVersion": 3.4,
       "position": [
         1136,
-        1280
+        992
       ],
       "id": "7bbd39e4-f83d-44a7-bb43-2874fc99e678",
       "name": "cfg20"
@@ -1853,7 +1814,7 @@
       "typeVersion": 3.4,
       "position": [
         1136,
-        1472
+        1184
       ],
       "id": "d3fd2a06-03c8-4aa5-825e-6e9aef13e91f",
       "name": "cfg21"
@@ -1881,7 +1842,7 @@
       "typeVersion": 1.3,
       "position": [
         1264,
-        1472
+        1184
       ],
       "id": "b449ef35-9a42-4336-98a2-f18bd781f7bb",
       "name": "reviewer - logic_check"
@@ -1909,7 +1870,7 @@
       "typeVersion": 1.3,
       "position": [
         1264,
-        1280
+        992
       ],
       "id": "8453bbf0-2089-4ce0-bff9-d16e590ca30a",
       "name": "reviewer - syntax_check"
@@ -2252,7 +2213,7 @@
             {
               "id": "e9a6d504-ce94-4ec0-ab7f-76d5ea020d22",
               "name": "python_code",
-              "value": "={{ $('builder - write_code').item.json.python_code }}",
+              "value": "={{ $('coder - write_code').item.json.python_code }}",
               "type": "string"
             },
             {
@@ -5378,7 +5339,7 @@
                 },
                 "conditions": [
                   {
-                    "leftValue": "={{ $json.session_state.passed_syntax === true && $json.session_state.passed_logic === true }}",
+                    "leftValue": "={{ $json.session_state.passed_review === true }}",
                     "rightValue": "",
                     "operator": {
                       "type": "boolean",
@@ -5404,7 +5365,7 @@
                 "conditions": [
                   {
                     "id": "e95af3e8-62aa-4bd8-8cdd-c94b215bc7ca",
-                    "leftValue": "={{ ($json.session_state.passed_syntax !== true || $json.session_state.passed_logic !== true) && $('cfg18').item.json.coding_retry_count >= 3 }}",
+                    "leftValue": "={{ ($json.passed_review !== true) && $('cfg18').item.json.coding_retry_count >= 3 }}",
                     "rightValue": 4,
                     "operator": {
                       "type": "boolean",
@@ -5429,7 +5390,7 @@
                 "conditions": [
                   {
                     "id": "8aefa716-1e2c-47a0-97b2-800eabf449cd",
-                    "leftValue": "={{ ($json.session_state.passed_syntax !== true || $json.session_state.passed_logic !== true) && $('cfg18').item.json.coding_retry_count < 3 }}",
+                    "leftValue": "={{ ($json.passed_review !== true) && $('cfg18').item.json.coding_retry_count < 3 }}",
                     "rightValue": "",
                     "operator": {
                       "type": "boolean",
@@ -5564,40 +5525,7 @@
     },
     {
       "parameters": {
-        "conditions": {
-          "options": {
-            "caseSensitive": true,
-            "leftValue": "",
-            "typeValidation": "strict",
-            "version": 3
-          },
-          "conditions": [
-            {
-              "id": "a5c1b38a-afe9-4d63-9f97-1627b37f34cd",
-              "leftValue": "={{ $json.TASK_ID }}",
-              "rightValue": "skip",
-              "operator": {
-                "type": "string",
-                "operation": "equals"
-              }
-            }
-          ],
-          "combinator": "and"
-        },
-        "options": {}
-      },
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2.3,
-      "position": [
-        176,
-        1360
-      ],
-      "id": "ba093310-9b44-4b35-a4ae-4fb549085e06",
-      "name": "no situational?"
-    },
-    {
-      "parameters": {
-        "jsCode": "const input = items[0].json;\nconst state = input.session_state || {};\nconst lib = input.config.directive_library || {};\n\n// Compose every directive whose planner flag is true in session_state.\n// Adding a new constraint type = new schema boolean + new directive_library entry.\nconst directives = Object.entries(lib)\n    .filter(([flag]) => state[flag] === true)\n    .map(([, text]) => text);\n\n// Nothing flagged: skip the inject task entirely.\nif (directives.length === 0) {\n    return [{\n        json: {\n            ...input,\n            TASK_ID: \"skip\"\n        }\n    }];\n}\n\n// situational_directives rides top-level; Node 1 sweeps it into session_state,\n// and inject_constraints' result templates it back out as a logged event.\nreturn [{\n    json: {\n        ...input,\n        PHASE_ID: \"3\",\n        AGENT_ID: \"scaffolding_designer\",\n        TASK_ID: \"inject_constraints\",\n        situational_directives: directives.join(\"\\n\\n\")\n    }\n}];"
+        "jsCode": "const input = items[0].json;\nconst state = input.session_state || {};\nconst lib = input.config.directive_library || {};\n\n// Compose every directive whose planner flag is true in session_state.\n// Adding a new constraint type = new schema boolean + new directive_library entry.\nconst directives = Object.entries(lib)\n    .filter(([flag]) => state[flag] === true)\n    .map(([, text]) => text);\n\n// inject_constraints is the UNCONDITIONAL stage-3 briefing, and situational_directives\n// carries its own leading newlines + header so it concatenates flush onto the end of\n// problem_briefing (same idiom as retry_directives in plan_logic). No flags set => \"\",\n// which contributes nothing to the briefing. The field must ALWAYS be present, though:\n// the task's result templates {situational_directives}, and Node 1 throws a TEMPLATE\n// ERROR on undefined (\"\" is fine).\nreturn [{\n    json: {\n        ...input,\n        PHASE_ID: \"3\",\n        AGENT_ID: \"scaffolding_manager\",\n        TASK_ID: \"inject_constraints\",\n        situational_directives: directives.length\n            ? \"\\n\\n[SITUATIONAL DIRECTIVES]:\\n\" + directives.join(\"\\n\\n\")\n            : \"\"\n    }\n}];"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -6568,34 +6496,6 @@
     },
     {
       "parameters": {
-        "workflowId": {
-          "__rl": true,
-          "value": "UReLQDgBIPpb9P4f",
-          "mode": "list",
-          "cachedResultUrl": "/workflow/UReLQDgBIPpb9P4f",
-          "cachedResultName": "EDEE — Universal Agent Sub-Workflow"
-        },
-        "workflowInputs": {
-          "mappingMode": "defineBelow",
-          "value": {},
-          "matchingColumns": [],
-          "schema": [],
-          "attemptToConvertTypes": false,
-          "convertFieldsToString": true
-        },
-        "options": {}
-      },
-      "type": "n8n-nodes-base.executeWorkflow",
-      "typeVersion": 1.3,
-      "position": [
-        320,
-        1360
-      ],
-      "id": "d9fee9d5-b448-49c9-86df-05568900456d",
-      "name": "scaffolding_designer - inject_constraints"
-    },
-    {
-      "parameters": {
         "assignments": {
           "assignments": [
             {
@@ -6775,6 +6675,219 @@
       ],
       "id": "83930e46-a940-444d-ad05-fc7ac04a9e16",
       "name": "inspection_manager - consolidate_inspection"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "UReLQDgBIPpb9P4f",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/UReLQDgBIPpb9P4f",
+          "cachedResultName": "EDEE — Universal Agent Sub-Workflow"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        944,
+        1376
+      ],
+      "id": "eb69c4c4-5764-4fad-9abd-1407797a040c",
+      "name": "coder - plan_logic"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "UReLQDgBIPpb9P4f",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/UReLQDgBIPpb9P4f",
+          "cachedResultName": "EDEE — Universal Agent Sub-Workflow"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        944,
+        1568
+      ],
+      "id": "a7bfbee4-2e50-4acf-9bbf-d3bb12ab0e74",
+      "name": "coder - write_code",
+      "retryOnFail": true
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "b9c862f9-17c0-4923-968c-f57c35859a6e",
+              "name": "PHASE_ID",
+              "value": "3",
+              "type": "string"
+            },
+            {
+              "id": "385b162f-1005-4d8e-b94a-6be27224b7d3",
+              "name": "AGENT_ID",
+              "value": "reviewer",
+              "type": "string"
+            },
+            {
+              "id": "16b09845-a443-436c-bde4-b8bf509bc238",
+              "name": "TASK_ID",
+              "value": "math_check",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1136,
+        1376
+      ],
+      "id": "10c177df-6507-42f8-9991-fee2024e9d96",
+      "name": "cfg52"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "UReLQDgBIPpb9P4f",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/UReLQDgBIPpb9P4f",
+          "cachedResultName": "EDEE — Universal Agent Sub-Workflow"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        1264,
+        1376
+      ],
+      "id": "997423e6-6467-4347-8799-70263901b5eb",
+      "name": "reviewer - math_check"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "b9c862f9-17c0-4923-968c-f57c35859a6e",
+              "name": "PHASE_ID",
+              "value": "3",
+              "type": "string"
+            },
+            {
+              "id": "385b162f-1005-4d8e-b94a-6be27224b7d3",
+              "name": "AGENT_ID",
+              "value": "review_manager",
+              "type": "string"
+            },
+            {
+              "id": "16b09845-a443-436c-bde4-b8bf509bc238",
+              "name": "TASK_ID",
+              "value": "consolidate_review",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1136,
+        1568
+      ],
+      "id": "777d40f4-052c-4617-9133-7782204c6b2b",
+      "name": "cfg64"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "UReLQDgBIPpb9P4f",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/UReLQDgBIPpb9P4f",
+          "cachedResultName": "EDEE — Universal Agent Sub-Workflow"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        1264,
+        1568
+      ],
+      "id": "9a81e5e2-2930-4840-91ee-0670fae1d356",
+      "name": "review_manager - consolidate_review"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "UReLQDgBIPpb9P4f",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/UReLQDgBIPpb9P4f",
+          "cachedResultName": "EDEE — Universal Agent Sub-Workflow"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        320,
+        1360
+      ],
+      "id": "d9fee9d5-b448-49c9-86df-05568900456d",
+      "name": "scaffolding_manager - inject_constraints"
     }
   ],
   "connections": {
@@ -7276,7 +7389,7 @@
       "main": [
         [
           {
-            "node": "architect - plan_logic",
+            "node": "coder - plan_logic",
             "type": "main",
             "index": 0
           }
@@ -7287,29 +7400,7 @@
       "main": [
         [
           {
-            "node": "builder - write_code",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "architect - plan_logic": {
-      "main": [
-        [
-          {
-            "node": "cfg19",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "builder - write_code": {
-      "main": [
-        [
-          {
-            "node": "cfg20",
+            "node": "coder - write_code",
             "type": "main",
             "index": 0
           }
@@ -7342,7 +7433,7 @@
       "main": [
         [
           {
-            "node": "if bool_var3",
+            "node": "cfg52",
             "type": "main",
             "index": 0
           }
@@ -8345,29 +8436,11 @@
         ]
       ]
     },
-    "no situational?": {
-      "main": [
-        [
-          {
-            "node": "cfg34",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "scaffolding_designer - inject_constraints",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
     "cfg inject constraints": {
       "main": [
         [
           {
-            "node": "no situational?",
+            "node": "scaffolding_manager - inject_constraints",
             "type": "main",
             "index": 0
           }
@@ -8651,17 +8724,6 @@
         ]
       ]
     },
-    "scaffolding_designer - inject_constraints": {
-      "main": [
-        [
-          {
-            "node": "cfg34",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
     "Select Query": {
       "main": [
         [
@@ -8722,6 +8784,83 @@
         [
           {
             "node": "inspections passed?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "coder - plan_logic": {
+      "main": [
+        [
+          {
+            "node": "cfg19",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "coder - write_code": {
+      "main": [
+        [
+          {
+            "node": "cfg20",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "cfg52": {
+      "main": [
+        [
+          {
+            "node": "reviewer - math_check",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "reviewer - math_check": {
+      "main": [
+        [
+          {
+            "node": "cfg64",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "cfg64": {
+      "main": [
+        [
+          {
+            "node": "review_manager - consolidate_review",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "review_manager - consolidate_review": {
+      "main": [
+        [
+          {
+            "node": "if bool_var3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "scaffolding_manager - inject_constraints": {
+      "main": [
+        [
+          {
+            "node": "cfg34",
             "type": "main",
             "index": 0
           }
