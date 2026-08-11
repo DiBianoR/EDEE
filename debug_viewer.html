@@ -54,6 +54,14 @@
             color: #333;
         }
         .error { color: #dc3545; font-weight: bold; margin-top: 15px;}
+        .b64-image {
+            max-width: 100%;
+            height: auto;
+            display: block;
+            border: 1px solid #e9ecef;
+            border-radius: 4px;
+            background: #fff;
+        }
     </style>
 </head>
 <body>
@@ -91,6 +99,24 @@
                 const debugPrompt = targetObj.debug_prompt || "Variable 'debug_prompt' not found in JSON.";
                 const debugResponse = targetObj.debug_response || "Variable 'debug_response' not found in JSON.";
 
+                // Render any top-level image payloads (input image + scaffolding image)
+                let imagesHtml = '';
+                const imageFields = [
+                    ['base64_img_string', 'base64_img_string_mime'],
+                    ['scaffolding_base64_img_string', 'scaffolding_base64_img_string_mime']
+                ];
+                for (const [imgKey, mimeKey] of imageFields) {
+                    const b64 = targetObj[imgKey];
+                    if (looksLikeBase64Image(b64)) {
+                        const mime = targetObj[mimeKey] || 'image/png';
+                        imagesHtml += `
+                            <div class="output-section">
+                                <h3>${imgKey}</h3>
+                                <img class="b64-image" src="data:${mime};base64,${b64.replace(/\s/g, '')}" alt="${imgKey}">
+                            </div>`;
+                    }
+                }
+
                 // Render the output
                 outputDiv.innerHTML = `
                     <div class="output-section">
@@ -105,10 +131,18 @@
                         <h3>debug_response</h3>
                         <pre>${escapeHTML(debugResponse)}</pre>
                     </div>
+                    ${imagesHtml}
                 `;
             } catch (e) {
                 outputDiv.innerHTML = `<p class="error">Error parsing JSON: ${e.message}</p>`;
             }
+        }
+
+        // Heuristic: long string of base64 characters (and not a sanitized "<IMAGE_BLOB>" placeholder)
+        function looksLikeBase64Image(str) {
+            return typeof str === 'string'
+                && str.length > 100
+                && /^[A-Za-z0-9+/=\s]+$/.test(str.slice(0, 200));
         }
 
         // Utility to escape HTML to prevent rendering issues with < or > characters in prompts

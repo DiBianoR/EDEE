@@ -138,6 +138,20 @@
             display: inline-block;
         }
         .error { color: #dc3545; font-weight: bold; margin-top: 15px;}
+        .b64-image {
+            max-width: 100%;
+            height: auto;
+            display: block;
+            border: 1px solid #e2e8f0;
+            border-radius: 4px;
+            background: #fff;
+        }
+        .image-mime-caption {
+            font-size: 12px;
+            color: #6c757d;
+            font-family: monospace;
+            margin-top: 4px;
+        }
     </style>
 </head>
 <body>
@@ -170,6 +184,23 @@
                     throw new Error("Invalid structure. Expected a JSON object or an array containing an object.");
                 }
 
+                // Render any top-level image payloads (input image + scaffolding image)
+                let imagesHtml = '';
+                const imageFields = [
+                    ['base64_img_string', 'base64_img_string_mime'],
+                    ['scaffolding_base64_img_string', 'scaffolding_base64_img_string_mime']
+                ];
+                for (const [imgKey, mimeKey] of imageFields) {
+                    const b64 = targetObj[imgKey];
+                    if (looksLikeBase64Image(b64)) {
+                        imagesHtml += `
+                            <div class="output-section">
+                                <h3>${imgKey}</h3>
+                                ${renderImage(b64, targetObj[mimeKey])}
+                            </div>`;
+                    }
+                }
+
                 // Render the output
                 outputDiv.innerHTML = `
                     <div class="output-section">
@@ -180,6 +211,7 @@
                         <h3>Session Events</h3>
                         ${targetObj.session_events ? renderData(targetObj.session_events) : '<p><i>No session_events found.</i></p>'}
                     </div>
+                    ${imagesHtml}
                 `;
             } catch (e) {
                 outputDiv.innerHTML = `<p class="error">Error parsing JSON: ${e.message}</p>`;
@@ -216,20 +248,47 @@
                 html += '</div>';
                 return html;
             } else if (typeof data === 'object') {
+                // Gemini-style inline image blob: { mimeType|mime_type, data } with raw base64
+                const blobMime = data.mimeType || data.mime_type;
+                if (blobMime && looksLikeBase64Image(data.data)) {
+                    return renderImage(data.data, blobMime);
+                }
                 let html = '<div class="object-block">';
                 for (const [key, value] of Object.entries(data)) {
                     // Clean up the key names slightly for readability (e.g., "math_reasoning" -> "Math reasoning")
                     const cleanKey = key.replace(/_/g, ' ');
+                    let valueHtml;
+                    if (/base64_img_string$/.test(key) && looksLikeBase64Image(value)) {
+                        valueHtml = renderImage(value, data[key + '_mime']);
+                    } else if (key === 'b64_json' && looksLikeBase64Image(value)) {
+                        // OpenAI-style image blob; mime isn't stored alongside, png covers the default
+                        valueHtml = renderImage(value, 'image/png');
+                    } else {
+                        valueHtml = renderData(value);
+                    }
                     html += `
                         <div class="key-value-pair">
                             <div class="key">${escapeHTML(cleanKey)}</div>
-                            <div class="value">${renderData(value)}</div>
+                            <div class="value">${valueHtml}</div>
                         </div>`;
                 }
                 html += '</div>';
                 return html;
             }
             return '';
+        }
+
+        // Heuristic: long string of base64 characters (and not a sanitized "<IMAGE_BLOB>" placeholder)
+        function looksLikeBase64Image(str) {
+            return typeof str === 'string'
+                && str.length > 100
+                && /^[A-Za-z0-9+/=\s]+$/.test(str.slice(0, 200));
+        }
+
+        function renderImage(b64, mime) {
+            const cleanMime = /^[\w.+-]+\/[\w.+-]+$/.test(mime || '') ? mime : 'image/png';
+            return `<img class="b64-image" src="data:${cleanMime};base64,${b64.replace(/\s/g, '')}" alt="embedded image">`
+                + `<div class="image-mime-caption">${escapeHTML(cleanMime)} &middot; ${Math.round(b64.length * 3 / 4 / 1024)} KB</div>`;
         }
 
         // Utility to escape HTML to prevent DOM injection issues
