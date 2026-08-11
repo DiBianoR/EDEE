@@ -205,7 +205,8 @@ const DIRECTIVE_3D = `\
 - Analyze the scene for 3D logic. Ensure depth cues (shading, perspective) are defined.
 - 3D objects should be opaque and shaded. Prefer solid objects to transparent skeletons unless the problem statement suggests otherwise.
 - Generate objects at angles and positions suitable for viewing as examples. Important features of 3D objects must be visible, not facing away from the user.
-- Ensure geometric shapes are at the right scale, angle, and realistic dimensions to denote the actual real-world object they represent. In other words, estimate the length, width, and height of a real example of the object, and ensure the aspect ratio in your code is similar.`;
+- Ensure geometric shapes are at the right scale, angle, and realistic dimensions to denote the actual real-world object they represent. In other words, estimate the length, width, and height of a real example of the object, and ensure the aspect ratio in your code is similar.
+- For oblique projections, draw the receding depth axis at half its true length (cabinet projection) so depth looks realistic — unless the depth is itself a measured quantity in the problem, in which case keep true scale and label it.`;
 
 const DIRECTIVE_PRIMITIVES = `\
 COMPOSITION & PRIMITIVE CONSTRAINTS:
