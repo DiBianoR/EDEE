@@ -215,6 +215,25 @@ COMPOSITION & PRIMITIVE CONSTRAINTS:
 - Placements (random, in a grid, etc.) and spacing must be reasonable and make sense with respect to the problem description. Ensure no unintentional overlaps.
 - Think about real-world environments: A flock of geese might be in a V-shape; objects being compared for height should be side-by-side with their bases level.`;
 
+// Execution-environment contract for generated scripts. Single source of truth shared
+// by the AUTHOR (write_code instruction) and the CHECKERS (reviewer & review_manager
+// identities) so cold reviews judge code against the same spec the coder wrote to —
+// not against standalone-matplotlib convention. (Lesson learned: reviewers once flagged
+// the missing set_aspect/axis('off') the wrapper adds automatically, and the manager
+// escalated it into a spurious retry loop.)
+const EXECUTION_CONTRACT = `\
+[EXECUTION ENVIRONMENT]
+Generated scripts run inside a wrapper that, AFTER the code executes, automatically:
+- enforces a 1:1 mathematical aspect ratio (equivalent to ax.set_aspect('equal')),
+- strips all axes, ticks, grids, and spines,
+- crops surrounding whitespace, and
+- renders and saves the figure.
+Scripts therefore must NOT call plt.show(), plt.savefig(), plt.close(), or plt.clf(),
+and must NOT set aspect ratios or hide axes themselves. Omitting these is CORRECT
+behavior — never report it as an issue or instruct anyone to add them.
+Available libraries: matplotlib (including mplot3d and matplotlib.patches), numpy, and
+the Python standard library. Any other import is forbidden.`;
+
 // Retry-only prompt block for plan_logic. Lives in session_state as {retry_directives}:
 // cfg18 defaults it to "" (first attempt sees nothing), and the n8n retry paths back
 // into cfg18 set it to config.retry_directive_library.plan_logic — so retry framing
@@ -473,7 +492,9 @@ ${STAGE_3_CONTEXT}
 IDENTITY: You are the Lead Code Reviewer. You run independent review passes on generated Python code before execution.
 - Each review task is a standalone check: everything you need is in the prompt. Confine your report to the specific concern you were asked to check.
 - You are advisory: the Code Review Manager consolidates your reports and makes the final go/no-go call.
-- Report every issue found, tagged MINOR, MAJOR, or CRITICAL. Do not soften findings, and do not pad reports with nitpicks to appear useful.`
+- Report every issue found, tagged MINOR, MAJOR, or CRITICAL. Do not soften findings, and do not pad reports with nitpicks to appear useful.
+
+${EXECUTION_CONTRACT}`
   },
 
   "review_manager": {
@@ -488,7 +509,9 @@ ${STAGE_3_CONTEXT}
 
 IDENTITY: You are the Code Review Manager. The Lead Code Reviewer files separate review reports on each generated Python script (syntax, logic, mathematics); you review them together, alongside the code itself, and make the final go/no-go call before execution.
 
-${DIRECTIVE_MANAGER_WITH_RETRY}`
+${DIRECTIVE_MANAGER_WITH_RETRY}
+
+${EXECUTION_CONTRACT}`
   },
 
   "inspector": {
@@ -1235,14 +1258,14 @@ Analyze the 'Scaffolding Image Request'. Plan the Python workflow to draw the re
     instruction: `\
 Write the Python code based on the execution plan.
 
+${EXECUTION_CONTRACT}
+
 STRICT CONSTRAINTS:
 1. Use 'matplotlib' to construct the requested geometry.
 2. Focus ONLY on drawing the mathematical shapes, lines, and text in the correct relative positions.
-3. DO NOT include plt.show(), plt.savefig(), plt.close(), or plt.clf(). The execution environment handles rendering and saving automatically.
-4. DO NOT manually adjust margins, aspect ratios, or turn off axes (e.g., skip plt.axis('off') or plt.gca().set_aspect('equal')). The system wrapper will automatically enforce mathematical 1:1 aspect ratios, strip all grids/ticks, and crop whitespace after your code runs.
-5. PRIMITIVES: If the plan asks for images, assume files like 'cat.png' exist in the local directory. Load them using plt.imread() and display with imshow or OffsetImage.
-6. Output ONLY the raw, runnable Python code without markdown blocks or explanations.
-7. SCOPE RESTRICTION: Your code runs in an exec() environment where helper functions cannot access global variables or top-level imports. Therefore, for any helper function you write:
+3. PRIMITIVES: If the plan asks for images, assume files like 'cat.png' exist in the local directory. Load them using plt.imread() and display with imshow or OffsetImage.
+4. Output ONLY the raw, runnable Python code without markdown blocks or explanations.
+5. SCOPE RESTRICTION: Your code runs in an exec() environment where helper functions cannot access global variables or top-level imports. Therefore, for any helper function you write:
   You MUST pass all script-level objects (like ax, fig, or color variables) into the function as arguments.
   You MUST place any required module imports (e.g., import matplotlib.patches as patches) directly inside the function body.`,
     schema: {
