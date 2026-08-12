@@ -2108,18 +2108,6 @@
         "assignments": {
           "assignments": [
             {
-              "id": "70092f8c-2e9a-4432-b486-4be5922f6568",
-              "name": "base64_img_string",
-              "value": "={{ $('Prepare for Vision').item.json.base64_img_string }}",
-              "type": "string"
-            },
-            {
-              "id": "b33e8313-3e53-48a6-95ae-2108b92f877e",
-              "name": "base64_img_string_mime",
-              "value": "={{ $('Prepare for Vision').item.json.base64_img_string_mime }}",
-              "type": "string"
-            },
-            {
               "id": "ab702bd5-49d8-4104-89ea-37df61f5ad1e",
               "name": "config",
               "value": "={{ $json.config }}",
@@ -2261,13 +2249,13 @@
             {
               "id": "0abeb81f-6198-4ccd-b8c7-fdd203acfd95",
               "name": "base64_img_string",
-              "value": "={{ $('Load Phase 4 Config').item.json.base64_img_string }}",
+              "value": "={{ $('Prepare for Vision').item.json.base64_img_string }}",
               "type": "string"
             },
             {
               "id": "de39a7f7-b8ee-4dfc-9b89-72e248fef04c",
               "name": "base64_img_string_mime",
-              "value": "={{ $('Load Phase 4 Config').item.json.base64_img_string_mime }}",
+              "value": "={{ $('Prepare for Vision').item.json.base64_img_string_mime }}",
               "type": "string"
             },
             {
@@ -2344,13 +2332,13 @@
             {
               "id": "a7185f9f-acfa-4fa6-8d88-748c304003d4",
               "name": "base64_img_string",
-              "value": "={{ $('Load Phase 4 Config').item.json.base64_img_string }}",
+              "value": "={{ $('Prepare for Vision').item.json.base64_img_string }}",
               "type": "string"
             },
             {
               "id": "68de713c-3ec0-470f-b3ea-9d9fc54ac51d",
               "name": "base64_img_string_mime",
-              "value": "={{ $('Load Phase 4 Config').item.json.base64_img_string_mime }}",
+              "value": "={{ $('Prepare for Vision').item.json.base64_img_string_mime }}",
               "type": "string"
             }
           ]
@@ -2432,18 +2420,6 @@
         "assignments": {
           "assignments": [
             {
-              "id": "70092f8c-2e9a-4432-b486-4be5922f6568",
-              "name": "base64_img_string",
-              "value": "={{ $('artist - render_final').item.json.base64_img_string }}",
-              "type": "string"
-            },
-            {
-              "id": "b33e8313-3e53-48a6-95ae-2108b92f877e",
-              "name": "base64_img_string_mime",
-              "value": "={{ $('artist - render_final').item.json.base64_img_string_mime }}",
-              "type": "string"
-            },
-            {
               "id": "f4dadf95-805e-451b-8c9c-6db189630de2",
               "name": "config",
               "value": "={{ $json.config }}",
@@ -2499,13 +2475,13 @@
             {
               "id": "710af5f6-f000-42bc-b7f8-5b2fccbe6a42",
               "name": "base64_img_string",
-              "value": "={{ $('Load Phase 5 Config').item.json.base64_img_string }}",
+              "value": "={{ $('artist - render_final').item.json.base64_img_string }}",
               "type": "string"
             },
             {
               "id": "67cc8202-c20b-40a6-9e52-79d02a6511cf",
               "name": "base64_img_string_mime",
-              "value": "={{ $('Load Phase 5 Config').item.json.base64_img_string_mime }}",
+              "value": "={{ $('artist - render_final').item.json.base64_img_string_mime }}",
               "type": "string"
             }
           ]
@@ -2547,13 +2523,13 @@
             {
               "id": "296fcd3e-07dd-475b-970e-fee2a67f50fe",
               "name": "base64_img_string",
-              "value": "={{ $('Load Phase 5 Config').item.json.base64_img_string }}",
+              "value": "={{ $('artist - render_final').item.json.base64_img_string }}",
               "type": "string"
             },
             {
               "id": "b64ce8a4-b2d4-4089-86c9-f3d5faf1c93a",
               "name": "base64_img_string_mime",
-              "value": "={{ $('Load Phase 5 Config').item.json.base64_img_string_mime }}",
+              "value": "={{ $('artist - render_final').item.json.base64_img_string_mime }}",
               "type": "string"
             }
           ]
@@ -2595,13 +2571,13 @@
             {
               "id": "193b824e-6fa7-4c83-8da5-21cf99389cb6",
               "name": "base64_img_string",
-              "value": "={{ $('Load Phase 5 Config').item.json.base64_img_string }}",
+              "value": "={{ $('artist - render_final').item.json.base64_img_string }}",
               "type": "string"
             },
             {
               "id": "12218e4f-2fa9-4f33-a81c-fae1cc3b3778",
               "name": "base64_img_string_mime",
-              "value": "={{ $('Load Phase 5 Config').item.json.base64_img_string_mime }}",
+              "value": "={{ $('artist - render_final').item.json.base64_img_string_mime }}",
               "type": "string"
             }
           ]
@@ -2643,13 +2619,13 @@
             {
               "id": "1adefb8f-3d77-42f8-a26f-e8916a7b3ce5",
               "name": "base64_img_string",
-              "value": "={{ $('Load Phase 5 Config').item.json.base64_img_string }}",
+              "value": "={{ $('artist - render_final').item.json.base64_img_string }}",
               "type": "string"
             },
             {
               "id": "c505e260-1a0a-488e-8132-c4d64e08673b",
               "name": "base64_img_string_mime",
-              "value": "={{ $('Load Phase 5 Config').item.json.base64_img_string_mime }}",
+              "value": "={{ $('artist - render_final').item.json.base64_img_string_mime }}",
               "type": "string"
             }
           ]
@@ -3702,18 +3678,6 @@
         "assignments": {
           "assignments": [
             {
-              "id": "70092f8c-2e9a-4432-b486-4be5922f6568",
-              "name": "base64_img_string",
-              "value": "={{ $('Load Phase 5 Config').item.json.base64_img_string }}",
-              "type": "string"
-            },
-            {
-              "id": "b33e8313-3e53-48a6-95ae-2108b92f877e",
-              "name": "base64_img_string_mime",
-              "value": "={{ $('Load Phase 5 Config').item.json.base64_img_string_mime }}",
-              "type": "string"
-            },
-            {
               "id": "0fa69e38-a891-4e29-8f66-8d6594fc5198",
               "name": "config",
               "value": "={{ $json.config }}",
@@ -3803,30 +3767,6 @@
         "assignments": {
           "assignments": [
             {
-              "id": "b6143f78-10de-4b3f-b609-b99b123f28fc",
-              "name": "scaffolding_base64_img_string",
-              "value": "={{ $('Load Phase 4 Config').item.json.base64_img_string }}",
-              "type": "string"
-            },
-            {
-              "id": "b391f369-aeb6-4516-86df-bcbe46967398",
-              "name": "scaffolding_base64_img_string_mime",
-              "value": "={{ $('Load Phase 4 Config').item.json.base64_img_string_mime }}",
-              "type": "string"
-            },
-            {
-              "id": "70092f8c-2e9a-4432-b486-4be5922f6568",
-              "name": "base64_img_string",
-              "value": "={{ $('Load Phase 6 Config').item.json.base64_img_string }}",
-              "type": "string"
-            },
-            {
-              "id": "b33e8313-3e53-48a6-95ae-2108b92f877e",
-              "name": "base64_img_string_mime",
-              "value": "={{ $('Load Phase 6 Config').item.json.base64_img_string_mime }}",
-              "type": "string"
-            },
-            {
               "id": "eac69764-a614-484d-ac19-3fdcfc0989f4",
               "name": "config",
               "value": "={{ $json.config }}",
@@ -3859,7 +3799,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// 1. Grab all 12 items directly from the Phase 6 Output\nconst finalData = $('Phase 6 - Output').first().json;\nconst { api_key, ...safeData } = finalData;\nconst config = finalData.config || {};\nconst webhookUrl = config.gui_webhook_url;\n\n// === 💸 CALCULATE TOTAL COST ===\nlet totalCost = 0;\nif (finalData.history && Array.isArray(finalData.history)) {\n    // Sum up the 'cost' field from every step in the history array\n    totalCost = finalData.history.reduce((sum, step) => sum + (step.cost || 0), 0);\n}\n// Keep it clean to 6 decimal places\ntotalCost = Number(totalCost.toFixed(6));\n\n// 2. Add the completion status to the bundle\nconst finalPayload = {\n    ...safeData,\n    phase_id: \"-\", \n    agent_id: \"-\", \n    task_id: \"-\", \n    status: \"completed\", \n    timestamp: new Date().toISOString(),\n    total_cost: totalCost\n};\n\n// 3. Fire the \"Fat JSON\" to the Cloud Run Listener\nif (config.enable_gui_logging === true && webhookUrl) {\n    try {\n        await this.helpers.httpRequest({\n            method: 'POST',\n            url: webhookUrl,\n            headers: { 'Content-Type': 'application/json' },\n            body: finalPayload,\n            json: true,\n            timeout: 5000\n        });\n    } catch (e) {\n        console.error(\"Final broadcast failed:\", e.message);\n    }\n}\n\nreturn [{ json: { \n    status: \"Workflow Complete\", \n    job_id: finalData.job_id,\n    latest_description: finalData.latest_description,\n    user_message: finalData.user_message,\n    archival_report: finalData.archival_report,\n    history: finalData.history,\n    total_cost: totalCost\n} }];"
+        "jsCode": "// =============================================================================\n// 📦 FINAL BROADCAST CONTRACT — the completion payload for the GUI stack.\n// \"Phase 6 - Output\" now carries ONLY { config, session_state, session_events };\n// everything else is assembled HERE from direct node references. This node is\n// the single source of truth for what ships on completion.\n//\n// DELIVERABLES (12) and who consumes them:\n//   ritel-state-manager/main.py (/update-state → Firestore + GCS bucket):\n//    1. job_id                              REQUIRED — Firestore doc key\n//    2. status: \"completed\"                 routes images to final paths, uploads\n//                                           scaffolding, deletes {job_id}/latest.png\n//    3. base64_img_string (+ 4. _mime)      final render → {job_id}/final_illustration.png\n//    5. scaffolding_base64_img_string       base diagram → {job_id}/scaffolding.png\n//       (+ 6. _mime)\n//    7. history                             → {job_id}/history.json  (wire name is\n//                                           \"history\", value is session_events —\n//                                           frontend reads state[\"history\"] too)\n//   ritel-frontend/app.py:\n//    8. user_message                        chat panel (st.info)\n//    9. archival_report                     zip download: archival_report.txt\n//   10. latest_description                  metadata panel\n//   11. original_query                      metadata panel\n//   12. total_cost                          metadata panel (sum of session_events[].cost)\n//   (+ generation_successful, timestamp, and the \"-\" phase/agent/task markers,\n//    which the frontend shows as generic metadata / completion state)\n//\n// ⚠️ NEVER include `config` (contains api_keys) or api keys in the payload —\n//    the listener merges the entire payload into the Firestore job doc.\n// ⚠️ $('Prepare for Vision') exists only on scaffolding paths. DIRECT_IMAGE_GEN\n//    (currently unwired) would skip it — grab() returns nulls in that case.\n// =============================================================================\n\nconst { config = {}, session_state: ss = {}, session_events: events = [] } =\n    $('Phase 6 - Output').first().json;\n\n// Direct image sources (scaffolding = base diagram, artist = final render)\nconst grab = (nodeName) => {\n    try {\n        const j = $(nodeName).first().json;\n        return { img: j.base64_img_string || null, mime: j.base64_img_string_mime || null };\n    } catch (e) {\n        return { img: null, mime: null }; // node never executed on this path\n    }\n};\nconst finalRender = grab('artist - render_final');\nconst scaffolding = grab('Prepare for Vision');\n\n// === 💸 TOTAL COST — sum of per-event model costs in the transcript ===\nconst totalCost = Number(\n    events.reduce((sum, ev) => sum + (ev.cost || 0), 0).toFixed(6)\n);\n\nconst finalPayload = {\n    job_id: config.job_id,\n    status: \"completed\",\n    timestamp: new Date().toISOString(),\n    phase_id: \"-\",\n    agent_id: \"-\",\n    task_id: \"-\",\n    total_cost: totalCost,\n    base64_img_string: finalRender.img,\n    base64_img_string_mime: finalRender.mime || \"image/png\",\n    scaffolding_base64_img_string: scaffolding.img,\n    scaffolding_base64_img_string_mime: scaffolding.mime || \"image/png\",\n    history: events,\n    user_message: ss.user_message ?? null,\n    archival_report: ss.archival_report ?? null,\n    generation_successful: ss.generation_successful ?? null,\n    latest_description: ss.latest_description ?? null,\n    original_query: ss.original_query ?? null\n};\n\n// Fire the completion payload to the Cloud Run listener\nif (config.enable_gui_logging === true && config.gui_webhook_url) {\n    try {\n        await this.helpers.httpRequest({\n            method: 'POST',\n            url: config.gui_webhook_url,\n            headers: { 'Content-Type': 'application/json' },\n            body: finalPayload,\n            json: true,\n            timeout: 5000\n        });\n    } catch (e) {\n        console.error(\"Final broadcast failed:\", e.message);\n    }\n}\n\nreturn [{ json: {\n    status: \"Workflow Complete\",\n    job_id: config.job_id,\n    generation_successful: ss.generation_successful ?? null,\n    user_message: ss.user_message ?? null,\n    latest_description: ss.latest_description ?? null,\n    archival_report: ss.archival_report ?? null,\n    total_cost: totalCost,\n    history: events\n} }];"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -5713,13 +5653,13 @@
             {
               "id": "b9c862f9-17c0-4923-968c-f57c35859a6e",
               "name": "PHASE_ID",
-              "value": "-",
+              "value": "3",
               "type": "string"
             },
             {
               "id": "385b162f-1005-4d8e-b94a-6be27224b7d3",
               "name": "AGENT_ID",
-              "value": "error_expert",
+              "value": "inspection_manager",
               "type": "string"
             },
             {
@@ -5761,13 +5701,13 @@
             {
               "id": "b9c862f9-17c0-4923-968c-f57c35859a6e",
               "name": "PHASE_ID",
-              "value": "-",
+              "value": "3",
               "type": "string"
             },
             {
               "id": "385b162f-1005-4d8e-b94a-6be27224b7d3",
               "name": "AGENT_ID",
-              "value": "error_expert",
+              "value": "review_manager",
               "type": "string"
             },
             {
@@ -5792,63 +5732,7 @@
     },
     {
       "parameters": {
-        "workflowId": {
-          "__rl": true,
-          "value": "UReLQDgBIPpb9P4f",
-          "mode": "list",
-          "cachedResultUrl": "/workflow/UReLQDgBIPpb9P4f",
-          "cachedResultName": "EDEE — Universal Agent Sub-Workflow"
-        },
-        "workflowInputs": {
-          "mappingMode": "defineBelow",
-          "value": {},
-          "matchingColumns": [],
-          "schema": [],
-          "attemptToConvertTypes": false,
-          "convertFieldsToString": true
-        },
-        "options": {}
-      },
-      "type": "n8n-nodes-base.executeWorkflow",
-      "typeVersion": 1.3,
-      "position": [
-        1216,
-        2016
-      ],
-      "id": "e4df7f02-f816-4244-95cf-1f4365de9032",
-      "name": "error_expert - troubleshoot2"
-    },
-    {
-      "parameters": {
-        "workflowId": {
-          "__rl": true,
-          "value": "UReLQDgBIPpb9P4f",
-          "mode": "list",
-          "cachedResultUrl": "/workflow/UReLQDgBIPpb9P4f",
-          "cachedResultName": "EDEE — Universal Agent Sub-Workflow"
-        },
-        "workflowInputs": {
-          "mappingMode": "defineBelow",
-          "value": {},
-          "matchingColumns": [],
-          "schema": [],
-          "attemptToConvertTypes": false,
-          "convertFieldsToString": true
-        },
-        "options": {}
-      },
-      "type": "n8n-nodes-base.executeWorkflow",
-      "typeVersion": 1.3,
-      "position": [
-        1776,
-        1712
-      ],
-      "id": "014a1262-8b7e-40a6-b6e4-bc1ce70d9840",
-      "name": "error_injector - log_error"
-    },
-    {
-      "parameters": {
-        "jsCode": "// === 🐛 CFG INJECT EXECUTION ERROR ===\nconst inputData = items[0].json;\n\n// 1. Extract the specific error\nlet errorText = \"Unknown Error\";\nif (inputData.error) {\n    if (inputData.error.message) {\n        errorText = inputData.error.message;\n    } else if (inputData.error.response && inputData.error.response.data) {\n        const rawData = inputData.error.response.data;\n        errorText = typeof rawData === 'object' ? JSON.stringify(rawData) : rawData.toString();\n    }\n}\n\n// 2. Format the Multiline Context\nconst formattedError = `While attempting to execute python code:\n*** PYTHON RUNTIME ERROR ***\nThe code crashed with this error:\n${errorText}`;\n\n// 3. Clean Payload (Remove raw error object)\nconst cleanData = { ...inputData };\ndelete cleanData.error; \n\n// 4. Set routing for the Global Error Injector\nreturn [{\n    json: {\n        ...cleanData,\n        PHASE_ID: \"-\",\n        AGENT_ID: \"error_injector\",\n        TASK_ID: \"log_error\",\n        error_text: formattedError // The UA will swap this into $error_text\n    }\n}];"
+        "jsCode": "// === 🐛 CFG INJECT EXECUTION ERROR ===\nconst inputData = items[0].json;\n\n// 1. Extract the specific error\nlet errorText = \"Unknown Error\";\nif (inputData.error) {\n    if (inputData.error.message) {\n        errorText = inputData.error.message;\n    } else if (inputData.error.response && inputData.error.response.data) {\n        const rawData = inputData.error.response.data;\n        errorText = typeof rawData === 'object' ? JSON.stringify(rawData) : rawData.toString();\n    }\n}\n\n// 2. Format the Multiline Context\nconst formattedError = `While attempting to execute python code:\n*** PYTHON RUNTIME ERROR ***\nThe code crashed with this error:\n${errorText}`;\n\n// 3. Clean Payload (Remove raw error object)\nconst cleanData = { ...inputData };\ndelete cleanData.error; \n\n// 4. Set routing for the Global Error Injector\nreturn [{\n    json: {\n        ...cleanData,\n        PHASE_ID: \"3\",\n        AGENT_ID: \"review_manager\",\n        TASK_ID: \"log_error\",\n        error_text: formattedError // The UA will swap this into $error_text\n    }\n}];"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -6039,13 +5923,13 @@
             {
               "id": "b9c862f9-17c0-4923-968c-f57c35859a6e",
               "name": "PHASE_ID",
-              "value": "-",
+              "value": "3",
               "type": "string"
             },
             {
               "id": "385b162f-1005-4d8e-b94a-6be27224b7d3",
               "name": "AGENT_ID",
-              "value": "error_expert",
+              "value": "review_manager",
               "type": "string"
             },
             {
@@ -6067,34 +5951,6 @@
       ],
       "id": "46efb184-48ca-48e2-9d41-7341ad988ded",
       "name": "cfg59"
-    },
-    {
-      "parameters": {
-        "workflowId": {
-          "__rl": true,
-          "value": "UReLQDgBIPpb9P4f",
-          "mode": "list",
-          "cachedResultUrl": "/workflow/UReLQDgBIPpb9P4f",
-          "cachedResultName": "EDEE — Universal Agent Sub-Workflow"
-        },
-        "workflowInputs": {
-          "mappingMode": "defineBelow",
-          "value": {},
-          "matchingColumns": [],
-          "schema": [],
-          "attemptToConvertTypes": false,
-          "convertFieldsToString": true
-        },
-        "options": {}
-      },
-      "type": "n8n-nodes-base.executeWorkflow",
-      "typeVersion": 1.3,
-      "position": [
-        1728,
-        2256
-      ],
-      "id": "2e61c982-fce3-4798-bc72-effa42235103",
-      "name": "error_expert - troubleshoot3"
     },
     {
       "parameters": {
@@ -6187,34 +6043,6 @@
       ],
       "id": "5be7d3c0-e3d7-4a89-a915-a94dd6e75a97",
       "name": "inspections passed?"
-    },
-    {
-      "parameters": {
-        "workflowId": {
-          "__rl": true,
-          "value": "UReLQDgBIPpb9P4f",
-          "mode": "list",
-          "cachedResultUrl": "/workflow/UReLQDgBIPpb9P4f",
-          "cachedResultName": "EDEE — Universal Agent Sub-Workflow"
-        },
-        "workflowInputs": {
-          "mappingMode": "defineBelow",
-          "value": {},
-          "matchingColumns": [],
-          "schema": [],
-          "attemptToConvertTypes": false,
-          "convertFieldsToString": true
-        },
-        "options": {}
-      },
-      "type": "n8n-nodes-base.executeWorkflow",
-      "typeVersion": 1.3,
-      "position": [
-        2464,
-        2032
-      ],
-      "id": "b9131a7a-c6b5-40f6-92ef-815304c9f39d",
-      "name": "error_expert - troubleshoot_visual"
     },
     {
       "parameters": {
@@ -6335,13 +6163,13 @@
             {
               "id": "88f6d1ab-68e1-4735-8be6-3fcc02a94a41",
               "name": "base64_img_string",
-              "value": "={{ $('Load Phase 5 Config').item.json.base64_img_string }}",
+              "value": "={{ $('artist - render_final').item.json.base64_img_string }}",
               "type": "string"
             },
             {
               "id": "4a36d348-e703-4d5a-a125-cb1a88c67cd3",
               "name": "base64_img_string_mime",
-              "value": "={{ $('Load Phase 5 Config').item.json.base64_img_string_mime }}",
+              "value": "={{ $('artist - render_final').item.json.base64_img_string_mime }}",
               "type": "string"
             }
           ]
@@ -6501,7 +6329,7 @@
             {
               "id": "b1a7c3d2-0e64-4a19-8f55-2d9b7c1e0a31",
               "name": "query_index",
-              "value": 1,
+              "value": 7,
               "type": "number"
             },
             {
@@ -6888,6 +6716,118 @@
       ],
       "id": "d9fee9d5-b448-49c9-86df-05568900456d",
       "name": "scaffolding_manager - inject_constraints"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "UReLQDgBIPpb9P4f",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/UReLQDgBIPpb9P4f",
+          "cachedResultName": "EDEE — Universal Agent Sub-Workflow"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        1216,
+        2016
+      ],
+      "id": "e4df7f02-f816-4244-95cf-1f4365de9032",
+      "name": "review_manager - troubleshoot"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "UReLQDgBIPpb9P4f",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/UReLQDgBIPpb9P4f",
+          "cachedResultName": "EDEE — Universal Agent Sub-Workflow"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        1776,
+        1712
+      ],
+      "id": "014a1262-8b7e-40a6-b6e4-bc1ce70d9840",
+      "name": "review_manager - log_error"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "UReLQDgBIPpb9P4f",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/UReLQDgBIPpb9P4f",
+          "cachedResultName": "EDEE — Universal Agent Sub-Workflow"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        1728,
+        2256
+      ],
+      "id": "2e61c982-fce3-4798-bc72-effa42235103",
+      "name": "review_manager - troubleshoot1"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "UReLQDgBIPpb9P4f",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/UReLQDgBIPpb9P4f",
+          "cachedResultName": "EDEE — Universal Agent Sub-Workflow"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        2464,
+        2032
+      ],
+      "id": "b9131a7a-c6b5-40f6-92ef-815304c9f39d",
+      "name": "inspection_manager - troubleshoot_visual"
     }
   ],
   "connections": {
@@ -7597,11 +7537,6 @@
     "artist - render_final": {
       "main": [
         [
-          {
-            "node": "View Image",
-            "type": "main",
-            "index": 0
-          },
           {
             "node": "Phase 4 - Output",
             "type": "main",
@@ -8495,7 +8430,7 @@
       "main": [
         [
           {
-            "node": "error_expert - troubleshoot_visual",
+            "node": "inspection_manager - troubleshoot_visual",
             "type": "main",
             "index": 0
           }
@@ -8506,29 +8441,7 @@
       "main": [
         [
           {
-            "node": "error_expert - troubleshoot2",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "error_expert - troubleshoot2": {
-      "main": [
-        [
-          {
-            "node": "retry_count3",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "error_injector - log_error": {
-      "main": [
-        [
-          {
-            "node": "if bool_var4",
+            "node": "review_manager - troubleshoot",
             "type": "main",
             "index": 0
           }
@@ -8539,7 +8452,7 @@
       "main": [
         [
           {
-            "node": "error_injector - log_error",
+            "node": "review_manager - log_error",
             "type": "main",
             "index": 0
           }
@@ -8590,18 +8503,7 @@
       "main": [
         [
           {
-            "node": "error_expert - troubleshoot3",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "error_expert - troubleshoot3": {
-      "main": [
-        [
-          {
-            "node": "retry_count4",
+            "node": "review_manager - troubleshoot1",
             "type": "main",
             "index": 0
           }
@@ -8627,17 +8529,6 @@
         [
           {
             "node": "cfg55",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "error_expert - troubleshoot_visual": {
-      "main": [
-        [
-          {
-            "node": "retry_count2",
             "type": "main",
             "index": 0
           }
@@ -8861,6 +8752,50 @@
         [
           {
             "node": "cfg34",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "review_manager - troubleshoot": {
+      "main": [
+        [
+          {
+            "node": "retry_count3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "review_manager - log_error": {
+      "main": [
+        [
+          {
+            "node": "if bool_var4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "review_manager - troubleshoot1": {
+      "main": [
+        [
+          {
+            "node": "retry_count4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "inspection_manager - troubleshoot_visual": {
+      "main": [
+        [
+          {
+            "node": "retry_count2",
             "type": "main",
             "index": 0
           }
