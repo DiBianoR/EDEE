@@ -11,6 +11,8 @@ app = FastAPI()
 PROJECT_ID = "gen-lang-client-0925957935"
 DB_NAME = "dee-data"
 BUCKET_NAME = "edee-job-archives-0925957935"
+PLACEHOLDER_BUCKET = "edee-permanent-assets-0925957935"
+PLACEHOLDER_BLOB = "no_scaffolding.jpg"
 
 if "FIRESTORE_KEY_JSON" in os.environ:
     key_dict = json.loads(os.environ.get("FIRESTORE_KEY_JSON"))
@@ -57,6 +59,7 @@ async def update_state(request: Request):
         mime_type = top_level_data.pop("base64_img_string_mime", "image/png")
         scaff_base64 = top_level_data.pop("scaffolding_base64_img_string", None)
         scaff_mime = top_level_data.pop("scaffolding_base64_img_string_mime", "image/png")
+        scaff_placeholder = top_level_data.pop("scaffolding_placeholder", False)
 
         # Handle the main image (Latest vs Final)
         if base64_img:
@@ -75,12 +78,26 @@ async def update_state(request: Request):
                 blob = bucket.blob(latest_path)
                 blob.upload_from_string(image_data, content_type=mime_type)
 
-        # Handle the scaffolding image (Only on completion)
-        if scaff_base64 and status == "completed":
+        # Handle the scaffolding image.
+        # Written at the END OF PHASE 3 by the n8n "Archive Scaffolding" node, not on
+        # completion: the scaffold is final once inspections pass, and pinning it here
+        # means the completion payload no longer has to carry it. Status-agnostic on
+        # purpose — do not re-add a `status == "completed"` gate.
+        if scaff_base64:
             scaff_data = base64.b64decode(scaff_base64)
             scaff_path = f"{job_id}/scaffolding.png"
             scaff_blob = bucket.blob(scaff_path)
             scaff_blob.upload_from_string(scaff_data, content_type=scaff_mime)
+        elif scaff_placeholder:
+            # No scaffold this run (DIRECT_IMAGE_GEN, or an upstream skip). Copy the
+            # stock filler server-side: the bytes never transit n8n or this process,
+            # so the job bucket holds one small object instead of a re-uploaded copy.
+            src_bucket = storage_client.bucket(PLACEHOLDER_BUCKET)
+            copied = src_bucket.copy_blob(
+                src_bucket.blob(PLACEHOLDER_BLOB), bucket, f"{job_id}/scaffolding.png"
+            )
+            copied.content_type = "image/jpeg"   # cosmetic; .png name, .jpg bytes
+            copied.patch()
 
         # Additional copy of history to bucket (On completion)
         history_data = top_level_data.get("history")

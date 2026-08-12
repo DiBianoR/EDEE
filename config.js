@@ -1645,7 +1645,7 @@ NO PERSPECTIVE SHIFTS: Don't try to render a 3d illustration over a 2d problem /
 
 CONSTRAINT: You must preserve the geometry of anything related to the original problem exactly, even if you add, remove, or transform objects.
 
-If you can't find 'Base Diagram Requested & Drawn', 'Final Illustration Requested',  or 'Detailed Image Prompt', go ahead and draw an error message explaining instead of the requested image.`,
+If you can't find 'Final Illustration Requested',  or 'Detailed Image Prompt', go ahead and draw an error message explaining instead of the requested image.`,
     schema: {} // Schema ignored for binary output
   },
 
@@ -1790,6 +1790,7 @@ Draft a message directly to the user.
 - If the generation was successful, present the diagram enthusiastically and briefly explain the visual/educational choices made.
 - If the generation failed (e.g., caught in an error loop, failed strict QA, or had conflicting instructions), explain clearly and politely what went wrong.
 - If the user's directions caused difficulty, gently explain how(whether or not the generation was successful).
+- If we took the DIRECT_IMAGE_GEN path, and no scaffolding image was generated, you need to mention this.
 - Adopt a conversational, helpful tone. The user may reply to this message in the future to ask for changes, so keep the door open for further clarification.`,
     schema: {
       "type": "OBJECT",
@@ -2017,7 +2018,7 @@ return [{
     config: incoming.config || config,
     session_state: incoming.session_state || {
       original_query: incoming.original_query,
-      scaffolding_blueprint: "No scaffolding image."
+      scaffolding_blueprint: "No scaffolding image, work purely from provided descriptions."
       // NOTE: retry counters (coding/inspection/image_gen_retry_count) are NOT seeded
       // here and are NOT templated into any prompt — they exist only for n8n's
       // max-retry branching. Managers infer the attempt number from their own prior

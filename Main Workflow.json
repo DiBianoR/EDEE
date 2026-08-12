@@ -2249,13 +2249,13 @@
             {
               "id": "0abeb81f-6198-4ccd-b8c7-fdd203acfd95",
               "name": "base64_img_string",
-              "value": "={{ $('Prepare for Vision').item.json.base64_img_string }}",
+              "value": "={{ $('Prepare for Vision').isExecuted ? $('Prepare for Vision').item.json.base64_img_string : '' }}",
               "type": "string"
             },
             {
               "id": "de39a7f7-b8ee-4dfc-9b89-72e248fef04c",
               "name": "base64_img_string_mime",
-              "value": "={{ $('Prepare for Vision').item.json.base64_img_string_mime }}",
+              "value": "={{ $('Prepare for Vision').isExecuted ? $('Prepare for Vision').item.json.base64_img_string_mime : '' }}",
               "type": "string"
             },
             {
@@ -2309,13 +2309,13 @@
             {
               "id": "a7185f9f-acfa-4fa6-8d88-748c304003d4",
               "name": "base64_img_string",
-              "value": "={{ $('Prepare for Vision').item.json.base64_img_string }}",
+              "value": "={{ $('Prepare for Vision').isExecuted ? $('Prepare for Vision').item.json.base64_img_string : '' }}",
               "type": "string"
             },
             {
               "id": "68de713c-3ec0-470f-b3ea-9d9fc54ac51d",
               "name": "base64_img_string_mime",
-              "value": "={{ $('Prepare for Vision').item.json.base64_img_string_mime }}",
+              "value": "={{ $('Prepare for Vision').isExecuted ? $('Prepare for Vision').item.json.base64_img_string_mime : '' }}",
               "type": "string"
             },
             {
@@ -6284,7 +6284,7 @@
             {
               "id": "b1a7c3d2-0e64-4a19-8f55-2d9b7c1e0a31",
               "name": "query_index",
-              "value": 7,
+              "value": 4,
               "type": "number"
             },
             {
@@ -8267,7 +8267,8 @@
             "type": "main",
             "index": 0
           }
-        ]
+        ],
+        []
       ]
     },
     "cfg51": {
