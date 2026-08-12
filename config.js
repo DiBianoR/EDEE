@@ -1950,7 +1950,7 @@ const config = {
     },
 
   // === ⚙️ PROVIDER & MODEL ROUTING ===
-  "provider_by_type": { text: "google", view_img: "google", img2img: "google" },  //  google, openai
+  "provider_by_type": { text: "google", view_img: "google", img2img: "openai" },  //  google, openai
   "model_registry": modelRegistry,
 
   // Default tiers if an agent doesn't specify one
