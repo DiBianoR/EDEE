@@ -44,6 +44,7 @@
             box-shadow: 0 4px 6px rgba(0,0,0,0.05);
         }
         h3 { margin-top: 0; color: #6f42c1; border-bottom: 2px solid #eee; padding-bottom: 10px; }
+        .shape-note { font-size: 13px; font-weight: 400; color: #6c757d; }
         
         /* Object Styling */
         .object-block {
@@ -176,12 +177,17 @@
 
             try {
                 let data = JSON.parse(input);
-                
-                // Handle the case where the JSON is wrapped in an array
-                let targetObj = Array.isArray(data) ? data[0] : data;
+
+                // Two accepted shapes:
+                //  1. the session payload object (optionally wrapped in an array)
+                //  2. a bare session_events array, pasted straight out of the pipeline
+                const bareEvents = looksLikeEventArray(data);
+                let targetObj = bareEvents
+                    ? { session_events: data }
+                    : (Array.isArray(data) ? data[0] : data);
 
                 if (!targetObj || typeof targetObj !== 'object') {
-                    throw new Error("Invalid structure. Expected a JSON object or an array containing an object.");
+                    throw new Error("Invalid structure. Expected a JSON object, an array containing an object, or an array of session events.");
                 }
 
                 // Render any top-level image payloads (input image + scaffolding image)
@@ -201,14 +207,18 @@
                     }
                 }
 
-                // Render the output
-                outputDiv.innerHTML = `
+                // A bare events array carries no session_state, so don't show an empty panel for it
+                const stateHtml = bareEvents ? '' : `
                     <div class="output-section">
                         <h3>Session State</h3>
                         ${targetObj.session_state ? renderData(targetObj.session_state) : '<p><i>No session_state found.</i></p>'}
-                    </div>
+                    </div>`;
+
+                // Render the output
+                outputDiv.innerHTML = `
+                    ${stateHtml}
                     <div class="output-section">
-                        <h3>Session Events</h3>
+                        <h3>Session Events${bareEvents ? ' <span class="shape-note">(bare events array)</span>' : ''}</h3>
                         ${targetObj.session_events ? renderData(targetObj.session_events) : '<p><i>No session_events found.</i></p>'}
                     </div>
                     ${imagesHtml}
@@ -276,6 +286,21 @@
                 return html;
             }
             return '';
+        }
+
+        // Heuristic: the payload is the session_events array itself rather than the
+        // wrapper object. Events carry author/task/parts/timestamp and never carry the
+        // wrapper's own keys, so an array of those is unambiguous.
+        function looksLikeEventArray(data) {
+            if (!Array.isArray(data) || data.length === 0) return false;
+            const isPlainObject = item => item && typeof item === 'object' && !Array.isArray(item);
+            if (!data.every(item => isPlainObject(item)
+                    && !('session_state' in item)
+                    && !('session_events' in item))) {
+                return false;
+            }
+            const eventKeys = ['author', 'task', 'parts', 'timestamp'];
+            return data.some(item => eventKeys.some(key => key in item));
         }
 
         // Heuristic: long string of base64 characters (and not a sanitized "<IMAGE_BLOB>" placeholder)
