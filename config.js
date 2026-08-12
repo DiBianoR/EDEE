@@ -185,7 +185,8 @@ Context: The overall system works in two passes. First, we use Python (Matplotli
 
 const STAGE_5_CONTEXT = `\
 STAGE: MULTI-METRIC REVIEW AND POSTPROCESSING.
-Focus: Final quality assurance, ensuring the illustration is biased-free, aesthetically pleasing, developmentally appropriate, and mathematically precise.`;
+Focus: Final quality assurance, ensuring the illustration is biased-free, aesthetically pleasing, developmentally appropriate, and mathematically precise.
+In this stage independent review passes (bias, aesthetics, safety, math) each file a report on the final rendered illustration; the Final Gatekeeper consolidates them and either releases the image or sends it back to the artistic stage for another attempt.`;
 
 const STAGE_6_CONTEXT = `\
 STAGE: FINAL OUTPUT and REPORT.
@@ -246,6 +247,15 @@ const DIRECTIVE_PLAN_RETRY = `\
 
 - Begin your reasoning by stating what failed in the previous attempt, and how your new plan will fix it.`;
 
+// Same mechanism for the stage-4 loop: {image_retry_directives} sits flush at the end
+// of plan_finishing. cfg25 defaults it to "" (first attempt sees nothing); cfg26 arms
+// it with config.retry_directive_library.plan_finishing after the first plan, so any
+// loop back into cfg25 re-frames the planning task as a retry.
+const DIRECTIVE_FINISHING_RETRY = `\
+
+
+- Begin your reasoning by stating why the previous render was rejected, and how your new prompt will fix it.`;
+
 // === 📜 HISTORY SCOPE GROUPS ===
 // history_scope is now a list of EVENT AUTHORS. An agent sees an event only if the
 // event's author is in this list. Its OWN events come back as role "model" (enabling
@@ -261,7 +271,7 @@ const STAGE2_AGENTS = ["image_detail_planner", "dimension_expert", "layout_exper
                        "markup_specialist", "educator", "3d_specialist", "data_viz_expert",
                        "arrangement_planner", "artistic_planner"];
 const STAGE3_AGENTS = ["selector", "scaffolding_manager", "scaffolding_designer", "coder", "reviewer", "review_manager", "inspector", "inspection_manager"];
-const STAGE4_AGENTS = ["image_planner", "artist"];
+const STAGE4_AGENTS = ["artist"];  // one agent, two tasks (plan_finishing → render_final), mirroring the coder
 const STAGE5_AGENTS = ["image_verifier", "issue_aggregator"];
 const STAGE6_AGENTS = ["final_reporter"];
 const ERROR_AGENTS  = ["error_handler", "error_expert", "error_injector"];
@@ -547,57 +557,60 @@ ${DIRECTIVE_MANAGER_WITH_RETRY}`
   },
 
   // --- STAGE 4 ---------------------------------------------------------------
-  "image_planner": {
-    model_tier: "slow",
-    model_type: "view_img", // Using advanced model
-    // + error agents: revises its prompts when the stage-4/5 loop rejects an image, so
-    // it must see error_expert diagnoses (troubleshoot_visual) from failed attempts.
-    history_scope: [...STAGE4_AGENTS, "error_expert", "error_injector"],
-    system_identity: `\
-${GLOBAL_TASK_EXPLANATION}
-
-${STAGE_4_CONTEXT}
-
-IDENTITY: You are the Art Director. You convert technical descriptions into artistic prompts.`
-  },
-
   "artist": {
     model_tier: "slow",
-    model_type: "img2img", // Using the advanced model
-    // + error agents: redraws after rejections, so it should see what went wrong.
-    history_scope: [...STAGE4_AGENTS, "error_expert", "error_injector"],
+    model_type: "img2img", // render_final default; plan_finishing overrides to view_img at the task level
+    // One agent, two tasks (plan_finishing → render_final), mirroring the coder's
+    // plan_logic → write_code: the plan replays as the artist's own model turn before
+    // it paints, and retries keep a single coherent voice.
+    // + issue_aggregator: the stage-5 gatekeeper's verdicts and troubleshoot diagnoses
+    // are what this agent revises against when the loop rejects a render.
+    history_scope: ["artist", "issue_aggregator"],
     system_identity: `\
 ${GLOBAL_TASK_EXPLANATION}
 
 ${STAGE_4_CONTEXT}
 
-IDENTITY: You are the Illustrator Engine.`
+IDENTITY: You are the Artist. For each illustration you work in two steps: first you PLAN — reviewing the approved base diagram and writing the detailed image prompt — then you PAINT, transforming the base diagram into the final illustration guided by that prompt.`
   },
 
   // --- STAGE 5 ---------------------------------------------------------------
   "image_verifier": {
     model_tier: "medium",
     model_type: "view_img", // Override for high-fidelity vision checking
-    history_scope: STAGE5_AGENTS,
+    // Cold, independent review passes: everything each check needs is templated into
+    // its task prompt, and the separate passes must not see (or anchor on) each
+    // other's findings — or their own prior reports across retries. Replies are still
+    // visible to the Final Gatekeeper via ITS scope.
+    history_scope: [],
     system_identity: `\
 ${GLOBAL_TASK_EXPLANATION}
 
 ${STAGE_5_CONTEXT}
 
-IDENTITY: You are the Lead Visual Quality Assurance Officer. Your job is to strictly audit educational illustrations against specific safety, quality, and accuracy metrics.`
+IDENTITY: You are the Lead Visual Quality Assurance Officer. You run independent review passes on the final rendered illustration.
+- Each review task is a standalone check: everything you need is in the prompt. Confine your report to the specific concern you were asked to check.
+- You are advisory: the Final Gatekeeper consolidates your reports and makes the release call.
+- Report every issue found, tagged MINOR, MAJOR, or CRITICAL. Do not soften findings, and do not pad reports with nitpicks to appear useful.
+- Do not adjust your standards based on retry count — leniency decisions belong to the manager.`
   },
 
   "issue_aggregator": {
     model_tier: "slow", // manager type
-    // + error agents: re-decides after stage-4 retries, so it should see the
-    // error_expert diagnoses issued between its attempts.
-    history_scope: [...STAGE5_AGENTS, "error_expert", "error_injector"],
+    // Sees: the verifier reports it consolidates; its own prior verdicts and
+    // troubleshoot_visual diagnoses (it runs the stage-4/5 retry loop, so cfg62
+    // invokes troubleshoot_visual AS this agent); the artist conversation it is
+    // directing; and the Inspection Manager's stage-3 sign-off, whose `notes` record
+    // base-diagram flaws knowingly waved through upstream.
+    history_scope: ["image_verifier", "issue_aggregator", "artist", "inspection_manager"],
     system_identity: `\
 ${GLOBAL_TASK_EXPLANATION}
 
 ${STAGE_5_CONTEXT}
 
-IDENTITY: You are the Final Gatekeeper. You review the reports from the verification specialists and make the final release decision.`
+IDENTITY: You are the Final Gatekeeper. The Visual QA Officer files separate review reports on each final illustration (bias, aesthetics, safety, mathematics); you review them together and make the final release decision.
+
+${DIRECTIVE_MANAGER_WITH_RETRY}`
   },
 
   // --- STAGE 6 ---------------------------------------------------------------
@@ -1390,8 +1403,9 @@ Report EVERY error found, tagged MINOR, MAJOR, or CRITICAL — a mathematical mi
     // Runs AFTER syntax_check, logic_check, and math_check so their reports are in
     // sessionEvents (it also sees the code itself via the coder's reply). Replaces
     // the old passed_syntax && passed_logic branch: n8n branches on passed_review alone.
-    // {coding_retry_count} is set by cfg18 at the top of each coding attempt, so it
-    // already reads 1/2/3 by the time this task runs.
+    // NOTE: no retry counter is templated into this prompt (deliberate). The manager
+    // infers the attempt number from its own prior verdicts replayed in its scope;
+    // cfg18's coding_retry_count exists only for n8n's max-retry branching.
     instruction: `\
 Scaffolding Image Request: {scaffolding_blueprint}
 
@@ -1526,11 +1540,9 @@ Report EVERY glitch found, tagging each MINOR, MAJOR, or CRITICAL (a blank image
     assigned_agent: "inspection_manager",
     // Runs AFTER the four inspector tasks so their reports are in Project History.
     // Replaces the old 4-boolean branch: n8n branches on passed_inspection alone.
-    // {inspection_retry_count} is the EXISTING stage-3 counter: cfg18 (coder -
-    // plan_logic) initializes it with a `|| 0` guard at the top of the coding loop,
-    // and cfg63 increments it just before this task runs, so it reads 1/2/3. It must
-    // be incremented BEFORE this task, not after — the manager can't apply the
-    // attempt-based leniency rules if it can't see the attempt number.
+    // NOTE: no retry counter is templated into this prompt (deliberate). The manager
+    // infers the attempt number from its own prior verdicts replayed in its scope;
+    // cfg63's inspection_retry_count exists only for n8n's max-retry branching.
     instruction: `\
 The QA Vision Analyst has filed several inspection reports on the rendered base diagram: adherence, perspective, overlaps, and artifacts. Review them in the Project History and make the final accept/reject call.
 
@@ -1557,7 +1569,15 @@ If passing with known flaws, record them in notes so downstream stages can compe
 
   // --- STAGE 4: Advanced Image Generation ------------------------------------
   "plan_finishing": {
-    assigned_agent: "image_planner",
+    assigned_agent: "artist",
+    model_type: "view_img", // ⚠️ REQUIRED override: the artist agent defaults to img2img;
+                            // without this, the planning step would emit an image
+                            // instead of a prompt. This step VIEWS the base diagram.
+    // {image_retry_directives}: supplied by n8n — cfg25 must default it to "" (same
+    // `||` idiom as cfg18's retry_directives), and cfg26 arms it with
+    // config.retry_directive_library.plan_finishing once the first plan is done, so
+    // any later loop back into cfg25 re-frames this task as a retry. First attempt
+    // sees nothing.
     instruction: `\
 Original Query: \`\`\`{original_query}\`\`\`
 Basic illustration request: {description}
@@ -1582,7 +1602,7 @@ Directives:
 2. THE ALTERATION (Subjects & Context): Instruct the Artist to draw the background, items, and objects described in the final illustration request. If the base diagram uses geometric primitives for physical objects (e.g., circles for apples, a line for a ladder), command the Artist to morph those primitives into the described objects WITHOUT expanding beyond their original bounding boxes or center points. The artist will need to add any objects mentioned in the final illustration request that didn't need to be shown in the scaffolding.
 3. THE STYLE (Aesthetics): ${activeStyle.aesthetic} No photorealism, draw on a clean white background.
 
-To summarize, you need everything that makes a well written image prompt, plus you need to comprehensively cover what stays the same, what gets added, what gets removed, and what gets replaced with what.`,
+To summarize, you need everything that makes a well written image prompt, plus you need to comprehensively cover what stays the same, what gets added, what gets removed, and what gets replaced with what.{image_retry_directives}`,
     schema: {
       "type": "OBJECT",
       "properties": {
@@ -1606,7 +1626,7 @@ Detailed Image Prompt: {image_prompt}
 
 Transform the provided Base Diagram into a final illustration.
 
-Use the detailed image prompt provided by the image_planner(Art Director) in the previous step, refining further if necessary, always in light of the overall objective. If anything is left out, is sub-optimal, or needs touching up, you have permission to use a little artistic license.
+Use the detailed image prompt you wrote in the previous [planning] step, refining further if necessary, always in light of the overall objective. If anything is left out, is sub-optimal, or needs touching up, you have permission to use a little artistic license.
 
 The style you should normally use is best described as ${activeStyle.description}
 
@@ -1624,45 +1644,51 @@ If you can't find 'Base Diagram Requested & Drawn', 'Final Illustration Requeste
   "review_bias": {
     assigned_agent: "image_verifier",
     instruction: `\
-Analyze the image for cultural bias or stereotypes. Ensure diverse representation if people are present, and avoid stereotypical depictions of roles or environments. Ensure the content is neutral and inclusive.`,
+Analyze the image for cultural bias or stereotypes. Ensure diverse representation if people are present, and avoid stereotypical depictions of roles or environments. Ensure the content is neutral and inclusive.
+
+Report EVERY issue found, tagged MINOR, MAJOR, or CRITICAL. You are advisory: the Final Gatekeeper makes the release call from your report. Write 'No issues found.' in critique if the image is clean.`,
     schema: {
       "type": "OBJECT",
       "properties": {
-        "analysis": { "type": "STRING" },
-        "bias_detected": { "type": "BOOLEAN" },
-        "score": { "type": "INTEGER", "description": "1-10 scale (10 is perfectly neutral)" }
+        "analysis": { "type": "STRING", "description": "What the image depicts and how any people, roles, and environments are represented." },
+        "critique": { "type": "STRING", "description": "Bias or stereotype issues, each tagged MINOR/MAJOR/CRITICAL, or 'No issues found.'" },
+        "passed_bias_check": { "type": "BOOLEAN", "description": "Your recommendation; the manager makes the final call." }
       },
-      "required": ["analysis", "bias_detected", "score"]
+      "required": ["analysis", "critique", "passed_bias_check"]
     }
   },
 
   "review_aesthetics": {
     assigned_agent: "image_verifier",
     instruction: `\
-Evaluate visual appeal. Check for color cohesion, composition balance, clarity of the main subject, and absence of generated artifacts (glitches, blur, distortion).`,
+Evaluate visual appeal. Check for color cohesion, composition balance, clarity of the main subject, and absence of generated artifacts (glitches, blur, distortion).
+
+Report EVERY issue found, tagged MINOR, MAJOR, or CRITICAL. You are advisory: the Final Gatekeeper makes the release call from your report. Write 'No issues found.' in critique if the image is clean.`,
     schema: {
       "type": "OBJECT",
       "properties": {
-        "analysis": { "type": "STRING" },
-        "artifacts_detected": { "type": "BOOLEAN" },
-        "aesthetics_score": { "type": "INTEGER", "description": "1-10 scale" }
+        "analysis": { "type": "STRING", "description": "Assessment of color, composition, subject clarity, and rendering quality." },
+        "critique": { "type": "STRING", "description": "Aesthetic flaws and generated artifacts, each tagged MINOR/MAJOR/CRITICAL, or 'No issues found.'" },
+        "passed_aesthetics_check": { "type": "BOOLEAN", "description": "Your recommendation; the manager makes the final call." }
       },
-      "required": ["analysis", "artifacts_detected", "aesthetics_score"]
+      "required": ["analysis", "critique", "passed_aesthetics_check"]
     }
   },
 
   "review_safety": {
     assigned_agent: "image_verifier",
     instruction: `\
-Ensure the image is child-safe and developmentally appropriate for K-12 students. Check for any frightening elements, violence, or inappropriate themes.`,
+Ensure the image is child-safe and developmentally appropriate for K-12 students. Check for any frightening elements, violence, or inappropriate themes.
+
+Report EVERY issue found, tagged MINOR, MAJOR, or CRITICAL. You are advisory: the Final Gatekeeper makes the release call from your report. Write 'No issues found.' in critique if the image is clean.`,
     schema: {
       "type": "OBJECT",
       "properties": {
-        "analysis": { "type": "STRING" },
-        "is_safe": { "type": "BOOLEAN" },
-        "flagged_elements": { "type": "STRING" }
+        "analysis": { "type": "STRING", "description": "What the image depicts, viewed through a child-safety lens." },
+        "critique": { "type": "STRING", "description": "Unsafe or inappropriate elements, each tagged MINOR/MAJOR/CRITICAL, or 'No issues found.'" },
+        "passed_safety_check": { "type": "BOOLEAN", "description": "Your recommendation; the manager makes the final call." }
       },
-      "required": ["analysis", "is_safe", "flagged_elements"]
+      "required": ["analysis", "critique", "passed_safety_check"]
     }
   },
 
@@ -1673,20 +1699,23 @@ Ensure the image is child-safe and developmentally appropriate for K-12 students
 Original Query: \`\`\`{original_query}\`\`\`
 Math Problem: {problem}
 Diagram Request: {latest_description}
+Approved base-diagram blueprint: {scaffolding_blueprint}
 
-Verify mathematical precision.
+Verify the mathematical precision of the final illustration. Work from the Math Problem itself — recompute quantities yourself rather than trusting upstream descriptions.
 - Does the illustration accurately represent the geometry/graph described in the original request?
-- Are labels legible and correctly placed?
+- Are labels legible and correctly placed? Do any drawn numbers contradict the problem, or each other?
 - Do relative sizes match the values?
-- Is perspective wonky, or interfering with accuracy in a 2d problem?`,
+- Is perspective wonky, or interfering with accuracy in a 2d problem?
+
+Report EVERY issue found, tagged MINOR, MAJOR, or CRITICAL — a mathematical misrepresentation is at least MAJOR. You are advisory: the Final Gatekeeper makes the release call from your report. Write 'No issues found.' in critique if the math is sound.`,
     schema: {
       "type": "OBJECT",
       "properties": {
-        "analysis": { "type": "STRING" },
-        "math_accurate": { "type": "BOOLEAN" },
-        "discrepancies": { "type": "STRING" }
+        "analysis": { "type": "STRING", "description": "Your independent recomputation of the problem's quantities and how the illustration compares." },
+        "critique": { "type": "STRING", "description": "Mathematical errors found, each tagged MINOR/MAJOR/CRITICAL, or 'No issues found.'" },
+        "passed_math_check": { "type": "BOOLEAN", "description": "Your recommendation; the manager makes the final call." }
       },
-      "required": ["analysis", "math_accurate", "discrepancies"]
+      "required": ["analysis", "critique", "passed_math_check"]
     }
   },
 
@@ -1707,12 +1736,21 @@ Verify mathematical precision.
   "aggregate_feedback": {
     assigned_agent: "issue_aggregator",
     instruction: `\
-Review the outputs from the Image Verifier's tasks (Bias, Aesthetics, Safety, Math) in the history. Summarize all findings.
+Original Query: \`\`\`{original_query}\`\`\`
 
-DECISION LOGIC:
-- If ANY critical failure (Unsafe, Bias, Math Error, Severe Artifacts) is found, set 'final_pass' to FALSE.
-- If 'final_pass' is FALSE, provide a 'warning_message' and clear 'fix_instructions' for the previous stage.
-- If minor issues only, you may pass the image, and just leave notes about the issues in your analysis.`,
+Final Illustration Requested: {latest_description}
+
+The Visual QA Officer has filed several independent review reports on the final rendered illustration: bias, aesthetics, safety, and mathematics. Review them in the history, alongside the Artist's prompt and any prior attempts, and make the final release call.
+
+SYNTHESIZE:
+- Weigh every reported issue by its severity tag AND by whether it actually harms the illustration's Precision, Clarity, Utility, or Safety. Reviewers sometimes inflate severity to appear useful.
+- The reviewers' passed flags are recommendations, not verdicts. Overrule nitpicks and false alarms; resolve conflicts between reports yourself.
+- This illustration is the final product — nothing paints over it downstream, so polish and aesthetics count here.
+- Attempt 3 or later: pass a good-enough image rather than quibble over minor details. Reject ONLY if the image is truly unusable: unsafe, unreadable, or mathematically wrong in a way that would mislead a student.
+- A confirmed safety failure, heavy bias, or mathematical misrepresentation is never waved through.
+
+If rejecting, set 'final_pass' to FALSE and provide a 'warning_message' and clear 'fix_instructions' for the previous stage.
+If minor issues only, you may pass the image, and record them in notes so the final report can mention them.`,
     schema: {
       "type": "OBJECT",
       "properties": {
@@ -1933,7 +1971,8 @@ const config = {
   // instead of duplicating prose inside n8n. Separate from directive_library so the
   // "cfg inject constraints" flag-composer never picks these up by accident.
   "retry_directive_library": {
-    "plan_logic": DIRECTIVE_PLAN_RETRY
+    "plan_logic": DIRECTIVE_PLAN_RETRY,
+    "plan_finishing": DIRECTIVE_FINISHING_RETRY
   },
 
   // === 📚 REGISTRIES (the flat ADK contract Node 1 reads) ===
@@ -1966,11 +2005,10 @@ return [{
     session_state: incoming.session_state || {
       original_query: incoming.original_query,
       scaffolding_blueprint: "No scaffolding image."
-      // NOTE: consolidate_inspection templates {inspection_retry_count}, which is NOT
-      // seeded here. It arrives as a top-level field from cfg63 (which Node 1 sweeps
-      // into session_state) on every pass, and cfg18 guarantees it upstream. Seeding a
-      // default would silently mask a broken cfg63 expression as "attempt 0" — better
-      // to let Node 1 throw a TEMPLATE ERROR into the error handler.
+      // NOTE: retry counters (coding/inspection/image_gen_retry_count) are NOT seeded
+      // here and are NOT templated into any prompt — they exist only for n8n's
+      // max-retry branching. Managers infer the attempt number from their own prior
+      // verdicts replayed in scope.
     },
     session_events: incoming.session_events || []
   }
