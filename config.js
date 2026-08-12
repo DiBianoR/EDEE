@@ -1580,12 +1580,16 @@ If passing with known flaws, record them in notes so downstream stages can compe
     // sees nothing.
     instruction: `\
 Original Query: \`\`\`{original_query}\`\`\`
+
 Basic illustration request: {description}
+
 Underlying Math Problem: {problem}
-Base Diagram Requested & Drawn: {scaffolding_blueprint}
+
+Scaffolding Image Requested & Drawn: {scaffolding_blueprint}
+
 Final Illustration Requested: {latest_description}
 
-Review the 'Base Diagram', both the prompt and the actual image.
+Review the 'Scaffolding Image', both the prompt and the actual image.
 
 Create a detailed prompt for the Artist AI to turn this into the High-Quality Math Textbook Illustration detailed in 'Final Illustration Requested'.
 
@@ -1618,10 +1622,15 @@ To summarize, you need everything that makes a well written image prompt, plus y
     assigned_agent: "artist",
     instruction: `\
 Original Query: \`\`\`{original_query}\`\`\`
+
 Basic illustration request: {description}
+
 Underlying Math Problem: {problem}
-Base Diagram Requested & Drawn: {scaffolding_blueprint}
+
+Scaffolding Image Requested & Drawn: {scaffolding_blueprint}
+
 Final Illustration Requested: {latest_description}
+
 Detailed Image Prompt: {image_prompt}
 
 Transform the provided Base Diagram into a final illustration.
@@ -1697,11 +1706,14 @@ Report EVERY issue found, tagged MINOR, MAJOR, or CRITICAL. You are advisory: th
     model_tier: "slow", // use better model for technical question
     instruction: `\
 Original Query: \`\`\`{original_query}\`\`\`
-Math Problem: {problem}
-Diagram Request: {latest_description}
-Approved base-diagram blueprint: {scaffolding_blueprint}
 
-Verify the mathematical precision of the final illustration. Work from the Math Problem itself — recompute quantities yourself rather than trusting upstream descriptions.
+Math Problem: {problem}
+
+Diagram Request: {latest_description}
+
+Approved Scaffolding Image Blueprint: {scaffolding_blueprint}
+
+Verify the mathematical precision of the final illustration.
 - Does the illustration accurately represent the geometry/graph described in the original request?
 - Are labels legible and correctly placed? Do any drawn numbers contradict the problem, or each other?
 - Do relative sizes match the values?
@@ -1748,6 +1760,7 @@ SYNTHESIZE:
 - This illustration is the final product — nothing paints over it downstream, so polish and aesthetics count here.
 - Attempt 3 or later: pass a good-enough image rather than quibble over minor details. Reject ONLY if the image is truly unusable: unsafe, unreadable, or mathematically wrong in a way that would mislead a student.
 - A confirmed safety failure, heavy bias, or mathematical misrepresentation is never waved through.
+- review_math's visual assessments might not be accurate enough to confirm mathematical misrepresentation though. I wouldn't reject an image purely on its say-so on the 3rd attempt; instead leave a warning message in 'notes'
 
 If rejecting, set 'final_pass' to FALSE and provide a 'warning_message' and clear 'fix_instructions' for the previous stage.
 If minor issues only, you may pass the image, and record them in notes so the final report can mention them.`,
