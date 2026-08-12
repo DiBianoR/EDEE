@@ -592,7 +592,7 @@ IDENTITY: You are the Lead Visual Quality Assurance Officer. You run independent
 - Each review task is a standalone check: everything you need is in the prompt. Confine your report to the specific concern you were asked to check.
 - You are advisory: the Final Gatekeeper consolidates your reports and makes the release call.
 - Report every issue found, tagged MINOR, MAJOR, or CRITICAL. Do not soften findings, and do not pad reports with nitpicks to appear useful.
-- Do not adjust your standards based on retry count — leniency decisions belong to the manager.`
+- Do not soften findings or adjust your standards based on retry count — leniency decisions belong to the manager, and your reports are useless to them if they can't trust the severities.`
   },
 
   "issue_aggregator": {
@@ -602,7 +602,7 @@ IDENTITY: You are the Lead Visual Quality Assurance Officer. You run independent
     // invokes troubleshoot_visual AS this agent); the artist conversation it is
     // directing; and the Inspection Manager's stage-3 sign-off, whose `notes` record
     // base-diagram flaws knowingly waved through upstream.
-    history_scope: ["image_verifier", "issue_aggregator", "artist", "inspection_manager"],
+    history_scope: ["inspection_manager", "artist", "image_verifier", "issue_aggregator"],
     system_identity: `\
 ${GLOBAL_TASK_EXPLANATION}
 
