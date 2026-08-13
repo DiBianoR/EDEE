@@ -172,7 +172,7 @@ async def update_state(request: Request):
 # Fields /summary never returns — large enough to defeat the point of a lightweight
 # lookup. Use /transcript/{job_id} for those. Legacy names included so a doc written
 # by an older build can't blow up a summary response.
-BULK_FIELDS = ("session_events_incremental", "session_events", "history", "logs")
+BULK_FIELDS = ("session_events_incremental", "session_events")
 
 
 @app.get("/summary/{job_id}")
@@ -183,25 +183,16 @@ def get_summary(job_id: str):
     minus BULK_FIELDS, plus a manifest of what actually exists in the job's bucket
     folder. Works at any point in a run — including after a hard crash, where the
     doc is the only surviving record.
+
+    BUCKET FIRST, Firestore second. Bucket objects are finalized at terminal status
+    and never expire; the job doc carries a 7-day TTL. So an archived job still
+    summarizes correctly long after its doc is gone, and a finalized value is never
+    shadowed by the running estimate it superseded.
     """
-    snap = db.collection("job_states").document(job_id).get()
-    if not snap.exists:
-        raise HTTPException(status_code=404, detail=f"No state for job {job_id}")
-    state = snap.to_dict() or {}
-
-    transcript = state.get("session_events_incremental") or []
-    summary = {k: v for k, v in state.items() if k not in BULK_FIELDS}
-    summary["job_id"] = job_id
-    summary["session_events_count"] = len(transcript)
-
-    # Safety net: node 3 writes total_cost every turn, so this only fires if the run
-    # died before any response event landed.
-    if "total_cost" not in summary:
-        summary["total_cost"] = round(sum(ev.get("cost") or 0 for ev in transcript), 6)
-
+    # Manifest first — it doubles as the existence proof when the doc has expired.
     # One list call beats an exists() per blob, and it reports whatever is actually
     # there rather than only the filenames we thought to ask about.
-    summary["artifacts"] = {
+    artifacts = {
         blob.name.split("/", 1)[-1]: {
             "url": f"https://storage.googleapis.com/{BUCKET_NAME}/{blob.name}",
             "size": blob.size,
@@ -209,6 +200,46 @@ def get_summary(job_id: str):
         }
         for blob in storage_client.list_blobs(bucket, prefix=f"{job_id}/")
     }
+
+    snap = db.collection("job_states").document(job_id).get()
+    state = (snap.to_dict() or {}) if snap.exists else {}
+    if not state and not artifacts:
+        raise HTTPException(status_code=404, detail=f"No state or artifacts for job {job_id}")
+
+    summary = {k: v for k, v in state.items() if k not in BULK_FIELDS}
+    summary["job_id"] = job_id
+    summary["artifacts"] = artifacts
+
+    # total_cost, best source first:
+    #   1. {job_id}/total_cost.json  finalized from the authoritative session_events
+    #                                array; outlives the doc
+    #   2. doc total_cost            node 3's running sum — the only source mid-run
+    #                                or after a hard crash
+    #   3. sum of the incremental log  only if the run died before node 3 reported
+    # `is None` throughout, not truthiness: a genuine 0.0 cost must not fall through.
+    incremental = state.get("session_events_incremental") or []
+    cost, cost_source = None, None
+    if "total_cost.json" in artifacts:
+        try:
+            cost_doc = json.loads(bucket.blob(f"{job_id}/total_cost.json").download_as_text())
+            cost, cost_source = cost_doc.get("total_cost"), cost_doc.get("cost_source")
+        except Exception as e:
+            print(f"total_cost.json unreadable for {job_id}: {e}")
+    if cost is None:
+        cost, cost_source = state.get("total_cost"), "firestore_running_total"
+    if cost is None:
+        cost = round(sum(ev.get("cost") or 0 for ev in incremental), 6)
+        cost_source = "session_events_incremental"
+    summary["total_cost"] = cost
+    summary["cost_source"] = cost_source
+
+    # Counted from the doc's working log, NOT the bucket transcript: /summary is the
+    # lightweight lookup, and downloading a multi-MB transcript just to length it
+    # would defeat that. Omitted once the doc expires — use /transcript for a count
+    # of an archived run.
+    if snap.exists:
+        summary["session_events_count"] = len(incremental)
+
     return summary
 
 
