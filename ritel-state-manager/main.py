@@ -156,6 +156,111 @@ async def update_state(request: Request):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+# Fields /summary never returns — large enough to defeat the point of a lightweight
+# lookup. Use /transcript/{job_id} for those. Legacy names included so a doc written
+# by an older build can't blow up a summary response.
+BULK_FIELDS = ("session_events_incremental", "session_events", "history", "logs")
+
+
+@app.get("/summary/{job_id}")
+def get_summary(job_id: str):
+    """Everything known about a job except the bulk transcript.
+
+    General purpose, not tailored to any one consumer: the Firestore doc verbatim
+    minus BULK_FIELDS, plus a manifest of what actually exists in the job's bucket
+    folder. Works at any point in a run — including after a hard crash, where the
+    doc is the only surviving record.
+    """
+    snap = db.collection("job_states").document(job_id).get()
+    if not snap.exists:
+        raise HTTPException(status_code=404, detail=f"No state for job {job_id}")
+    state = snap.to_dict() or {}
+
+    transcript = state.get("session_events_incremental") or []
+    summary = {k: v for k, v in state.items() if k not in BULK_FIELDS}
+    summary["job_id"] = job_id
+    summary["session_events_count"] = len(transcript)
+
+    # Safety net: node 3 writes total_cost every turn, so this only fires if the run
+    # died before any response event landed.
+    if "total_cost" not in summary:
+        summary["total_cost"] = round(sum(ev.get("cost") or 0 for ev in transcript), 6)
+
+    # One list call beats an exists() per blob, and it reports whatever is actually
+    # there rather than only the filenames we thought to ask about.
+    summary["artifacts"] = {
+        blob.name.split("/", 1)[-1]: {
+            "url": f"https://storage.googleapis.com/{BUCKET_NAME}/{blob.name}",
+            "size": blob.size,
+            "updated": blob.updated,
+        }
+        for blob in storage_client.list_blobs(bucket, prefix=f"{job_id}/")
+    }
+    return summary
+
+
+@app.get("/transcript/{job_id}")
+def get_transcript(job_id: str):
+    """The full event transcript, best source first.
+
+    1. {job_id}/session_events.json             authoritative — the array the workflow
+                                                itself shipped at terminal status
+    2. {job_id}/session_events_incremental.json  archived working copy (/archive-incremental)
+    3. Firestore session_events_incremental      live; the only source mid-run or
+                                                 after a hard crash
+
+    Serving it live means a consumer never needs the transcript copied anywhere to
+    read it — only to *link* to it.
+    """
+    for name in ("session_events.json", "session_events_incremental.json"):
+        blob = bucket.blob(f"{job_id}/{name}")
+        if blob.exists():
+            return json.loads(blob.download_as_text())
+
+    snap = db.collection("job_states").document(job_id).get()
+    if snap.exists:
+        transcript = (snap.to_dict() or {}).get("session_events_incremental")
+        if transcript:
+            return sorted(transcript, key=lambda e: e.get("timestamp") or "")
+
+    raise HTTPException(status_code=404, detail=f"No transcript for job {job_id}")
+
+
+@app.post("/archive-incremental/{job_id}")
+def archive_incremental(job_id: str):
+    """Copy the live Firestore transcript into the bucket, for consumers that need a
+    LINK rather than a response body (a spreadsheet cell, say).
+
+    Deliberately a separate filename from session_events.json: that one is the
+    authoritative array the workflow shipped at completion, this is the working copy
+    reassembled from per-turn broadcasts. A crashed run only ever gets this one, and
+    the distinct name keeps the provenance obvious at a glance.
+
+    Not part of the normal run path — call it only when a consumer finds no
+    session_events.json in the bucket. No-ops if the authoritative file exists.
+    """
+    final_url = f"https://storage.googleapis.com/{BUCKET_NAME}/{job_id}/session_events.json"
+    if bucket.blob(f"{job_id}/session_events.json").exists():
+        return {"job_id": job_id, "archived": False,
+                "reason": "authoritative session_events.json already exists",
+                "url": final_url}
+
+    snap = db.collection("job_states").document(job_id).get()
+    if not snap.exists:
+        raise HTTPException(status_code=404, detail=f"No state for job {job_id}")
+    transcript = (snap.to_dict() or {}).get("session_events_incremental")
+    if not transcript:
+        raise HTTPException(status_code=404, detail=f"No transcript recorded for job {job_id}")
+
+    transcript = sorted(transcript, key=lambda e: e.get("timestamp") or "")
+    path = f"{job_id}/session_events_incremental.json"
+    bucket.blob(path).upload_from_string(
+        json.dumps(transcript, indent=2, default=str), content_type="application/json"
+    )
+    return {"job_id": job_id, "archived": True, "events": len(transcript),
+            "url": f"https://storage.googleapis.com/{BUCKET_NAME}/{path}"}
+
+
 @app.get("/")
 def read_root():
     return {"status": "Listener is active"}
