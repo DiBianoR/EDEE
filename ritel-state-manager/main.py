@@ -149,6 +149,19 @@ async def update_state(request: Request):
                     content_type="application/json"
                 )
 
+                # Cost, derived from the SAME array that just became
+                # session_events.json, so the file and its cost can never disagree.
+                # On a completed run that array is the workflow's own snapshot; a
+                # clean failure ships no snapshot, so it's the incremental log —
+                # `source` records which, since the two are not equally trusted.
+                bucket.blob(f"{job_id}/total_cost.json").upload_from_string(
+                    json.dumps({
+                        "total_cost": round(sum(ev.get("cost") or 0 for ev in transcript), 6),
+                        "cost_source": "session_events" if snapshot else "session_events_incremental",
+                    }, indent=2),
+                    content_type="application/json"
+                )
+
         return {"status": "success", "message": f"Updated job {job_id}"}
         
     except Exception as e:
