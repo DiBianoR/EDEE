@@ -120,44 +120,60 @@ def generate_zip_bundle(state):
     zip_buffer = io.BytesIO()
     job_id = state.get("job_id")
     with zipfile.ZipFile(zip_buffer, "a", zipfile.ZIP_DEFLATED, False) as zip_file:
-        # Pull Images from Cloud Storage
-        if state.get("status") == "completed":
+        # Pull Images from Cloud Storage, best available first. Bundling by what
+        # EXISTS rather than by run status means failed and crashed runs still get
+        # whatever the pipeline managed to produce.
+        #   scaffolding.png        always present — real render or placeholder,
+        #                          pinned by "Archive Scaffolding" at end of Phase 3
+        #   final_illustration.png completed runs only
+        #   latest.png             fallback: the last render that made it out before
+        #                          the run failed or crashed (kept under its own name
+        #                          so it's never mistaken for an approved final)
+        def add_blob(zip_name, blob_path):
             try:
-                img_bytes = bucket.blob(f"{job_id}/final_illustration.png").download_as_bytes()
-                zip_file.writestr("final_illustration.png", img_bytes)
+                # download_as_bytes() raises if absent — that IS the existence check,
+                # and it costs one round-trip instead of exists()-then-download's two.
+                zip_file.writestr(zip_name, bucket.blob(blob_path).download_as_bytes())
+                return True
             except Exception:
-                pass
+                return False
 
-            try:
-                scaff_bytes = bucket.blob(f"{job_id}/scaffolding.png").download_as_bytes()
-                zip_file.writestr("scaffolding.png", scaff_bytes)
-            except Exception:
-                pass
+        add_blob("scaffolding.png", f"{job_id}/scaffolding.png")
+        if not add_blob("final_illustration.png", f"{job_id}/final_illustration.png"):
+            add_blob("latest.png", f"{job_id}/latest.png")
 
         # Pull Text from Firestore
         if state.get("archival_report"):
             zip_file.writestr("archival_report.txt", str(state["archival_report"]))
-        if state.get("history"):
-            zip_file.writestr("history.json", json.dumps(state["history"], indent=2))
+        transcript = state.get("session_events_incremental")
+        if transcript:
+            transcript = sorted(transcript, key=lambda e: e.get("timestamp") or "")
+            zip_file.writestr("session_events.json", json.dumps(transcript, indent=2))
 
-        # Bundle remaining metadata
-        metadata = {k: v for k, v in state.items() if k not in ["logs", "history", "archival_report", "ttl_expiry"]}
+        # Bundle remaining metadata. Excluded: the two fields bundled as their own
+        # files above, plus ttl_expiry (a datetime — json.dumps would throw).
+        metadata = {k: v for k, v in state.items()
+                    if k not in ["session_events_incremental", "archival_report", "ttl_expiry"]}
         zip_file.writestr("metadata.json", json.dumps(metadata, indent=2))
 
     return zip_buffer.getvalue()
 
 
 # --- UI RENDERING HELPER FUNCTION ---
+def _esc(s):
+    return str(s).replace("<", "&lt;").replace(">", "&gt;").replace("\n", "<br>")
+
+
 def draw_ui_state(state, last_log_index, log_content):
     phase = state.get('phase_id', '?')
     agent_name = state.get('agent_id', 'Agent')
     task_name = state.get('task_id', 'Task')
 
+    image_to_show = None
     if state.get("status") not in ["completed", "failed"]:
         agent_ui.markdown(f"**Phase {phase}** | 🤖 `{agent_name} - {task_name}`")
 
         # Image Rendering directly from the bucket
-        image_to_show = None
         if state.get("status") == "completed":
             image_to_show = f"{state.get('job_id')}/final_illustration.png"
         else:
@@ -171,38 +187,50 @@ def draw_ui_state(state, last_log_index, log_content):
         except Exception:
             pass
 
-            # Logs
-    logs = state.get("logs", [])
-    if len(logs) > last_log_index:
-        for i in range(last_log_index, len(logs)):
-            log = logs[i]
-            log_agent = log.get("agent_id", "Agent")
-
-            if log_agent == "scaffolding_generator" and not log.get("response"):
-                continue
-
-            query = log.get("query", "No instruction provided.")
-            response = log.get("response", {})
+    # Event log: session_events_incremental, the doc's working transcript, appended
+    # live by the pipeline — node 1 ships each prompt event before the API call,
+    # node 3 each response event after, so during a run the newest entry is usually
+    # a prompt whose answer hasn't arrived yet.
+    # Array order is arrival order (prompt always POSTs before its response), so the
+    # incremental last_log_index render carries over from the old `logs` loop.
+    events = state.get("session_events_incremental", [])
+    if len(events) > last_log_index:
+        for i in range(last_log_index, len(events)):
+            ev = events[i]
+            author = ev.get("author", "Agent")
+            task = ev.get("task", "")
+            texts = [p.get("text") for p in ev.get("parts", []) if isinstance(p, dict) and p.get("text")]
+            if not texts:
+                continue  # image-only or empty parts: nothing renderable as text
 
             entry_html = "<div class='entry'>"
-            query_safe = str(query).replace("<", "&lt;").replace(">", "&gt;").replace("\n", "<br>")
-            entry_html += f"<div class='instruction'><b>🤖 {log_agent} Task:</b><br>{query_safe}</div>"
-
-            if isinstance(response, dict):
-                for key, val in response.items():
-                    val_safe = str(val).replace("<", "&lt;").replace(">", "&gt;").replace("\n", "<br>")
-                    entry_html += "<div style='margin-bottom: 8px; margin-left: 10px;'>"
-                    entry_html += f"<span class='key'>{key}: </span>"
-                    entry_html += f"<span class='val'>{val_safe}</span>"
-                    entry_html += "</div>"
+            if author in ("system", "user"):
+                # Prompt half of a turn — the instruction sent to the task's agent.
+                for text in texts:
+                    entry_html += f"<div class='instruction'><b>🤖 {task}:</b><br>{_esc(text)}</div>"
             else:
-                val_safe = str(response).replace("<", "&lt;").replace(">", "&gt;").replace("\n", "<br>")
-                entry_html += f"<div class='val' style='margin-left: 10px;'>{val_safe}</div>"
+                # Response half — agent output is (usually) a JSON string; render its
+                # fields as key/val lines like the old response dict, else raw text.
+                entry_html += f"<div class='instruction' style='font-style: normal;'><b>💡 {author}</b></div>"
+                for text in texts:
+                    parsed = None
+                    try:
+                        parsed = json.loads(text)
+                    except (ValueError, TypeError):
+                        pass
+                    if isinstance(parsed, dict):
+                        for key, val in parsed.items():
+                            entry_html += "<div style='margin-bottom: 8px; margin-left: 10px;'>"
+                            entry_html += f"<span class='key'>{key}: </span>"
+                            entry_html += f"<span class='val'>{_esc(val)}</span>"
+                            entry_html += "</div>"
+                    else:
+                        entry_html += f"<div class='val' style='margin-left: 10px;'>{_esc(text)}</div>"
 
             entry_html += "</div>"
             log_content += entry_html
 
-        last_log_index = len(logs)
+        last_log_index = len(events)
 
         full_log_html = f"""
         <div style="height: 400px; overflow-y: auto; display: flex; flex-direction: column-reverse; background-color: #1E1E1E; border-radius: 8px; border: 1px solid #333;">
@@ -344,12 +372,16 @@ if st.session_state.job_id:
                             st.markdown("### 📝 Notes")
                             st.info(state["user_message"])
 
+                elif state.get("status") == "failed":
+                    status_ui.error(f"❌ Failed: {state.get('error_message')}")
+
+                # Offer the bundle for ANY terminal state. On a failure it's the most
+                # useful artifact there is: the full transcript plus the last render
+                # that made it out — exactly what's needed to work out what went wrong.
+                if state.get("status") in ("completed", "failed"):
                     zip_bundle = generate_zip_bundle(state)
                     download_ui.download_button("📦 Download Results (ZIP)", zip_bundle,
                                                 file_name=f"EDEE_{st.session_state.job_id}.zip", mime="application/zip")
-
-                elif state.get("status") == "failed":
-                    status_ui.error(f"❌ Failed: {state.get('error_message')}")
 
     except Exception as e:
         st.error(f"Error during polling/rendering: {e}")

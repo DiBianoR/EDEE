@@ -1,0 +1,725 @@
+{
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        96
+      ],
+      "id": "21af73f9-003a-44fb-aa9d-a5c3e67beba9",
+      "name": "When clicking ‘Execute workflow’"
+    },
+    {
+      "parameters": {
+        "authentication": "serviceAccount",
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "https://docs.google.com/spreadsheets/d/1wL6uo_mwN3zWBuhk740ynfWeNTY37N2u1x4Ir-wlUkQ/edit?usp=sharing",
+          "mode": "url"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1wL6uo_mwN3zWBuhk740ynfWeNTY37N2u1x4Ir-wlUkQ/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Job ID": "={{ $('Edit Fields').item.json['job_id'] }}",
+            "row_number": "={{ $('Edit Fields').item.json.row_number }}",
+            "Final Image": "=https://storage.googleapis.com/edee-job-archives-0925957935/{{ $('Edit Fields').item.json['job_id'] }}/final_illustration.png",
+            "Scaffolding Image": "=https://storage.googleapis.com/edee-job-archives-0925957935/{{ $('Edit Fields').item.json.job_id }}/scaffolding.png",
+            "Time Finished": "={{ new Date().toISOString() }}",
+            "Run Time": "={{ Math.floor(((new Date() - new Date($('Edit Fields').item.json.time_started)) / 1000) / 60) }}m {{ Math.floor(((new Date() - new Date($('Edit Fields').item.json.time_started)) / 1000) % 60) }}s",
+            "History": "=https://storage.googleapis.com/edee-job-archives-0925957935/{{ $('Edit Fields').item.json['job_id'] }}/session_events.json",
+            "Report": "={{ $json.archival_report || \"\" }}",
+            "Result": "={{ (() => { const e = $json.error; const m = typeof e === 'string' ? e : (e?.message || e?.description || (e ? JSON.stringify(e) : null)); return m || $json.user_message || $json.error_message || \"No message returned.\"; })() }}",
+            "Status": "={{ $json.error ? \"Hard Crash\" : ($json.error_message ? \"Failed\" : ($json.status || \"Unknown\")) }}",
+            "Cost": "={{ $json.total_cost || 0 }}"
+          },
+          "matchingColumns": [
+            "row_number"
+          ],
+          "schema": [
+            {
+              "id": "Prompt",
+              "displayName": "Prompt",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Style",
+              "displayName": "Style",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "max_txt_tier",
+              "displayName": "max_txt_tier",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "max_img_tier",
+              "displayName": "max_img_tier",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Job ID",
+              "displayName": "Job ID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Scaffolding Image",
+              "displayName": "Scaffolding Image",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Final Image",
+              "displayName": "Final Image",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Run Time",
+              "displayName": "Run Time",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Result",
+              "displayName": "Result",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Report",
+              "displayName": "Report",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Cost",
+              "displayName": "Cost",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "History",
+              "displayName": "History",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Time Started",
+              "displayName": "Time Started",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Time Finished",
+              "displayName": "Time Finished",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1680,
+        304
+      ],
+      "id": "d45c0b1f-aab7-429a-b176-b48f72bcd605",
+      "name": "Update row in sheet",
+      "credentials": {
+        "googleApi": {
+          "id": "H39bxuFgkZrjCNtv",
+          "name": "Google Service Account - dee-data"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "authentication": "serviceAccount",
+        "documentId": {
+          "__rl": true,
+          "value": "https://docs.google.com/spreadsheets/d/1wL6uo_mwN3zWBuhk740ynfWeNTY37N2u1x4Ir-wlUkQ/edit?usp=sharing",
+          "mode": "url"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1wL6uo_mwN3zWBuhk740ynfWeNTY37N2u1x4Ir-wlUkQ/edit#gid=0"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "Status",
+              "lookupValue": "="
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        176,
+        96
+      ],
+      "id": "a7e8f589-51d4-48cb-861c-cd2ba5c318f8",
+      "name": "Get row(s) in sheet",
+      "credentials": {
+        "googleApi": {
+          "id": "H39bxuFgkZrjCNtv",
+          "name": "Google Service Account - dee-data"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "action": "generate",
+        "dataPropertyName": "Job ID"
+      },
+      "type": "n8n-nodes-base.crypto",
+      "typeVersion": 2,
+      "position": [
+        352,
+        96
+      ],
+      "id": "58ffc3f7-d40d-4e1d-8858-d221a9f53458",
+      "name": "Generate Job ID"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        560,
+        96
+      ],
+      "id": "6eee461d-5c1b-4ca2-af69-6a8a8caa003c",
+      "name": "Loop Over Items"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "4750a986-ba66-4a17-b7b0-bae56ab5d6bb",
+              "name": "original_query",
+              "value": "={{ $json.Prompt }}",
+              "type": "string"
+            },
+            {
+              "id": "5f3c10cc-c3fe-4fc9-b8ab-6e46c79376e6",
+              "name": "style_preference",
+              "value": "={{ $json.Style }}",
+              "type": "string"
+            },
+            {
+              "id": "db965ef1-88c4-4a51-87f7-49998dfd5245",
+              "name": "job_id",
+              "value": "={{ $json['Job ID'] }}",
+              "type": "string"
+            },
+            {
+              "id": "ca99ceef-7e81-45f2-913d-5a028eb77dfd",
+              "name": "row_number",
+              "value": "={{ $json.row_number }}",
+              "type": "number"
+            },
+            {
+              "id": "3d9b5bcc-c2e4-4186-ac53-95f0a070d9f3",
+              "name": "max_text_tier",
+              "value": "={{ $json['max_txt_tier'] || \"\" }}",
+              "type": "string"
+            },
+            {
+              "id": "5e20c382-618f-4b93-b3a5-af917afa587a",
+              "name": "max_image_tier",
+              "value": "={{ $json['max_img_tier'] || \"\" }}",
+              "type": "string"
+            },
+            {
+              "id": "bee137b3-0931-4b31-8ec3-66d59799f9e9",
+              "name": "time_started",
+              "value": "={{ new Date().toISOString() }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        768,
+        304
+      ],
+      "id": "d18a1d72-d304-4e65-8932-6b473d69041c",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "HtwI6u1ae2xwKw1f",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/HtwI6u1ae2xwKw1f",
+          "cachedResultName": "EDEE — EDEE-main"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        1392,
+        304
+      ],
+      "id": "8e0e37d7-ca22-43f7-8590-2486f0389bbb",
+      "name": "Call 'EDEE-main'",
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "authentication": "serviceAccount",
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "https://docs.google.com/spreadsheets/d/1wL6uo_mwN3zWBuhk740ynfWeNTY37N2u1x4Ir-wlUkQ/edit?usp=sharing",
+          "mode": "url"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1wL6uo_mwN3zWBuhk740ynfWeNTY37N2u1x4Ir-wlUkQ/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "row_number": "={{ $('Edit Fields').item.json.row_number }}",
+            "Job ID": "={{ $('Edit Fields').item.json.job_id }}",
+            "Status": "In Progress",
+            "Time Started": "={{ $('Edit Fields').item.json.time_started }}"
+          },
+          "matchingColumns": [
+            "row_number"
+          ],
+          "schema": [
+            {
+              "id": "Prompt",
+              "displayName": "Prompt",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Style",
+              "displayName": "Style",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "max_txt_tier",
+              "displayName": "max_txt_tier",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "max_img_tier",
+              "displayName": "max_img_tier",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Job ID",
+              "displayName": "Job ID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Scaffolding Image",
+              "displayName": "Scaffolding Image",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Final Image",
+              "displayName": "Final Image",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Run Time",
+              "displayName": "Run Time",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Result",
+              "displayName": "Result",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Report",
+              "displayName": "Report",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Cost",
+              "displayName": "Cost",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "History",
+              "displayName": "History",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Time Started",
+              "displayName": "Time Started",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Time Finished",
+              "displayName": "Time Finished",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        976,
+        304
+      ],
+      "id": "c4386e9a-067e-4eb5-a17a-5aec0b484f11",
+      "name": "Update row in sheet1",
+      "credentials": {
+        "googleApi": {
+          "id": "H39bxuFgkZrjCNtv",
+          "name": "Google Service Account - dee-data"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "return { json: $('Edit Fields').item.json };"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1184,
+        304
+      ],
+      "id": "96aca4dd-83e4-475c-afa9-a7bbb87b29aa",
+      "name": "State Restore"
+    }
+  ],
+  "connections": {
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "Get row(s) in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update row in sheet": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get row(s) in sheet": {
+      "main": [
+        [
+          {
+            "node": "Generate Job ID",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Job ID": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Items": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Update row in sheet1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call 'EDEE-main'": {
+      "main": [
+        [
+          {
+            "node": "Update row in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Update row in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update row in sheet1": {
+      "main": [
+        [
+          {
+            "node": "State Restore",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "State Restore": {
+      "main": [
+        [
+          {
+            "node": "Call 'EDEE-main'",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "050d7f5d3593566ffe36464e2179832d9e4aa282cb8a519a27bd68446dae16b9"
+  }
+}

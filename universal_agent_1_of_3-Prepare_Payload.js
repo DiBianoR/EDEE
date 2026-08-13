@@ -298,6 +298,39 @@ sessionEvents.push({
     timestamp: new Date().toISOString()
 });
 
+// === 📡 STATE BROADCAST (prompt event) ===
+// Ship the prompt event the moment it exists, BEFORE the API call. If the model call
+// or Node 3 crashes, Firestore still holds what this turn asked — the transcript ends
+// AT the failure instead of one turn before it. Node 3 separately ships the response
+// event when (if) the turn finishes; the listener ArrayUnions both into the Firestore
+// doc's session_events_incremental (the working transcript).
+// The pushed event is already sanitized (image blobs → tags), so this is text-only.
+// ⚠️ LOAD-BEARING, not fire-and-forget: crash forensics and billing live in this
+// stream, so a failed broadcast stops the run rather than silently losing the record.
+// The generous timeout only bounds the failure case — normal turns wait one round-trip.
+if (config.enable_gui_logging === true && config.gui_webhook_url) {
+    try {
+        await this.helpers.httpRequest({
+            method: 'POST',
+            url: config.gui_webhook_url,
+            headers: { 'Content-Type': 'application/json' },
+            body: {
+                job_id: config.job_id,
+                phase_id: "-",
+                agent_id: targetAgentId,   // merged top-level too → live "now running" status
+                task_id: currentTaskId,
+                status: "running",
+                timestamp: new Date().toISOString(),
+                events: [sessionEvents[sessionEvents.length - 1]]
+            },
+            json: true,
+            timeout: 10000
+        });
+    } catch (e) {
+        throw new Error(`State broadcast failed for ${targetAgentId}/${currentTaskId} (prompt event): ${e.message}`);
+    }
+}
+
 // === 🏎️ TIER, ROUTING & NO_MODEL RESOLUTION ===
 // Task tier overrides agent tier, which falls back to the type-based default.
 let requestedTier = taskBlueprint.model_tier || agentBlueprint.model_tier ||

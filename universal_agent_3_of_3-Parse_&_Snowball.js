@@ -243,61 +243,8 @@ if (terminalConfig) {  // has fields status & message_field
     uiMessage = parsedResult?.[terminalConfig.message_field];  // message_field[name of the field w/ user-facing message]
 }
 
-// === 📡 GUI PROGRESS BROADCAST (Fire & Forget) ===
-// Keeps the ORIGINAL broadcast payload shape so the state-manager + Streamlit frontend keep
-// working unchanged. Fields the flattened/ADK rewrite no longer carries get stand-ins:
-//   - phase_id: "-"  (phases were flattened out of the config; the GUI just renders "Phase -")
-//   - query:    falls back to the untemplated task instruction
-// Only successful turns reach this point (error turns threw above), so `response` is
-// either the sanitized parsed dict or the synthetic image-success object.
-if (config.enable_gui_logging === true && config.gui_webhook_url) {
-
-    let broadcastResponse;
-    if (parsedResult && typeof parsedResult === "object") {
-        broadcastResponse = JSON.parse(JSON.stringify(parsedResult, sanitize));
-    } else if (finalImageBase64) {
-        broadcastResponse = { status: "success", message: "Image generated successfully" };
-    } else {
-        broadcastResponse = parsedResult; // defensive fallback (not expected in practice)
-    }
-
-    // query: prefer the templated instruction if Node 1 forwards it, else the raw
-    const broadcastQuery = node1.finalUserInstruction || config.tasks[task_id]?.instruction || "";
-
-    try {
-        const broadcastPayload = {
-            job_id: config.job_id,
-            phase_id: "-",                 // dummy: no phase in the flattened config
-            agent_id: agent_id,
-            task_id: task_id,
-            query: broadcastQuery,
-            response: broadcastResponse,
-            status: jobStatus, // "running", "failed", or "completed"
-            timestamp: new Date().toISOString(),
-            ...(finalImageBase64 ? { base64_img_string: finalImageBase64 } : {})  // Attach the image string if one was generated
-        };
-
-        // If this is a terminal agent, attach the message for the frontend
-        if (terminalConfig && uiMessage) {
-            // Streamlit looks for 'error_message' if status is failed, and 'user_message' if completed
-            if (jobStatus === "failed") broadcastPayload.error_message = uiMessage;
-            else if (jobStatus === "completed") broadcastPayload.user_message = uiMessage;
-        }
-
-        await this.helpers.httpRequest({
-            method: 'POST',
-            url: config.gui_webhook_url,
-            headers: { 'Content-Type': 'application/json' },
-            body: broadcastPayload,
-            json: true,
-            timeout: 500
-        });
-    } catch (e) {
-        // Fire-and-forget: never let a GUI logging failure break the pipeline.
-        // Not forwarded downstream (would land in next-turn sessionState); logged locally instead.
-        console.log(`GUI broadcast failed: ${e.message}`);
-    }
-}
+// (GUI progress broadcast moved BELOW the cost calculator — it now ships this turn's
+// response event, which must carry its injected `cost` before leaving the building.)
 
 // === 📦 ASSEMBLE OUTPUT ENVELOPE ===
 // The state envelope returned to the parent orchestrator, which threads it into the next
@@ -568,6 +515,53 @@ if (pricing && geminiResponse?.usage?.input_tokens_details) {  // OpenAI
 //    (old target: outputData.history[last]; new target: this turn's session_event)
 if (outputData.session_events && outputData.session_events.length > 0) {
     outputData.session_events[outputData.session_events.length - 1].cost = Number(taskCost.toFixed(6));
+}
+
+// === 📡 STATE BROADCAST (response event) ===
+// Sits AFTER the cost calculator on purpose: the event we ship is this turn's
+// turnEvent (always last in session_events — node 1 appended the prompt event before
+// us), and the injection above just wrote its `cost`. Node 1 already shipped the
+// prompt event before the API call, so we send ONLY the response half; the listener
+// ArrayUnions each into the Firestore doc's session_events_incremental as they arrive.
+// total_cost is summed HERE (per-event costs are the single source of truth) and
+// rides as a top-level realtime field in the doc — nothing downstream recomputes it.
+// Only successful turns reach this point (error turns threw in the parse section).
+// ⚠️ LOAD-BEARING, not fire-and-forget: crash forensics and billing live in this
+// stream, so a failed broadcast stops the run rather than silently losing the record.
+// The generous timeout only bounds the failure case — normal turns wait one round-trip
+// (and this payload can carry a full image, so it needs the headroom).
+if (config.enable_gui_logging === true && config.gui_webhook_url) {
+    try {
+        const broadcastPayload = {
+            job_id: config.job_id,
+            phase_id: "-",                 // dummy: no phase in the flattened config
+            agent_id: agent_id,
+            task_id: task_id,
+            events: [outputData.session_events[outputData.session_events.length - 1]],
+            status: jobStatus, // "running", "failed", or "completed"
+            timestamp: new Date().toISOString(),
+            total_cost: Number(outputData.session_events.reduce((s, ev) => s + (ev.cost || 0), 0).toFixed(6)),
+            ...(finalImageBase64 ? { base64_img_string: finalImageBase64 } : {})  // Attach the image string if one was generated
+        };
+
+        // If this is a terminal agent, attach the message for the frontend
+        if (terminalConfig && uiMessage) {
+            // Streamlit looks for 'error_message' if status is failed, and 'user_message' if completed
+            if (jobStatus === "failed") broadcastPayload.error_message = uiMessage;
+            else if (jobStatus === "completed") broadcastPayload.user_message = uiMessage;
+        }
+
+        await this.helpers.httpRequest({
+            method: 'POST',
+            url: config.gui_webhook_url,
+            headers: { 'Content-Type': 'application/json' },
+            body: broadcastPayload,
+            json: true,
+            timeout: 10000
+        });
+    } catch (e) {
+        throw new Error(`State broadcast failed for ${agent_id}/${task_id} (response event): ${e.message}`);
+    }
 }
 
 // 3. Return ONLY the outputData. Billing metadata (modelUrl/usage/grounding) stays local

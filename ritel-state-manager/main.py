@@ -36,17 +36,14 @@ async def update_state(request: Request):
             
         doc_ref = db.collection("job_states").document(job_id)
         
-        # 1. Package the agent's thought process
-        log_entry = None
-        if "response" in data or "query" in data:
-            log_entry = {
-                "timestamp": data.get("timestamp"),
-                "phase_id": data.get("phase_id"),
-                "agent_id": data.get("agent_id"),
-                "task_id": data.get("task_id"),
-                "query": data.get("query"),
-                "response": data.get("response")
-            }
+        # 1. This turn's ADK session events ({author, task, status, parts, timestamp,
+        #    [model], [cost]}), shipped one at a time as each becomes available:
+        #    node 1 sends the prompt event BEFORE the API call, node 3 the response
+        #    event after — so a crashed turn still leaves its prompt in the record.
+        events = data.get("events")
+
+        # Legacy query/response payloads: query/response are simply dropped from the
+        # doc merge below (no `logs` array is kept anymore).
 
         # 2. Extract top-level data
         top_level_data = data.copy()
@@ -99,27 +96,65 @@ async def update_state(request: Request):
             copied.content_type = "image/jpeg"   # cosmetic; .png name, .jpg bytes
             copied.patch()
 
-        # Additional copy of history to bucket (On completion)
-        history_data = top_level_data.get("history")
-        if history_data:
-            history_path = f"{job_id}/history.json"
-            history_blob = bucket.blob(history_path)
-            history_blob.upload_from_string(
-                json.dumps(history_data, indent=2),
-                content_type="application/json"
-            )
+        # One-shot full transcript from Send Final Broadcast: the FINISHED transcript,
+        # destined for the bucket — as distinct from the doc's
+        # `session_events_incremental`, accumulated turn by turn. Popped, never stored:
+        # the doc already holds every event, and a duplicate would push a long run
+        # toward Firestore's 1 MiB doc cap. Used only as a fallback transcript source
+        # and debug cross-check in the terminal block below.
+        snapshot = top_level_data.pop("session_events", None)
 
-        # 4. Append thought log to Firestore array
-        if log_entry:
-            top_level_data["logs"] = firestore.ArrayUnion([log_entry])
-        
+        # 4. Append this turn's events to the WORKING transcript,
+        #    `session_events_incremental` (exact ADK event shape — the final
+        #    session_events.json is materialized from it verbatim).
+        #    NOTE: ArrayUnion is a SET union with no ordering guarantee — readers must
+        #    sort by timestamp. Byte-identical events collapse, which per-event
+        #    timestamps make a non-issue in practice.
+        top_level_data.pop("events", None)
+        if events:
+            top_level_data["session_events_incremental"] = firestore.ArrayUnion(events)
+
         doc_ref.set(top_level_data, merge=True)
-        
+
+        # 5. Terminal status ⇒ materialize the transcript into the bucket as
+        #    {job_id}/session_events.json (formerly history.json, renamed with the
+        #    ADK conversion — the content is exactly the session_events array),
+        #    sourced from the doc's own per-turn accumulated log. Fires once per
+        #    run, on "completed" or a clean
+        #    "failed". Hard crashes never reach here — nothing arrives at all — so a
+        #    crashed run's transcript lives in Firestore only; consumers read the doc.
+        #    ArrayUnion guarantees no order, hence the timestamp sort.
+        if status in ("completed", "failed"):
+            state = doc_ref.get().to_dict() or {}
+            # Snapshot first: it's the workflow's own in-memory array, complete and
+            # correctly ordered by construction, and it's what this file has always
+            # been built from. The incremental log is the fallback — and the ONLY
+            # source on a clean "failed" run, where the terminal broadcast comes from
+            # node 3 (which sends a single event, never the full snapshot).
+            incremental = state.get("session_events_incremental")
+            transcript = snapshot or incremental or []
+            transcript = sorted(transcript, key=lambda e: e.get("timestamp") or "")
+
+            # Debug cross-check: the one-shot snapshot should exactly match the
+            # events we accumulated turn by turn — a mismatch means a broadcast was
+            # lost or duplicated, so make it loud in the Cloud Run logs.
+            if incremental is not None and snapshot is not None:
+                if len(incremental) != len(snapshot):
+                    print(f"TRANSCRIPT MISMATCH job {job_id}: "
+                          f"incremental={len(incremental)} events, "
+                          f"one-shot snapshot={len(snapshot)} events")
+            if transcript:
+                bucket.blob(f"{job_id}/session_events.json").upload_from_string(
+                    json.dumps(transcript, indent=2, default=str),
+                    content_type="application/json"
+                )
+
         return {"status": "success", "message": f"Updated job {job_id}"}
         
     except Exception as e:
         print(f"Error updating state: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
 
 @app.get("/")
 def read_root():
