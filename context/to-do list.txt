@@ -1,5 +1,17 @@
 🔜=priority  🛠=WIP  🌗=partway  ✔=Done
 
+- improve aesthetic instructions - images are ugly, or follow original too much rather than morphing [artist: plan_finishing, render_final] do some manually and use what we learn on artist
+- improve aesthetic review, concentrating on things other than beauty atm, downside is it's costly if we have to redraw [image_verifier: review_aesthetics]
+- enforce shapes better [dimension_expert: estimate_dimensions, 3d_specialist: plan_3d, image_detail_planner: merge_plans, review_description, scaffolding_designer: design_scaffolding]
+- too much information - some give away solutions / give hints, or restate on a label what you can see at a glance [markup_specialist: plan_markings, image_detail_planner - merge_plans, review_description]
+- labels can be close to image edge, some kind of algorithmic final check maybe - ok for textbook? but looks bad in image
+- ruler / tape measure specific rules
+- problem 1 - mice should not always be in separate groups, or a grid, or have a dotted line between groups
+- "highly customizable products", cereal, soda, t-shirts, video games, tv show etc.
+- poor prompts
+ - screen prompt / ask for feedback / improvement
+ - Meta-Prompting / Prompt Expansion / Prompt Augmentation
+
 remove redundancy between consolidate_* and troubleshoot
 ✔revamping/scoping phase 4-5 properly
 special instructions for rulers & tickmarks

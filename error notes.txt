@@ -1,0 +1,2 @@
+we should include the old textbook images in dataset as "final" images to get a baseline what we are competing against
+test against "no scaffolding"
