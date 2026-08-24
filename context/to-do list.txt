@@ -12,6 +12,7 @@
  - screen prompt / ask for feedback / improvement
  - Meta-Prompting / Prompt Expansion / Prompt Augmentation
 Streamline workflow states - The Standard "Core 8" States (status) + sub-state (step)
+It would be more efficient to stack many constrained fields in one agent rather than have multiple agents, any time information crossover isn't an issue(or is needed), we should do this more.
 
 remove redundancy between consolidate_* and troubleshoot
 ✔revamping/scoping phase 4-5 properly

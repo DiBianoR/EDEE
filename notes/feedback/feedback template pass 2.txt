@@ -1,0 +1,10 @@
+Look over everything and try to find systemic issues that come up over and over again, Create a succinct, easy to read summary of the common issues we need to fix, most widespread problems first.
+- common problems with scaffolding
+- common problems with final image
+- what went wrong
+- which agents were involved
+- root causes in agent instructions
+- suggestions for improvement.
+  - Try to make general rules/observations over problem specific fixes where possible
+  - We can and should make special rules for major problem classes though, educational math problems fall into a mostly finite and static number of categories.
+  - The narrowest fix should be for an entire class of problems, never specific to this single problem.
