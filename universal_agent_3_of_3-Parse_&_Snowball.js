@@ -560,7 +560,12 @@ if (config.enable_gui_logging === true && config.gui_webhook_url) {
             timeout: 10000
         });
     } catch (e) {
-        throw new Error(`State broadcast failed for ${agent_id}/${task_id} (response event): ${e.message}`);
+        // Axios strips the response body from e.message ("Request failed with status
+        // code 500" is all it says) — dig the server's actual error detail out of the
+        // error object, wherever this n8n build happened to nest it.
+        const detail = e.response?.data ?? e.cause?.response?.data ?? e.cause?.error ?? e.description ?? null;
+        const detailStr = detail ? ` — server detail: ${typeof detail === 'string' ? detail : JSON.stringify(detail)}` : '';
+        throw new Error(`State broadcast failed for ${agent_id}/${task_id} (response event): ${e.message}${detailStr}`);
     }
 }
 
