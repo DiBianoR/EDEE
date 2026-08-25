@@ -129,7 +129,7 @@ You are part of the [Educational Diagram Engineering Engine] EDEE. Your job is t
 CORE DIRECTIVES:
 1. Precision: Diagrams must be technically correct in all respects, and not contain extraneous items, artifacts, or errors. They should have accurate dimensions & aspect ratio.
 2. Clarity: Output diagrams must be elegant, intuitive, clean, high-contrast, readable, and free of clutter. Do not try to draw 2d concepts as 3d/isometric images.
-3. Utility: Output diagrams must be educational and functional for their intended purpose. They shouldn't give away the answer to the problem, and they should give useful insight into the problem and/or relevant underlying concepts.
+3. Utility: Output diagrams must be educational and functional for their intended purpose. They shouldn't give away the answer to the problem or unnecessarily do part of the solver's work for them, but they should give useful insight into the problem and/or relevant underlying concepts.
 4. Aesthetics: diagrams must be colorful, easy to look at, and in a style suitable to the task. Stick to artistic/illustration style rather than realism.
 5. Safety/Liability: Diagrams shouldn't contain anything that will obviously be deemed unsuitable for children. No need to nitpick, but use common sense.`;
 
@@ -205,6 +205,7 @@ const DIRECTIVE_3D = `\
 3D RENDERING CONSTRAINTS:
 - Analyze the scene for 3D logic. Ensure depth cues (shading, perspective) are defined.
 - 3D objects should be opaque and shaded. Prefer solid objects to transparent skeletons unless the problem statement suggests otherwise.
+- DON'T draw shadows unless they are a specific part of the math problem.
 - Generate objects at angles and positions suitable for viewing as examples. Important features of 3D objects must be visible, not facing away from the user.
 - Ensure geometric shapes are at the right scale, angle, and realistic dimensions to denote the actual real-world object they represent. In other words, estimate the length, width, and height of a real example of the object, and ensure the aspect ratio in your code is similar.
 - For oblique projections, draw the receding depth axis at half its true length (cabinet projection) so depth looks realistic — unless the depth is itself a measured quantity in the problem, in which case keep true scale and label it.`;
@@ -289,7 +290,7 @@ const agents = {
 
   // --- STAGE 1 ---------------------------------------------------------------
   "problem_validation": {
-	model_tier: "medium",  // It gets confused about requested vs implied on fast.
+    model_tier: "medium",  // It gets confused about requested vs implied on fast.
     history_scope: [],  // "none"
     system_identity: `\
 ${GLOBAL_TASK_EXPLANATION}
@@ -300,7 +301,7 @@ IDENTITY: You are a problem validation agent. Your job is to analyze the raw inc
   },
 
   "image_description": {
-	model_tier: "medium", // planner type
+    model_tier: "medium", // planner type
     history_scope: [],  // "none"
     system_identity: `\
 ${GLOBAL_TASK_EXPLANATION}
@@ -380,7 +381,7 @@ IDENTITY: You are an Educational Planning agent. You optimize for clarity, educa
   },
 
   "3d_specialist": {
-	model_tier: "medium", // planner type
+    model_tier: "medium", // planner type
     history_scope: STAGE2_AGENTS,
     system_identity: `\
 ${GLOBAL_TASK_EXPLANATION}
@@ -391,7 +392,7 @@ IDENTITY: You are the 3D Modeling Specialist.`
   },
 
   "data_viz_expert": {
-	model_tier: "medium", // planner type
+    model_tier: "medium", // planner type
     history_scope: STAGE2_AGENTS,
     system_identity: `\
 ${GLOBAL_TASK_EXPLANATION}
@@ -402,7 +403,7 @@ IDENTITY: You are the Data Visualization Expert.`
   },
 
   "arrangement_planner": {
-	model_tier: "medium", // planner type
+    model_tier: "medium", // planner type
     history_scope: STAGE2_AGENTS,
     system_identity: `\
 ${GLOBAL_TASK_EXPLANATION}
@@ -450,7 +451,7 @@ IDENTITY: You are the Scaffolding Manager. You brief the stage-3 team (original 
   },
 
   "scaffolding_designer": {
-	model_tier: "medium", // planner type
+    model_tier: "medium", // planner type
     history_scope: ["selector", "scaffolding_manager", "scaffolding_designer"],  // its manager's briefing, its predecessor, and itself
     system_identity: `\
 ${GLOBAL_TASK_EXPLANATION}
@@ -477,6 +478,7 @@ IDENTITY: You are the Senior Python Developer. For each diagram you first plan t
 Your general objectives are:
 - generate the right number of objects in the right positions
 - don't generate unnecessary axes, grids, skeletons, or weird markings. 3d objects should be opaque and  shaded, or avoided in favor of 2d where possible.
+- DON'T draw shadows unless they are a specific part of the math problem, the artist can add those in if necessary.
 - if instructed to add words, numbers, or other necessary markings, you can add them
 - generate the objects at such angles and positions as to be suitable for viewing as examples. for example significant[to the problem] features of 3d objects need to be visible, not facing away from the user
 - we prefer solid objects to transparent skeletons(see example below), unless the problem statement suggests
@@ -551,6 +553,8 @@ ${GLOBAL_TASK_EXPLANATION}
 
 ${STAGE_3_CONTEXT}
 
+${EXECUTION_CONTRACT}
+
 IDENTITY: You are the QA Inspection Manager. The QA Vision Analyst files separate inspection reports on each rendered base diagram (adherence, perspective, overlaps, artifacts); you review them together and make the final accept/reject call.
 
 ${DIRECTIVE_MANAGER_WITH_RETRY}`
@@ -570,6 +574,17 @@ ${DIRECTIVE_MANAGER_WITH_RETRY}`
 ${GLOBAL_TASK_EXPLANATION}
 
 ${STAGE_4_CONTEXT}
+
+HOW TO WRITE A GOOD IMG2IMG REQUEST:
+To transform a simple sketch or geometric image into fine art using Gemini while locking the spatial composition, the key is using explicit instructional language that tells the model to treat the uploaded image as a structural framework rather than just a loose inspiration.
+The official guide for prompting Image Generation provides a specific template for image-to-image transformations. The trick to locking the positions is explicitly instructing the model to "preserve the original composition" while applying new texture details, objects, or style.
+
+1. State the Transformation: "Transform the attached simple geometric sketch of [subject] into a highly detailed [style of fine art, e.g., oil painting / Renaissance fresco]."
+2. Apply the Position Lock: "Strictly preserve the original composition, layout, perspective, and object placement shown in the sketch."
+3. Describe the Details: "Render the geometric shapes as [what they should become], filling in realistic textures, dramatic lighting, and intricate brushstrokes."(depending on the art style)
+
+Example: "Transform the provided [geometric blockout] of [subject] into the artistic style of [artist/art style]. Preserve the original composition [what/how to preserve] but render it with [description of transformations/substitutions, new objects, and stylistic elements]."
+
 
 IDENTITY: You are the Artist. For each illustration you work in two steps: first you PLAN — reviewing the approved base diagram and writing the detailed image prompt — then you PAINT, transforming the base diagram into the final illustration guided by that prompt.`
   },
@@ -694,7 +709,7 @@ If there is only a request for a specific diagram, but no related math problem, 
 
   "extract_visual": {
     assigned_agent: "problem_validation",
-	history_scope: ["problem_validation"],  //  to see the previous decision
+    history_scope: ["problem_validation"],  //  to see the previous decision
     instruction: `\
 User Input: \`\`\`{original_query}\`\`\`
 
@@ -735,11 +750,11 @@ Does the user request a specific visual? An implied visual is not enough.
     schema: {
       "type": "OBJECT",
       "properties": {
-		"general_reasoning": { "type": "STRING", "description": "Analyze the input according to each of the 5 criteria given." },
+        "general_reasoning": { "type": "STRING", "description": "Analyze the input according to each of the 5 criteria given." },
         "math_reasoning": { "type": "STRING", "description": "Does the input contain a specific, solvable math problem? An implied math problem is not enough." },
         "math_found": { "type": "BOOLEAN", "description": "True if a specific, solvable math problem is present." },
         "math_text": { "type": "STRING", "description": "The VERBATIM math problem text, excluding visual requests or anything else not directly part of the problem. null if no math problem found." },
-		"visual_reasoning": { "type": "STRING", "description": "Does the user request a specific visual? An implied visual is not enough." },
+        "visual_reasoning": { "type": "STRING", "description": "Does the user request a specific visual? An implied visual is not enough." },
         "image_request_found": { "type": "BOOLEAN", "description": "True if a request for a specific visual is present." },
         "visual_text": { "type": "STRING", "description": "The VERBATIM visual request, and only parts of any math problem related to what to depict. null if no visual request found." }
       },
@@ -952,9 +967,14 @@ Original Query: \`\`\`{original_query}\`\`\`
 
 Diagram Request: {description}
 
-What labels, if any, would this sort of diagram normally have?
+What labels, if any, would a math diagram for a problem of this type and level normally have?
+- What labels are required to solve the problem?
 
-The student can see both the original problem and the diagram. Does reading the problem already convey all the information we need without labels? Does it actually warrant labels?
+The student can see both the original problem and the diagram.
+- Does reading the text of the problem already convey all the information we need without labels?
+- No count labels for drawn, distinguishable objects at N ≤ ~10. Counting is part of the exercise. Count labels only when items are abstracted/clumped rather than individually drawn.
+- Don't redundantly label things the solver can see at a glance
+- Don't add labels that unnecessarily do part of the solver's work for them.
 
 Determine necessary mathematical markups: labels, measuring lines, angle arcs, or variables (x, y).
 Make sure all labels are visible, and accessible to the color-blind.
@@ -978,7 +998,9 @@ Diagram Request: {description}
 
 A good image should help illustrate & clarify the problem, but don't do the student's work for them, or give the answer to the problem.
 
+- What information does the student require to solve the problem?
 - Plan any additional details we need to make sure the image properly supplements the problem.
+- What does the student need to reason out themselves when working the problem, that should NOT be given?
 - Anything we need to add or remove?
 - Is there something we should to to improve clarity?
 - Should we highlight a specific part? Use specific colors to link concepts?
@@ -1087,9 +1109,13 @@ PLAN RESPONSE
   - Determine structure
   - Constraints checklist
     * You can't choose the size or shape of the canvas.
-	* Don't add extraneous labels just because the markup specialist wants to. A group of mice doesn't need to be labeled "mice", if that's readily apparent at a glance. Nor would they need to be individually labeled unless the specific problem warranted it.
-	* "If all you've got is a hammer, everything starts to look like a nail." It's you job to inject common sense. If any agent making recommendations is overzealous with its specialty, moderate it.
-	* Have you ignored a relevant directive?
+    * Don't add extraneous labels just because the markup specialist wants to. A group of mice doesn't need to be labeled "mice", if that's readily apparent at a glance. Nor would they need to be individually labeled unless the specific problem warranted it.
+    * No count labels for drawn, distinguishable objects at N ≤ ~10. Counting is part of the exercise. Count labels only when items are abstracted/clumped rather than individually drawn.
+    * Given-vs-derived rule: draw only quantities given in the problem statement. Never pre-partition into solution fractions/segments, or show derived equivalencies. Demarcating a stated boundary is fine; showing something that does part of the solver's work for them is not.
+    * No structural dividers (lines, fences, boxes, panels) between groups unless the problem asks for them; visual distinction by color/position suffices.
+    * "If all you've got is a hammer, everything starts to look like a nail." It's you job to inject common sense. If any agent making recommendations is overzealous with its specialty, moderate it.
+	* Don't do part of the solver's work for them - clarity good; spoilers bad
+    * Have you ignored a relevant directive?
 
 FINAL POLISH
   - Double check goal & requirements
@@ -1104,13 +1130,16 @@ Remember, your job is to create high quality illustrative diagrams for word prob
     schema: {
       "type": "OBJECT",
       "properties": {
+        "reasoning_redundant_labels": { "type": "STRING", "description": "Do any of the proposed labels label things the solver can see at a glance?" },
+        "reasoning_spoilers": { "type": "STRING", "description": "Do any of the proposed labels unnecessarily do part of the solver's work for them?" },
         "conflict_resolution_notes": { "type": "STRING", "description": "Are there conflicts to resolve?" },
         "synthesize_findings": { "type": "STRING", "description": "compile, simplify, and reason about the findings" },
         "plan_response": { "type": "STRING", "description": "determine structure for final response" },
+		"dimensions_context": { "type": "STRING", "description": "The explicit dimensions to be used. W:D:H for 3D objects, W:H for 2D, etc. Full dimensions, whatever makes sense." },
         "final_polish": { "type": "STRING", "description": "review and correction" },
         "latest_description": { "type": "STRING", "description": "OUTPUT: Final detailed prompt for the artist/illustrator." }
       },
-      "required": ["conflict_resolution_notes", "synthesize_findings", "plan_response", "final_polish", "latest_description"]
+      "required": ["reasoning_redundant_labels", "reasoning_spoilers", "conflict_resolution_notes", "synthesize_findings", "plan_response", "dimensions_context", "final_polish", "latest_description"]
     }
   },
 
@@ -1129,6 +1158,8 @@ CRITICAL REVIEW:
 5. Does the figure do the student's job for them or give the solution away?
 7. Are both underlying geometry and overlaid artistic details covered?
 8. Is the style correct (clean, educational, etc.)?
+9. Don't do part of the solver's work for them, Flag diagrams that display the insight the student is supposed to find.
+
 
 DECISION:
 - If PERFECT: Output 'ready_for_artist' = true and return the original description verbatim.
@@ -1137,10 +1168,11 @@ DECISION:
       "type": "OBJECT",
       "properties": {
         "critique": { "type": "STRING","description": "Your critical review." },
+        "reveals_solution_step": { "type": "STRING","description": "Does the proposed diagram display an insight the student is supposed to find?" },
         "ready_for_artist": { "type": "BOOLEAN","description": "Your decision: Do we have a refined, detailed description ready for an artist to actually draw?" },
         "latest_description": { "type": "STRING", "description": "The corrected version (or the original if perfect)." }
       },
-      "required": ["critique", "ready_for_artist", "latest_description"]
+      "required": ["critique", "reveals_solution_step", "ready_for_artist", "latest_description"]
     }
   },
 
@@ -1151,6 +1183,10 @@ DECISION:
 Original Query: \`\`\`{original_query}\`\`\`
 
 Diagram Request: {latest_description}
+
+Technical vs. Artistic Requirements: {reasoning_review_request}
+Requires Technical Drawing?: {requires_technical}
+Requires Artistic Drawing?: {requires_artistic}
 
 Analyze the 'Diagram Request'. Determine the generation strategy.
 
@@ -1201,12 +1237,19 @@ Original Query: \`\`\`{original_query}\`\`\`
 
 Diagram Request: {latest_description}
 
+Dimensions of Objects: {dimensions_context}
+
 Context: The overall system works in two passes. First, we use Python (Matplotlib) to draw a mathematically precise underlying 'skeleton' or 'scaffolding'. Second, we pass that scaffolding to an AI Image Generator to paint the final, beautiful illustration over the top of it.
 
-Your task is to design that first pass: the scaffolding.
+Our task is to design that first pass: the scaffolding.
+
+CONSTRAINTS:
+- Given-vs-derived rule: draw only quantities given in the problem statement. Never pre-partition into solution fractions/segments, or show derived equivalencies. Demarcating a stated boundary is fine; showing something that does part of the solver's work for them is not.
+- No structural dividers (lines, fences, boxes, panels) between groups unless the problem asks for them; visual distinction by color/position suffices.
 
 STANDALONE RULE: The scaffolding will normally be painted over, but it must stand on its own — a complete, legible diagram with accurate geometry and readable labels, good enough to ship as the final illustration if the artistic pass added nothing. Plain is fine; incomplete or cryptic is not. The artist adds beauty, never correctness.
-{situational_directives}`
+
+TICKMARKS ACCURATE: for rulers, tape measures, thermometers, and any other measurement devices with tick marks, drawn divisions MUST reflect the actual number in the problem.{situational_directives}`
     }
   },
 
@@ -1218,7 +1261,7 @@ Analyze the 'Diagram Request'. Strip away all the artistic flair, textures, and 
 DIRECTIVES:
 1. Identify the Math: What counts, shapes, graphs, grids, lines, or angles are part of the problem and must be perfectly accurate? These must be plotted.
 2. Check for Situational Directives: If you have [SITUATIONAL DIRECTIVES], you MUST follow them implicitly when designing this scaffolding. If present, they supersede these general directives in case of conflict.
-3. Abstract Complex Objects: If the request asks for a "farmer standing next to a tractor", you do not plot a farmer. If their precise positions/sizes etc. are part of the word problem, you should have situational directives to follow. If their positions do not need to be pixel perfect, you can leave them off, the artist will add them later. You generally do not need to draw objects that are not part of the math problem, the artist can handle them.
+3. Abstract Complex Objects: If the request asks for a "farmer standing next to a tractor", you do not plot a farmer. If their precise positions/sizes etc. are part of the word problem, you should have situational directives to follow. If their positions do not need to be pixel perfect, you can leave them off, the artist will add them later. You generally do not need to draw objects that are not part of the math problem, the artist can handle them. Decorative scenery is artist-only.
 4. Output Format: Provide a clear, structured blueprint of exactly what shapes to draw, where to place them relative to each other, and what colors/labels to use for the underlying Python plot. Do NOT write code.
 5. Keep it simple and elegant -> Precision, Clarity, Utility. The artist is very skilled and can add details later. You only need to show
   - Shapes, angles, distances and object counts mentioned in the problem, without you the artist will estimate.
@@ -1285,7 +1328,7 @@ STRICT CONSTRAINTS:
     schema: {
       "type": "OBJECT",
       "properties": {
-		"python_code": { "type": "STRING", "description": "The complete, runnable Python script." }
+        "python_code": { "type": "STRING", "description": "The complete, runnable Python script." }
       },
       "required": ["python_code"]
     }
@@ -1326,6 +1369,7 @@ Report EVERY error found, tagged MINOR, MAJOR, or CRITICAL. You are advisory: th
 
   "logic_check": {
     assigned_agent: "reviewer",
+    model_tier: "slow", // deep reasoning: to work out whether it reveals the solution
     hoist_result_fields: ["python_code"],  // see syntax_check — keeps the script out of session_state
     instruction: `\
 Original Query: \`\`\`{original_query}\`\`\`
@@ -1341,19 +1385,22 @@ Python Code:
 
 Compare the code against the 'Scaffolding Image Request'.
 CHECKS:
-1. Does it draw ALL objects the blueprint requires?
-2. Are colors/styles correct?
+1. Does it draw all objects the blueprint requires?
+2. Are colors/styles reasonable?
 3. Is the logic sound for the specific math problem?
+4. If any scale/gauge/axis is drawn, do the markings make sense with regard to the real-world object? For example inches on a ruler shouldn't be subdivided into 3rds, even if the measurement is right.
+5. Don't do part of the solver's work for them, Flag diagrams that display the insight the student is supposed to find.
 
 Report EVERY discrepancy found, tagged MINOR, MAJOR, or CRITICAL. You are advisory: the Code Review Manager makes the final call from your report. Write 'No issues found.' in critique if the code is faithful.`,
     schema: {
       "type": "OBJECT",
       "properties": {
         "analysis": { "type": "STRING" },
+		"reveals_solution_step": { "type": "STRING","description": "Does the proposed diagram/scaffolding/code display an insight the student is supposed to find?" },
         "critique": { "type": "STRING", "description": "List of logic discrepancies, each tagged MINOR/MAJOR/CRITICAL, or 'No issues found.'" },
         "passed_logic": { "type": "BOOLEAN", "description": "Your recommendation; the manager makes the final call." }
       },
-      "required": ["analysis", "critique", "passed_logic"]
+      "required": ["analysis", "reveals_solution_step", "critique", "passed_logic"]
     }
   },
 
@@ -1384,7 +1431,8 @@ CHECKS:
 1. Recompute every quantity the code hard-codes (coordinates, lengths, angles, counts, areas, plotted values). Do they match what the problem's math actually implies?
 2. Does the drawn geometry correctly represent the relationships in the problem (proportions, ratios, parallelism, tangency, adjacency, counts)?
 3. Do any drawn labels or numbers contradict the problem, or each other?
-4. UPSTREAM ERRORS: If the Diagram Request itself contains a math mistake that slipped through earlier stages, flag it — you are the last check before this gets drawn, and a correct implementation of a wrong description is still wrong.
+4. If any scale/gauge/axis is drawn, do they match the labeled values and standard unit subdivisions?
+5. UPSTREAM ERRORS: If the Diagram Request itself contains a math mistake that slipped through earlier stages, flag it — you are the last check before this gets drawn, and a correct implementation of a wrong description is still wrong.
 
 Report EVERY error found, tagged MINOR, MAJOR, or CRITICAL — a mathematical misrepresentation is at least MAJOR. You are advisory: the Code Review Manager makes the final call from your report. Write 'No issues found.' in critique if the math is sound.`,
     schema: {
@@ -1434,7 +1482,7 @@ If passing with known flaws, record them in notes so downstream stages can compe
 
   "verify_adherence": {
     assigned_agent: "inspector",
-	model_tier: "slow",  //  particularly in-depth task
+    model_tier: "slow",  //  particularly in-depth task
     instruction: `\
 Original Query: \`\`\`{original_query}\`\`\`
 
@@ -1448,6 +1496,7 @@ CHECKS:
 - Are all necessary objects present?
 - Does the illustration accurately represent the geometry/graph described in the original request?
 - Are the shapes/geometry mathematically correct?
+- For objects, do proportions match the named real-world object?
 - Are labels legible and correctly placed?
 - Are the colors/styles generally correct?
 - Do relative sizes match the problem?
@@ -1591,7 +1640,7 @@ Final Illustration Requested: {latest_description}
 
 Review the 'Scaffolding Image', both the prompt and the actual image.
 
-Create a detailed prompt for the Artist AI to turn this into the High-Quality Math Textbook Illustration detailed in 'Final Illustration Requested'.
+Use the attached geometric blockout as a strict semantic layout for a new fine art illustration. Create a detailed prompt for the Artist AI to turn this into the High-Quality Math Textbook Illustration detailed in 'Final Illustration Requested'.
 
 You will be using context preserving image to image, meaning you must write a prompt that explicitly anchors the mathematical structure of the base diagram while defining the aesthetic alterations.
 
@@ -1602,9 +1651,11 @@ You are an artist. If the object to draw is too generic or lacks necessary detai
 We want the image neither too cluttered nor too sparse. If the description is too bare-bones, add some objects or details, this needs to be both art AND 100% functional.
 
 Directives:
-1. THE ANCHOR (Structure & Math): Explicitly instruct the Artist AI to lock the exact geometry, aspect ratios, spatial relationships, measuring lines, and text labels of the base diagram. Include strict negative constraints: do not hallucinate new numbers, do not warp straight lines, and do not alter angles.
-2. THE ALTERATION (Subjects & Context): Instruct the Artist to draw the background, items, and objects described in the final illustration request. If the base diagram uses geometric primitives for physical objects (e.g., circles for apples, a line for a ladder), command the Artist to morph those primitives into the described objects WITHOUT expanding beyond their original bounding boxes or center points. The artist will need to add any objects mentioned in the final illustration request that didn't need to be shown in the scaffolding.
-3. THE STYLE (Aesthetics): ${activeStyle.aesthetic} No photorealism, draw on a clean white background.
+1. THE ANCHOR (Structure & Math): Explicitly instruct the Artist AI to strictly enforce the exact composition, geometry, aspect ratios, spatial relationships, measuring lines, and text labels defined by the primitives in the schematic scaffold(geometric blockout). Include strict negative constraints: Do not move, scale, or hallucinate the position of the underlying volumes, do not hallucinate new numbers, do not warp straight lines, and do not alter angles.
+2. THE ALTERATION (Subjects & Context): Instruct the Artist to draw the background, items, and objects described in the final illustration request. If the base diagram uses geometric primitives for physical objects (e.g., circles for apples, a line for a ladder), command the Artist to replace those primitives with the actual objects while maintaining their positions and arrangement. The artist will also need to add any objects mentioned in the final illustration request that didn't need to be shown in the scaffolding.
+3. THE CREATIVITY: The artist will need to use common sense to add in any implied objects, details, or necessary decorative scenery.
+  - "highly customizable products", cereal, soda, t-shirts, video games, tv show etc. - Anything singular, with a custom theme, art on it, etc. If these exist in the image, the artist needs to invent a custom theme and details to customize the object.
+4. THE STYLE (Aesthetics): ${activeStyle.aesthetic} No photorealism, draw on a clean white background.
 
 To summarize, you need everything that makes a well written image prompt, plus you need to comprehensively cover what stays the same, what gets added, what gets removed, and what gets replaced with what.{image_retry_directives}`,
     schema: {
@@ -1670,17 +1721,27 @@ Report EVERY issue found, tagged MINOR, MAJOR, or CRITICAL. You are advisory: th
   "review_aesthetics": {
     assigned_agent: "image_verifier",
     instruction: `\
-Evaluate visual appeal. Check for color cohesion, composition balance, clarity of the main subject, and absence of generated artifacts (glitches, blur, distortion).
+- Describe the image you are seeing.
+- Evaluate for art quality and aesthetic appeal. Is it a simple CAD diagram, or quality art? Is it bland, or visually appealing?
+- Evaluate for colorfulness, contrast, and color cohesion
+- Evaluate for composition balance & clarity of the main subject
+- Evaluate for absence of generated artifacts (glitches, blur, distortion).
+
+We want a reasonably beautiful artistic image, and not something that looks like it was made in MS paint. That said, images are costly to generate, so we don't want to flag every little thing as major. The biggest issues we are looking for are:
+- ugly images
+- images where objects that warrant detail are bland or still resemble the scaffolding image, primitive blockout, or wireframe the artist used as a guide. Graphs/charts and simple objects where artistic detail is not possible or not warranted are not an issue.
 
 Report EVERY issue found, tagged MINOR, MAJOR, or CRITICAL. You are advisory: the Final Gatekeeper makes the release call from your report. Write 'No issues found.' in critique if the image is clean.`,
     schema: {
       "type": "OBJECT",
       "properties": {
-        "analysis": { "type": "STRING", "description": "Assessment of color, composition, subject clarity, and rendering quality." },
+        "visual_appearance": { "type": "STRING", "description": "Describe the image you are seeing." },
+        "aesthetic_quality": { "type": "STRING", "description": "Evaluate for art quality and aesthetic appeal." },
+        "other_analysis": { "type": "STRING", "description": "Assessment of color, composition, subject clarity, and rendering quality." },
         "critique": { "type": "STRING", "description": "Aesthetic flaws and generated artifacts, each tagged MINOR/MAJOR/CRITICAL, or 'No issues found.'" },
         "passed_aesthetics_check": { "type": "BOOLEAN", "description": "Your recommendation; the manager makes the final call." }
       },
-      "required": ["analysis", "critique", "passed_aesthetics_check"]
+      "required": ["visual_appearance", "aesthetic_quality", "other_analysis", "critique", "passed_aesthetics_check"]
     }
   },
 
