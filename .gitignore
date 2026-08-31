@@ -205,3 +205,10 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# Generated feedback-analysis prompts/results (large, derived from the sheet)
+notes/feedback/prompts_per_problem/*
+!notes/feedback/prompts_per_problem/manifest.json
+!notes/feedback/prompts_per_problem/*user notes.txt
+notes/feedback/results_per_problem/
+notes/feedback/feedback_analysis_prompt.txt
