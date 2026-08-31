@@ -18,6 +18,9 @@ const {
 Object.assign(sessionState, externalVars);  // Other variables into sessionState. If same name exists, overwritten.
 if (!config) throw new Error("CONFIGURATION ERROR: No 'config' object found in the payload.");
 if (!config.tasks || !config.agents) throw new Error("CONFIGURATION ERROR: The provided 'config' is missing 'tasks' or 'agents' registries.");
+// job_id names the bucket folder every artifact of this run lands in, so a blank one
+// scatters results instead of failing outright. Reject it before any work happens.
+if (!config.job_id || !String(config.job_id).trim()) throw new Error("CONFIGURATION ERROR: config.job_id is empty — the run was launched without a job id.");
 
 // agent & task
 if (!currentTaskId) throw new Error("No TASK_ID provided to the Universal Agent.");

@@ -49,7 +49,7 @@ async def update_state(request: Request):
         top_level_data = data.copy()
         top_level_data.pop("query", None)
         top_level_data.pop("response", None)
-        
+
         # 3. ROUTE IMAGES TO THE BUCKET
         status = top_level_data.get("status")
         base64_img = top_level_data.pop("base64_img_string", None)
@@ -163,16 +163,21 @@ async def update_state(request: Request):
                 )
 
         return {"status": "success", "message": f"Updated job {job_id}"}
-        
+
+    except HTTPException:
+        # Deliberate 4xx (e.g. missing job_id) — let it through with its real status
+        # and detail instead of the catch-all mangling it into a bare 500. Before this,
+        # str(HTTPException) is "" so a blank job_id surfaced as 500 {"detail":""}.
+        raise
     except Exception as e:
-        print(f"Error updating state: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        print(f"Error updating state: {type(e).__name__}: {e}")
+        raise HTTPException(status_code=500, detail=f"{type(e).__name__}: {e}")
 
 
 # Fields /summary never returns — large enough to defeat the point of a lightweight
 # lookup. Use /transcript/{job_id} for those. Legacy names included so a doc written
 # by an older build can't blow up a summary response.
-BULK_FIELDS = ("session_events_incremental", "session_events")
+BULK_FIELDS = ("session_events_incremental", "session_events", "logs")
 
 
 @app.get("/summary/{job_id}")

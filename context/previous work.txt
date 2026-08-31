@@ -113,6 +113,8 @@
   - {variable} templating resolved from session_state, and it throws on a missing variable instead of quietly sending a broken prompt
   - universal agent collapsed from 4 code nodes to 3
   - session history now written to the storage bucket as well as Firestore
+
+*June:
 - integrate OpenAI image gen for img2img, potentially both cheaper & better
 - Debugging & observability
   - per-agent debug toggle; the return envelope can carry the fully templated system prompt, user prompt, and raw response as readable text
@@ -122,4 +124,35 @@
   - unrecoverable errors now crash loudly instead of continuing silently in a broken state
   - global error handler workflow updated to match
 
-*June:
+*July:
+- Managerial Agents
+  - standardized manager/helper architecture throughout the project
+  - centralized responsibility to a manager for every major decision, other agents advise
+  - all managers use a modern, cutting-edge workflow
+  - reviews are now done by managers as well
+  - sub agents have sharply limited scope and knowledge, removing confirmation bias
+  - manager are more result oriented, outright failures greatly reduced
+  - inspector agents' reports are more organized and actionable
+- hand-tuned scoping across the board
+- updated models used & costs to most recent versions
+- tuned gpt-image-2 speed/quality tiers
+- improved analytics for review/feedback loop
+  - improved record keeping for crashed or failed runs
+  - clearer error reporting
+  - scaffolding archived at end of phase 3 rather than on completion; placeholder scaffold copied server-side inside the bucket when a run generates none
+  - frontend rebuilt on the event stream; the ZIP bundle is now offered for failed runs too and packs whatever artifacts actually exist
+- Batch testing
+  - New standalone Test Orchestrator n8n workflow: pulls problems from google sheet, written back live
+  - Initial test batch of 100 generated & reviewed
+- Universal agents
+  - fixed some semantic & parsing issues
+  - fixed hallucination when they don't get an expected image
+  
+*August:
+- evaluation & feedback
+  - Ran ~50 post-mortems across 5 word problems using a standardized feedback-request template
+  - Synthesized a ranked cross-run failure taxonomy: frequency table, root causes traced to specific agent instructions, and general fixes scoped to problem classes rather than individual problems
+  - A lot of agent prompt tuning driven by that feedback
+- Square-canvas toggle in render-matplotlib, with the 4:3 aspect behavior documented
+- session_viewer accepts a bare session_events array and renders inline image blobs; debug_viewer also displays images
+- README rewritten into full project documentation
