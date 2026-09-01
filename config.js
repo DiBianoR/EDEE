@@ -79,12 +79,12 @@ const modelRegistry = {
   "google": {
     "text": {
       "slow": "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-pro-preview:generateContent",
-      "medium": "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent",
+      "medium": "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.7-flash:generateContent",
       "fast": "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent"
     },
     "view_img": {
       "slow": "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-pro-preview:generateContent",
-      "medium": "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent",
+      "medium": "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.7-flash:generateContent",
       "fast": "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent"
     },
     "img2img": {

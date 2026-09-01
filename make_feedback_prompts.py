@@ -232,9 +232,11 @@ def main():
         name = f"problem {prob_num:03d} run {run_num:03d} feedback prompt.txt"
         path = out_dir / name
 
-        # Refresh manifest feedback fields even when the prompt file exists,
-        # so later sheet edits to P-S reach the assembled analysis file.
-        runs[job_key] = {
+        # Refresh manifest feedback fields even when the prompt file exists, so
+        # later sheet edits to P-S reach the assembled analysis file. Merged, not
+        # replaced: run_feedback_analysis.py writes token/cost keys into these
+        # same entries and they must survive a regeneration.
+        runs.setdefault(job_key, {}).update({
             "problem": prob_num,
             "run": run_num,
             "prompt_file": name,
@@ -242,7 +244,7 @@ def main():
             "illustration_usable": cell(row, "Q"),
             "other_notes": cell(row, "R"),
             "fix": cell(row, "S"),
-        }
+        })
 
         notes_path = out_dir / f"problem {prob_num:03d} user notes.txt"
         if not args.dry_run and not notes_path.exists():

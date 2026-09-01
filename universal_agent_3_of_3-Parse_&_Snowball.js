@@ -302,6 +302,14 @@ const outputData = {
 // blob never has to survive a sub-workflow hop. Calculations below are unchanged.
 // ============================================================================
 
+// Gemini 3.7 Flash shipped on promotional pricing that expires 2026-12-31; every
+// published rate (input, output, cache read, cache storage) exactly doubles on
+// 2027-01-01. Evaluated at runtime — the n8n Code sandbox exposes a normal Date —
+// so the rollover needs no redeploy. UTC is close enough: the few hours of skew
+// against Google's billing timezone only affect calls made on New Year's Eve.
+const GEMINI_37_STANDARD_PRICING_START = Date.UTC(2027, 0, 1);
+const gemini37Promo = Date.now() < GEMINI_37_STANDARD_PRICING_START;
+
 // use with usageMetadata & groundingMetadata to calculate costs
 const cost_registry = {
   "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-pro-preview:generateContent": {
@@ -316,12 +324,12 @@ const cost_registry = {
     grounding_search_per_1k: 14.00,  // A customer-submitted request to Gemini may result in one or more queries to Google Search. You will be charged for each individual search query performed.
     grounding_maps_per_1k: 14.00
   },
-  "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent": {
-    input: 1.50,
-    output_text: 7.50,
-    cache_read: 0.15,
-    cache_storage_hourly: 1.00,
-    grounding_search_per_1k: 14.00,  // A customer-submitted request to Gemini may result in one or more queries to Google Search. You will be charged for each individual search query performed.
+  "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.7-flash:generateContent": {
+    input: gemini37Promo ? 0.75 : 1.50,
+    output_text: gemini37Promo ? 3.75 : 7.50,  // thinking tokens bill at the output rate
+    cache_read: gemini37Promo ? 0.075 : 0.15,
+    cache_storage_hourly: gemini37Promo ? 0.50 : 1.00,
+    grounding_search_per_1k: 14.00,  // A customer-submitted request to Gemini may result in one or more queries to Google Search. You will be charged for each individual search query performed. First 5k/month are free, shared across all Gemini 3.x models — not modeled here, so this over-bills early-month searches.
     grounding_maps_per_1k: 14.00
   },
   "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent": {
@@ -358,6 +366,14 @@ const cost_registry = {
   // --- Superseded Gemini models: no longer routed to by the config registry, kept so cost
   //     lookup still works if a tier is pointed back at them. (Scope ends at the OpenAI
   //     block below, which has its own active/retired split.) ---
+  "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent": {
+    input: 1.50,
+    output_text: 7.50,
+    cache_read: 0.15,
+    cache_storage_hourly: 1.00,
+    grounding_search_per_1k: 14.00,  // A customer-submitted request to Gemini may result in one or more queries to Google Search. You will be charged for each individual search query performed.
+    grounding_maps_per_1k: 14.00
+  },
   "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent": {
     input: 1.50,
     output_text: 9.00,
