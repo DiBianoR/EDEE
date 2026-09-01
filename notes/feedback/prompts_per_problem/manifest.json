@@ -1,0 +1,512 @@
+{
+  "problems": {
+    "Problem: A cereal box says that now it contains 20% more. Originally, it came with 18.5 ounces of cereal. How much cereal does the box come with now?\n\nIllustration: rectangular prism cereal box with top 1/6 shaded": 1,
+    "Problem: A scientist is studying the genes that determine the color of a mouse’s fur. When two mice with brown fur breed, there is a 25% chance that each baby will have white fur. For the experiment to continue, the scientist needs at least 2 out of 5 baby mice to have white fur. To simulate this situation, a coin can be flipped twice for each baby mouse. If the coin lands heads up both times, it represents a mouse with white fur.\nAny other result represents a mouse with brown fur.\n\nIllustration: 6 brown and 2 white mice": 2,
+    "Problem: For example, here is a scale drawing of a park where the scale is 1 cm to 90 m. The rectangle is 10 cm by 4 cm, so the actual dimensions of the park are 900 m by 360 m.\n\nIllustration: rectangle park with 10:4 side ratio": 3,
+    "Problem: Sliced orange: 20 centimeters\n\nIllustration: Half or a spherical orange [if possible: with a tape measure wrapped around it reading 20 cm for its circumference]": 4,
+    "Problem: Suppose we have two bags. One contains 1 star block and 4 moon blocks. The other contains 3 star blocks and 1 moon block.\r\nIf we select 1 block at random from each, what is the probability that we will get 2 star blocks or 2 moon blocks? To answer this question, we can draw a tree diagram to see all of the possible outcomes.\n\nIllustration: One bag with 4 moon blocks and 1 star block, one bag with 3 star blocks and one moon block": 5,
+    "Problem: The field inside a running track is made up of a rectangle that is 84.39 m long and 73 m wide, together with a half circle at each end.\n\nIllustration: a rectangle that is 84.39 m long and 73 m wide, together with a half circle at each end. There is then a track drawn around it that is 9.76m wide.": 6,
+    "Problem: What temperature is shown on each thermometer?\n\nIllustration: A vertical Celsius thermometer ranging from -5 to 10, that shows 4 degrees as its reading": 7,
+    "Problem: Here is a scale drawing of an average seventh-grade student’s foot next to a scale drawing of a foot belonging to the person with the largest feet in the world. Estimate the length of the larger foot.\n\nIllustration: Two images of feet that are approximately in a 2:3 ratio in terms of their lengths": 8,
+    "Problem: Which three spinners go together? Why do they go together?\n\nIllustration: A circular spinner with 1/4 shaded green, 1/12 shaded blue, 1/10 shaded red, 17/30 shaded yellow.": 9,
+    "Problem: Estimate the length of each pencil.\n\nIllustration: A ruler that goes from 0 to 20 cm. On top, there is a pencil measuring 5.5 cm. and on bottom, there is a pencil measuring 18 cm.": 10,
+    "Problem: Fluffy the poodle has arthritis and can't jump. A 5 foot long dog ramp leads up to a 3 foot high bed. How many feet is the base of the ramp from the foot of the bed?\n\nIllustration: Draw the scene I've described, and a right-angled triangle illustrating the relationship between the dog ramp, the height of the bed, and the distance of the ramp's base from the bed. The hypotenuse represents the ramp, one vertical leg represents the height of the bed, and the horizontal leg represents the distance from the base of the ramp to the foot of the bed.": 11
+  },
+  "runs": {
+    "0cc626c7-5411-419f-a293-1c18f2ad3f16": {
+      "problem": 1,
+      "run": 1,
+      "prompt_file": "problem 001 run 001 feedback prompt.txt",
+      "scaffolding_usable": "no - cereal label looks weird",
+      "illustration_usable": "no - top is translucent, cereal is still named 'Cereal\"",
+      "other_notes": "top part of the box transparent in final image. Did the customizable objects direct give kick in here?",
+      "fix": "customizable objects"
+    },
+    "a5bb9190-01cf-4fdd-96f2-b2365da24576": {
+      "problem": 1,
+      "run": 2,
+      "prompt_file": "problem 001 run 002 feedback prompt.txt",
+      "scaffolding_usable": "Yes",
+      "illustration_usable": "no - top is translucent, cereal does not have a name",
+      "other_notes": "The top is transparent. The artist didn't follow the highly customizable objects directive and add text/ replace image on box.",
+      "fix": "aesthetics, customizable objects"
+    },
+    "aba7ded8-3132-469c-a74e-f962c2af714e": {
+      "problem": 1,
+      "run": 3,
+      "prompt_file": "problem 001 run 003 feedback prompt.txt",
+      "scaffolding_usable": "No - cereal box is too wide",
+      "illustration_usable": "No - cereal box is too wide",
+      "other_notes": "\"Highly customizable objects\" directive worked well this time. We got a drop shadow even though we gave strict instructions not to. Measurements are correct but we failed to use cabinet projection[despite directives] so they look wrong.",
+      "fix": "shadow, cabinet projection"
+    },
+    "885f903b-d62a-4790-8d05-fdac0315c584": {
+      "problem": 1,
+      "run": 4,
+      "prompt_file": "problem 001 run 004 feedback prompt.txt",
+      "scaffolding_usable": "Yes",
+      "illustration_usable": "No - Cereal is named \"Cereal\"",
+      "other_notes": "The artist didn't follow the highly customizable objects directive",
+      "fix": "customizable objects"
+    },
+    "88a10790-1b26-48d8-a6bb-b79bf60733f6": {
+      "problem": 1,
+      "run": 5,
+      "prompt_file": "problem 001 run 005 feedback prompt.txt",
+      "scaffolding_usable": "Yes",
+      "illustration_usable": "No - the \"Original Size\" label doesn't make sense - otherwise this one would have been great",
+      "other_notes": "original size label is confusing. Artist added? And reviewers didn't flag?",
+      "fix": ""
+    },
+    "4c1736c7-b0e2-46b0-aa23-1d12fc016b75": {
+      "problem": 2,
+      "run": 1,
+      "prompt_file": "problem 002 run 001 feedback prompt.txt",
+      "scaffolding_usable": "Yes",
+      "illustration_usable": "No - mice do not have legs",
+      "other_notes": "",
+      "fix": "aesthetics"
+    },
+    "c08b3c6d-1f7c-4f96-b012-6875f781e492": {
+      "problem": 2,
+      "run": 2,
+      "prompt_file": "problem 002 run 002 feedback prompt.txt",
+      "scaffolding_usable": "Yes",
+      "illustration_usable": "Yes",
+      "other_notes": "",
+      "fix": ""
+    },
+    "f0ec08cf-810a-4c89-aa7f-405bb86473f1": {
+      "problem": 2,
+      "run": 3,
+      "prompt_file": "problem 002 run 003 feedback prompt.txt",
+      "scaffolding_usable": "Yes",
+      "illustration_usable": "Yes",
+      "other_notes": "",
+      "fix": ""
+    },
+    "9a2d8a1b-48df-4ff4-8dc6-472fcbda18e3": {
+      "problem": 2,
+      "run": 4,
+      "prompt_file": "problem 002 run 004 feedback prompt.txt",
+      "scaffolding_usable": "Yes",
+      "illustration_usable": "Yes",
+      "other_notes": "",
+      "fix": ""
+    },
+    "a28d8a91-88a0-4722-98d7-c0a1d5f0c558": {
+      "problem": 2,
+      "run": 5,
+      "prompt_file": "problem 002 run 005 feedback prompt.txt",
+      "scaffolding_usable": "Yes",
+      "illustration_usable": "Yes",
+      "other_notes": "",
+      "fix": ""
+    },
+    "10c1bf2d-21cd-4f82-b367-89563b55462c": {
+      "problem": 3,
+      "run": 1,
+      "prompt_file": "problem 003 run 001 feedback prompt.txt",
+      "scaffolding_usable": "Yes",
+      "illustration_usable": "Yes",
+      "other_notes": "",
+      "fix": ""
+    },
+    "cea6eecf-28d7-4f4b-b6f5-b8e95e512295": {
+      "problem": 3,
+      "run": 2,
+      "prompt_file": "problem 003 run 002 feedback prompt.txt",
+      "scaffolding_usable": "No - path drawn outside of park, confused over what red spots are",
+      "illustration_usable": "Borderline - features may be a bit distracting",
+      "other_notes": "too little is not artistic, too much and it;s ditracting. It's a very fine line for an agent to make the call where human opinion may vary; so I think the artistic version is okay.",
+      "fix": "aesthetics"
+    },
+    "eb35ed51-7291-4935-8149-2e172822ceed": {
+      "problem": 3,
+      "run": 3,
+      "prompt_file": "problem 003 run 003 feedback prompt.txt",
+      "scaffolding_usable": "No - path goes outside of park",
+      "illustration_usable": "Yes",
+      "other_notes": "something this minor is not worth re-running for; we'd need to have a manually triggered editing step.",
+      "fix": ""
+    },
+    "524a40d9-f087-4681-adef-39fee6a97fc9": {
+      "problem": 3,
+      "run": 4,
+      "prompt_file": "problem 003 run 004 feedback prompt.txt",
+      "scaffolding_usable": "Yes",
+      "illustration_usable": "Yes",
+      "other_notes": "",
+      "fix": ""
+    },
+    "a0185a74-9e1b-4013-a4ea-40502fd5f6c6": {
+      "problem": 3,
+      "run": 5,
+      "prompt_file": "problem 003 run 005 feedback prompt.txt",
+      "scaffolding_usable": "No - path goes outside of park",
+      "illustration_usable": "No - path goes through the lake",
+      "other_notes": "idk that path going a little outside park is a problem, but path going through lake is. None of the analyst agents raised the issue?",
+      "fix": "logic/realism"
+    },
+    "3b77cb77-b28d-44c8-bac9-f7990731cf2e": {
+      "problem": 4,
+      "run": 1,
+      "prompt_file": "problem 004 run 001 feedback prompt.txt",
+      "scaffolding_usable": "NA",
+      "illustration_usable": "No - not clear where on ruler 20 cm corresponds to; number of tick marks per unit varies; not clear which are half units and which are whole units; top of ruler not in center of orange",
+      "other_notes": "",
+      "fix": "problem misclassified"
+    },
+    "43b2fdf5-953f-40ef-b3d9-b81facd2995f": {
+      "problem": 4,
+      "run": 2,
+      "prompt_file": "problem 004 run 002 feedback prompt.txt",
+      "scaffolding_usable": "NA",
+      "illustration_usable": "No - not clear where on ruler 20 cm corresponds to; number of tick marks per unit is 4; top of ruler not in center of orange, random extra orange piece; ruler has marks on top and bottom",
+      "other_notes": "we have special rules for measurement devices? iterate/improve",
+      "fix": "problem misclassified"
+    },
+    "0b06f301-37f4-4d1e-bfdb-f899fbd237b9": {
+      "problem": 4,
+      "run": 3,
+      "prompt_file": "problem 004 run 003 feedback prompt.txt",
+      "scaffolding_usable": "No - has a drop shadow; shading is weird; 20 cm label not appropriately placed; tape measure not in middle of orange;",
+      "illustration_usable": "No - 20 cm label not appropriately placed; bottom of tape measure not in middle of orange;",
+      "other_notes": "",
+      "fix": "measurement device rules"
+    },
+    "44e82fef-74e2-47da-ac7f-e45ba23f061a": {
+      "problem": 4,
+      "run": 4,
+      "prompt_file": "problem 004 run 004 feedback prompt.txt",
+      "scaffolding_usable": "No - it generated two oranges; one is translucent with weird black marks; does not contain any measurements or labels",
+      "illustration_usable": "NA",
+      "other_notes": "maybe the agent should have tried to render in 2d after a 3d failure; have we already told managers to prefer 2d if either is appropriate?",
+      "fix": ""
+    },
+    "322938ea-1f9f-4312-927a-d5a495ee02fd": {
+      "problem": 4,
+      "run": 5,
+      "prompt_file": "problem 004 run 005 feedback prompt.txt",
+      "scaffolding_usable": "No - orange is translucent; not clear which are half units and which are whole units; tick marks random stop in middle; 20 cm label not placed appropriately",
+      "illustration_usable": "No - not clear which are half units and which are whole units; tick marks random stop in middle; 20 cm label not placed appropriately",
+      "other_notes": "it's in cm, so dividing into 5ths is not explcitly wrong[inches need to be divided by powers of 2]. Units look right to me. label is a problem though.",
+      "fix": "label misplaced"
+    },
+    "c4817463-9042-4f65-8540-776be91f5c16": {
+      "problem": 5,
+      "run": 1,
+      "prompt_file": "problem 005 run 001 feedback prompt.txt",
+      "scaffolding_usable": "Yes",
+      "illustration_usable": "Yes",
+      "other_notes": "",
+      "fix": ""
+    },
+    "8d7a08d2-f8bf-43b3-ba77-fd1a57f7e3d1": {
+      "problem": 5,
+      "run": 2,
+      "prompt_file": "problem 005 run 002 feedback prompt.txt",
+      "scaffolding_usable": "Yes",
+      "illustration_usable": "Yes",
+      "other_notes": "",
+      "fix": ""
+    },
+    "62568a10-486a-48b3-956e-98e07e427c52": {
+      "problem": 5,
+      "run": 3,
+      "prompt_file": "problem 005 run 003 feedback prompt.txt",
+      "scaffolding_usable": "No - drop shadows",
+      "illustration_usable": "No - the bags are really weirdly-shaped",
+      "other_notes": "shadows themselves are not bad - but scaffolding creators were explcitly instructed no shadows. I see no problem with the illustration; there's no perfect way to draw stuff inside of bags.",
+      "fix": "shadow"
+    },
+    "85e156b9-7a74-4c7f-b682-847eb776b2f9": {
+      "problem": 5,
+      "run": 4,
+      "prompt_file": "problem 005 run 004 feedback prompt.txt",
+      "scaffolding_usable": "No - the bags have this weird dip in them",
+      "illustration_usable": "No - the bags have this weird dip in them",
+      "other_notes": "I think the bad cross-sections are fine",
+      "fix": ""
+    },
+    "994c4fa9-12c8-476d-bbfd-bc05425efe6b": {
+      "problem": 5,
+      "run": 5,
+      "prompt_file": "problem 005 run 005 feedback prompt.txt",
+      "scaffolding_usable": "No - drop shadows",
+      "illustration_usable": "Yes",
+      "other_notes": "",
+      "fix": "shadow"
+    },
+    "3e2a7485-108f-4491-8ac1-c524ee99e924": {
+      "problem": 6,
+      "run": 1,
+      "prompt_file": "problem 006 run 001 feedback prompt.txt",
+      "scaffolding_usable": "No - lines cross; label translucency is weird",
+      "illustration_usable": "No - lines cross; label translucency is weird",
+      "other_notes": "did the reviewers already complain about lines crossing? Are explicit instructions on how to fix warranted?",
+      "fix": "clarity"
+    },
+    "56ffee10-dd28-42cb-a29e-6c7667a41411": {
+      "problem": 6,
+      "run": 2,
+      "prompt_file": "problem 006 run 002 feedback prompt.txt",
+      "scaffolding_usable": "Yes",
+      "illustration_usable": "Yes - although kind of plain",
+      "other_notes": "",
+      "fix": ""
+    },
+    "694c5c96-d7c1-4667-b64d-e20026e23693": {
+      "problem": 6,
+      "run": 3,
+      "prompt_file": "problem 006 run 003 feedback prompt.txt",
+      "scaffolding_usable": "Yes",
+      "illustration_usable": "Yes - although kind of plain",
+      "other_notes": "",
+      "fix": ""
+    },
+    "df763a53-e779-4c07-92fc-a38955055715": {
+      "problem": 6,
+      "run": 4,
+      "prompt_file": "problem 006 run 004 feedback prompt.txt",
+      "scaffolding_usable": "No - lines cross",
+      "illustration_usable": "No - lines cross",
+      "other_notes": "",
+      "fix": "clarity"
+    },
+    "f1c85903-bb93-4031-bf33-a89fdfefc3ce": {
+      "problem": 6,
+      "run": 5,
+      "prompt_file": "problem 006 run 005 feedback prompt.txt",
+      "scaffolding_usable": "No - coloring is weird",
+      "illustration_usable": "No - coloring is weird, and extra lines are distracting",
+      "other_notes": "",
+      "fix": "aesthetics"
+    },
+    "cc26a6c2-169f-49a2-b47d-07a38142e975": {
+      "problem": 7,
+      "run": 1,
+      "prompt_file": "problem 007 run 001 feedback prompt.txt",
+      "scaffolding_usable": "Yes",
+      "illustration_usable": "No - vertical line of grid is off thermometer - not realistic",
+      "other_notes": "I don't think it's that bad. Once the scaffolding finished correctly, nothing could be done since it accurately followed the scaffolding.",
+      "fix": "logic/realism"
+    },
+    "597fe9b9-5ade-42fc-89b7-eb790a31b7e1": {
+      "problem": 7,
+      "run": 2,
+      "prompt_file": "problem 007 run 002 feedback prompt.txt",
+      "scaffolding_usable": "Yes - but degrees Celsius label is a little close to the 10 label",
+      "illustration_usable": "Yes",
+      "other_notes": "",
+      "fix": ""
+    },
+    "7a079ad7-7800-41bb-bcfd-60dccc8ba185": {
+      "problem": 7,
+      "run": 3,
+      "prompt_file": "problem 007 run 003 feedback prompt.txt",
+      "scaffolding_usable": "Yes",
+      "illustration_usable": "Yes",
+      "other_notes": "",
+      "fix": ""
+    },
+    "7772d3b6-84f1-4eae-8dd3-98f392232019": {
+      "problem": 7,
+      "run": 4,
+      "prompt_file": "problem 007 run 004 feedback prompt.txt",
+      "scaffolding_usable": "Yes",
+      "illustration_usable": "No - weird second shape was added",
+      "other_notes": "",
+      "fix": "aesthetics"
+    },
+    "d5df2bdc-8d34-4f63-b57c-c026d8ca3b57": {
+      "problem": 7,
+      "run": 5,
+      "prompt_file": "problem 007 run 005 feedback prompt.txt",
+      "scaffolding_usable": "Yes - but degrees Celsius label is a little close to the 10 label",
+      "illustration_usable": "Yes - but degrees Celsius label is a little close to the 10 label",
+      "other_notes": "",
+      "fix": ""
+    },
+    "81ea4f65-4b52-4c12-bb28-1e901bb770bb": {
+      "problem": 8,
+      "run": 1,
+      "prompt_file": "problem 008 run 001 feedback prompt.txt",
+      "scaffolding_usable": "No - toes are weird",
+      "illustration_usable": "Yes",
+      "other_notes": "",
+      "fix": ""
+    },
+    "db3fe668-3fd3-4f9e-a257-a8893fa3fa2f": {
+      "problem": 8,
+      "run": 2,
+      "prompt_file": "problem 008 run 002 feedback prompt.txt",
+      "scaffolding_usable": "Maybe - feet a bit too far apart for comparison to be easy",
+      "illustration_usable": "No - feet too far apart, feet not exactly on dotted line; kind of ugly",
+      "other_notes": "",
+      "fix": "clarity"
+    },
+    "1e8a0c32-dfb8-4401-b0b1-da870f8b0ece": {
+      "problem": 8,
+      "run": 3,
+      "prompt_file": "problem 008 run 003 feedback prompt.txt",
+      "scaffolding_usable": "Yes",
+      "illustration_usable": "Yes",
+      "other_notes": "",
+      "fix": ""
+    },
+    "71762f8c-d4ac-458a-8464-f51728a71685": {
+      "problem": 8,
+      "run": 4,
+      "prompt_file": "problem 008 run 004 feedback prompt.txt",
+      "scaffolding_usable": "Yes",
+      "illustration_usable": "Borderline - kind of ugly",
+      "other_notes": "",
+      "fix": ""
+    },
+    "ee72cd01-117d-484b-9cf5-1c287115a8cf": {
+      "problem": 8,
+      "run": 5,
+      "prompt_file": "problem 008 run 005 feedback prompt.txt",
+      "scaffolding_usable": "No - super weird looking",
+      "illustration_usable": "Yes - but weird that one is a right foot and the other is a left foot",
+      "other_notes": "no; illustration lost 2:3 ratio",
+      "fix": "measurement off"
+    },
+    "133719a3-eec3-4b2e-986e-9b92041bcc18": {
+      "problem": 9,
+      "run": 1,
+      "prompt_file": "problem 009 run 001 feedback prompt.txt",
+      "scaffolding_usable": "Yes",
+      "illustration_usable": "Yes",
+      "other_notes": "",
+      "fix": ""
+    },
+    "3ef0fc81-af17-4225-9c99-ad3fe0dd8e41": {
+      "problem": 9,
+      "run": 2,
+      "prompt_file": "problem 009 run 002 feedback prompt.txt",
+      "scaffolding_usable": "Yes",
+      "illustration_usable": "No - different fonts are used and that is distracting",
+      "other_notes": "",
+      "fix": "aesthetics"
+    },
+    "8be1775e-525c-42f2-8149-00823bcf72a0": {
+      "problem": 9,
+      "run": 3,
+      "prompt_file": "problem 009 run 003 feedback prompt.txt",
+      "scaffolding_usable": "Yes",
+      "illustration_usable": "No - don't like way labels are colored",
+      "other_notes": "",
+      "fix": "aesthetics"
+    },
+    "99aaa494-02da-48ad-9e2f-52046e6ee250": {
+      "problem": 9,
+      "run": 4,
+      "prompt_file": "problem 009 run 004 feedback prompt.txt",
+      "scaffolding_usable": "Yes",
+      "illustration_usable": "Yes",
+      "other_notes": "",
+      "fix": ""
+    },
+    "5a61abb8-c56e-49e5-ac70-86b772bad5a2": {
+      "problem": 9,
+      "run": 5,
+      "prompt_file": "problem 009 run 005 feedback prompt.txt",
+      "scaffolding_usable": "Yes",
+      "illustration_usable": "No - spinner has two rings",
+      "other_notes": "eh; I don't think its that bad",
+      "fix": ""
+    },
+    "f399af41-5307-4edd-b339-3507ba002986": {
+      "problem": 10,
+      "run": 1,
+      "prompt_file": "problem 010 run 001 feedback prompt.txt",
+      "scaffolding_usable": "Yes",
+      "illustration_usable": "No - too ugly/similar to scaffolding",
+      "other_notes": "",
+      "fix": "aesthetics"
+    },
+    "36eccfbd-a757-4b17-a73d-e5ca9efb0fc5": {
+      "problem": 10,
+      "run": 2,
+      "prompt_file": "problem 010 run 002 feedback prompt.txt",
+      "scaffolding_usable": "No - gray dotted line is weird",
+      "illustration_usable": "No - ruler not labelled as being \"cm\"",
+      "other_notes": "a shame; that illustration looks nice",
+      "fix": "measurement device rules"
+    },
+    "90a539c4-0083-4bba-83d8-a99ef68986b0": {
+      "problem": 10,
+      "run": 3,
+      "prompt_file": "problem 010 run 003 feedback prompt.txt",
+      "scaffolding_usable": "Yes",
+      "illustration_usable": "No - too ugly/similar to scaffolding; ruler not labelled as being \"cm\"",
+      "other_notes": "to measurement device rules mention that we need to specify/show units? they need to.",
+      "fix": "measurement device rules"
+    },
+    "490d37be-0a9a-415e-b55e-294bc6485f63": {
+      "problem": 10,
+      "run": 4,
+      "prompt_file": "problem 010 run 004 feedback prompt.txt",
+      "scaffolding_usable": "No - number labels are messed up and off of ruler",
+      "illustration_usable": "No - length are inaccurate; not sure why multiples of 5 are bolded; not labelled as \"cm\"",
+      "other_notes": "",
+      "fix": "measurement off, measurement device rules, label misplaced, aesthetics"
+    },
+    "a5b79998-b40a-45e2-91fa-6160355de422": {
+      "problem": 10,
+      "run": 5,
+      "prompt_file": "problem 010 run 005 feedback prompt.txt",
+      "scaffolding_usable": "Yes",
+      "illustration_usable": "No - too ugly/similar to scaffolding",
+      "other_notes": "I think it's fine",
+      "fix": ""
+    },
+    "6607665b-a120-4891-be8d-8224922c9777": {
+      "problem": 11,
+      "run": 1,
+      "prompt_file": "problem 011 run 001 feedback prompt.txt",
+      "scaffolding_usable": "No - placement of Fluffy as yellow circle is confusing",
+      "illustration_usable": "No - triangle drawn incorrectly over ramp; measurements in the wrong spot",
+      "other_notes": "the scaffolding should have stripped out fluffy since she's not part of the actual math problem",
+      "fix": "clarity, measurement off"
+    },
+    "8ec5b76e-9ea0-4e92-886e-ee871d337f9f": {
+      "problem": 11,
+      "run": 2,
+      "prompt_file": "problem 011 run 002 feedback prompt.txt",
+      "scaffolding_usable": "Yes",
+      "illustration_usable": "No - lines drawn incorrectly over ramp",
+      "other_notes": "",
+      "fix": "measurement off"
+    },
+    "b13454c6-8925-4d77-95c2-784c6acb0e87": {
+      "problem": 11,
+      "run": 3,
+      "prompt_file": "problem 011 run 003 feedback prompt.txt",
+      "scaffolding_usable": "Yes",
+      "illustration_usable": "No - triangle drawn incorrectly over ramp",
+      "other_notes": "",
+      "fix": "measurement off"
+    },
+    "17e47f6c-5756-4e9b-96ea-ea081e8cb81f": {
+      "problem": 11,
+      "run": 4,
+      "prompt_file": "problem 011 run 004 feedback prompt.txt",
+      "scaffolding_usable": "Yes",
+      "illustration_usable": "Yes",
+      "other_notes": "",
+      "fix": ""
+    },
+    "824a7b94-d9bd-4cc1-8f9d-8544f5be7bc3": {
+      "problem": 11,
+      "run": 5,
+      "prompt_file": "problem 011 run 005 feedback prompt.txt",
+      "scaffolding_usable": "No - weird \"poodle area\" label",
+      "illustration_usable": "No - triangle drawn incorrectly over ramp",
+      "other_notes": "the image gen really wants to draw the illustration with the triangle warped; might be too hard to fix without too many problem specific instructions",
+      "fix": ""
+    }
+  }
+}

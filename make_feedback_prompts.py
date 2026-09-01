@@ -19,6 +19,26 @@ Input modes (in order of preference):
     (default)             the sheet's public CSV export URL, which only works
                           if the sheet is shared with "anyone with the link"
 
+--credentials setup (one time). gspread is NOT in the base env; it lives in a
+separate conda env, so run this script with that env activated:
+    conda create -n edee python=3.12 -y
+    conda activate edee
+    pip install gspread
+    python make_feedback_prompts.py --credentials service_account.json
+Getting the key: reuse the service account the Test Orchestrator workflow
+already uses for this same sheet ("Google Service Account - dee-data") -- the
+sheet is already shared with it and the Sheets API is already enabled in its
+project, so only a key file is missing. n8n cannot export the key it holds, so
+mint a second one: Google Cloud console > IAM & Admin > Service Accounts >
+dee-data > Keys > Add key > Create new key > JSON. That does not disturb the
+key n8n is using (a service account may hold up to 10). Save it in this folder;
+*.json credentials are gitignored. Note it is a WRITE-capable credential,
+because the orchestrator updates the sheet; this script only reads. For least
+privilege instead, make a separate service account and share the sheet with its
+client_email as Viewer.
+
+run_feedback_analysis.py is pure standard library and still runs from base.
+
 Run from the base project folder.
 """
 
@@ -107,7 +127,7 @@ def rows_from_public_export():
             "  * download it (File > Download > Comma-separated values) and "
             "rerun with --csv <file>, or\n"
             "  * rerun with --credentials <service-account.json> after sharing "
-            "the sheet with that service account's email."
+            "the sheet with that key's client_email (see this file's docstring)."
         ) from exc
     if body.lstrip().startswith("<"):
         raise SystemExit(
@@ -121,9 +141,61 @@ def rows_from_gspread(credentials_path):
     try:
         import gspread
     except ImportError:
-        raise SystemExit("--credentials needs gspread: pip install gspread")
-    client = gspread.service_account(filename=credentials_path)
-    return client.open_by_key(SHEET_ID).worksheet(SHEET_NAME).get_all_values()
+        raise SystemExit(
+            "--credentials needs gspread, which is not in this interpreter.\n"
+            "    conda create -n edee python=3.12 -y\n"
+            "    conda activate edee\n"
+            "    pip install gspread\n"
+            "then rerun with that env active. Without --credentials the script "
+            "reads the sheet's public CSV export and needs no extra packages.")
+
+    path = Path(credentials_path)
+    if not path.is_file():
+        raise SystemExit(f"Credentials file not found: {path}")
+
+    # Fail early on an OAuth client-secret file, which looks similar but makes
+    # gspread raise something unrelated further down.
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            key = json.load(f)
+    except ValueError as exc:
+        raise SystemExit(f"{path} is not valid JSON: {exc}") from exc
+    if key.get("type") != "service_account":
+        raise SystemExit(
+            f"{path} is not a service-account key (its \"type\" is "
+            f"{key.get('type', 'missing')!r}). Download the JSON key from the "
+            "service account itself, not an OAuth client ID.")
+    email = key.get("client_email", "(unknown)")
+
+    client = gspread.service_account(filename=str(path))
+    try:
+        sheet = client.open_by_key(SHEET_ID)
+    except gspread.exceptions.SpreadsheetNotFound as exc:
+        raise SystemExit(
+            f"The service account cannot see this spreadsheet. Share it "
+            f"(Viewer is enough) with:\n    {email}") from exc
+    except gspread.exceptions.APIError as exc:
+        detail = str(exc)
+        if "has not been used" in detail or "SERVICE_DISABLED" in detail:
+            raise SystemExit(
+                "The Google Sheets API is not enabled for this key's project. "
+                "Enable it at console.cloud.google.com > APIs & Services > "
+                f"Library > Google Sheets API, then rerun.\n\n{detail}") from exc
+        if "403" in detail or "PERMISSION_DENIED" in detail:
+            raise SystemExit(
+                f"Access denied. Share the sheet (Viewer is enough) with:\n"
+                f"    {email}\n\n{detail}") from exc
+        raise SystemExit(f"Google Sheets API error:\n{detail}") from exc
+
+    try:
+        worksheet = sheet.worksheet(SHEET_NAME)
+    except gspread.exceptions.WorksheetNotFound as exc:
+        tabs = ", ".join(w.title for w in sheet.worksheets())
+        raise SystemExit(
+            f"No tab named {SHEET_NAME!r}. Tabs in this sheet: {tabs}") from exc
+
+    print(f"reading {SHEET_NAME} live as {email}")
+    return worksheet.get_all_values()
 
 
 # --------------------------------------------------------------------------
@@ -170,7 +242,10 @@ def main():
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     src = ap.add_mutually_exclusive_group()
     src.add_argument("--csv", help="local CSV export of Sheet1")
-    src.add_argument("--credentials", help="Google service-account JSON key")
+    src.add_argument("--credentials",
+                     help="Google service-account JSON key; needs gspread (see "
+                          "this file's docstring). Without it the sheet is "
+                          "assumed to be publicly readable.")
     ap.add_argument("--config", default=str(CONFIG_JS),
                     help="path to config.js (default: %(default)s)")
     ap.add_argument("--out-dir", default=str(OUT_DIR),

@@ -211,8 +211,14 @@ notes/feedback/prompts_per_problem/*
 !notes/feedback/prompts_per_problem/manifest.json
 !notes/feedback/prompts_per_problem/*user notes.txt
 notes/feedback/results_per_problem/
-notes/feedback/feedback_analysis_prompt.txt
+notes/feedback/*feedback_analysis_prompt.txt
+notes/feedback/*consumed_prompts*.zip
 
-# API keys -- never commit
+# API keys and service-account credentials -- never commit
 google_api_key.txt
 .env
+service_account.json
+*service-account*.json
+*-credentials.json
+# GCP's default key filename is <project-id>-<key-id>.json
+gen-lang-client-*.json

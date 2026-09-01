@@ -6,7 +6,12 @@ response as "problem ### run ### feedback result.txt" in the results folder --
 so rerunning only calls the API for runs that don't have a result yet.
 
 Then it assembles everything, plus the per-problem "problem ### user notes.txt"
-files, into feedback_analysis_prompt.txt for the pass-2 systemic analysis.
+files, into "<YYYY-MM-DD> feedback_analysis_prompt.txt" for the pass-2 systemic
+analysis. Once every run has a result, the consumed prompt and user-notes files
+are zipped into "<YYYY-MM-DD> consumed_prompts.zip" and deleted; manifest.json
+is copied into the zip but kept in place, since it holds the problem/run
+numbering and the running cost total. Cached results are kept too, so
+re-assembling stays free. Use --no-archive to keep everything.
 
 Each call's token usage and cost are written back into manifest.json alongside
 the run, and the run total (plus a to-date total across every priced run) is
@@ -29,11 +34,14 @@ import sys
 import time
 import urllib.error
 import urllib.request
+import zipfile
 from pathlib import Path
 
-PROMPTS_DIR = Path("notes") / "feedback" / "prompts_per_problem"
-RESULTS_DIR = Path("notes") / "feedback" / "results_per_problem"
-OUT_FILE = Path("notes") / "feedback" / "feedback_analysis_prompt.txt"
+FEEDBACK_DIR = Path("notes") / "feedback"
+PROMPTS_DIR = FEEDBACK_DIR / "prompts_per_problem"
+RESULTS_DIR = FEEDBACK_DIR / "results_per_problem"
+OUT_NAME = "feedback_analysis_prompt.txt"
+ARCHIVE_NAME = "consumed_prompts.zip"
 KEY_FILE = Path("google_api_key.txt")
 DEFAULT_MODEL = "gemini-3.7-flash"
 
@@ -59,6 +67,75 @@ Look over everything and try to find systemic issues that come up over and over 
   - We can and should make special rules for major problem classes though, educational math problems fall into a mostly finite and static number of categories.
   - The narrowest fix should be for an entire class of problems, never specific to this single problem.
 """
+
+
+# --------------------------------------------------------------------------
+# Dated output files
+# --------------------------------------------------------------------------
+
+def dated(directory, name):
+    return Path(directory) / f"{dt.date.today().isoformat()} {name}"
+
+
+def unique(path):
+    """path, or path with -2, -3 ... appended, so an archive is never clobbered."""
+    if not path.exists():
+        return path
+    for n in range(2, 1000):
+        candidate = path.with_name(f"{path.stem}-{n}{path.suffix}")
+        if not candidate.exists():
+            return candidate
+    raise SystemExit(f"Too many archives already named like {path}")
+
+
+def archive_consumed(prompts_dir, by_problem, manifest_path, archive_path):
+    """Zip every prompt + user-notes file that fed the assembled analysis, plus
+    a snapshot of the manifest, then delete the originals.
+
+    The manifest itself is only COPIED, never deleted: it is what keeps problem
+    and run numbering stable across future sheet reads, and it carries the
+    running cost total.
+    """
+    consumed = []
+    for prob_num in sorted(by_problem):
+        for _run_num, entry in sorted(by_problem[prob_num], key=lambda t: t[0]):
+            prompt_path = prompts_dir / entry["prompt_file"]
+            if prompt_path.is_file():
+                consumed.append(prompt_path)
+        notes_path = prompts_dir / f"problem {prob_num:03d} user notes.txt"
+        if notes_path.is_file():
+            consumed.append(notes_path)
+
+    if not consumed:
+        print("nothing left to archive (already cleared).")
+        return None
+
+    with zipfile.ZipFile(archive_path, "w", zipfile.ZIP_DEFLATED) as zf:
+        for path in consumed:
+            zf.write(path, arcname=path.name)
+        if manifest_path.is_file():
+            zf.write(manifest_path, arcname=manifest_path.name)
+
+    # Verify the archive is readable and complete BEFORE deleting anything.
+    with zipfile.ZipFile(archive_path) as zf:
+        if zf.testzip() is not None:
+            raise SystemExit(f"{archive_path} failed its integrity check; "
+                             "nothing was deleted.")
+        stored = set(zf.namelist())
+    missing = [p.name for p in consumed if p.name not in stored]
+    if missing:
+        raise SystemExit(f"{archive_path} is missing {len(missing)} file(s) "
+                         f"({missing[0]} ...); nothing was deleted.")
+
+    for path in consumed:
+        path.unlink()
+
+    size_mb = archive_path.stat().st_size / 1_048_576
+    print(f"archived {len(consumed)} consumed file(s) to {archive_path} "
+          f"({size_mb:.1f} MB) and deleted the originals.")
+    print(f"  {manifest_path.name} was copied in but kept in place -- it holds "
+          "the problem/run numbering and cost history.")
+    return archive_path
 
 
 # --------------------------------------------------------------------------
@@ -234,9 +311,16 @@ def main():
                     help="folder with prompts + manifest.json (default: %(default)s)")
     ap.add_argument("--results-dir", default=str(RESULTS_DIR),
                     help="folder for cached Gemini results (default: %(default)s)")
-    ap.add_argument("--out", default=str(OUT_FILE),
-                    help="assembled analysis prompt (default: %(default)s; "
-                         "regenerated every run)")
+    ap.add_argument("--out",
+                    help=f"assembled analysis prompt (default: "
+                         f"{FEEDBACK_DIR}\\<today> {OUT_NAME}; regenerated "
+                         f"every run)")
+    ap.add_argument("--no-archive", action="store_true",
+                    help="keep the consumed prompt and user-notes files instead "
+                         "of zipping and deleting them")
+    ap.add_argument("--archive", action="store_true",
+                    help="archive even with --assemble-only, which otherwise "
+                         "leaves the prompt folder untouched")
     ap.add_argument("--model", default=DEFAULT_MODEL,
                     help="Gemini model name (default: %(default)s)")
     ap.add_argument("--key-file", default=str(KEY_FILE),
@@ -347,7 +431,29 @@ def main():
     print(f"All priced runs to date: ${total:.4f} across {priced} runs"
           + (f" ({unpriced} without a recorded cost)." if unpriced else "."))
 
-    assemble(by_problem, prompts_dir, results_dir, Path(args.out))
+    out_file = (Path(args.out) if args.out
+                else dated(prompts_dir.parent, OUT_NAME))
+    assemble(by_problem, prompts_dir, results_dir, out_file)
+
+    # Archiving deletes the prompt files, so it only happens once every run has
+    # a cached result -- otherwise a later retry would have no prompt to send.
+    unfinished = [(prob, run) for prob in by_problem
+                  for run, _ in by_problem[prob]
+                  if not (results_dir / f"problem {prob:03d} run {run:03d} "
+                          "feedback result.txt").exists()]
+    if args.no_archive:
+        print("--no-archive: consumed files left in place.")
+    elif args.assemble_only and not args.archive:
+        print("--assemble-only: consumed files left in place "
+              "(add --archive to zip and clear them).")
+    elif unfinished:
+        print(f"not archiving: {len(unfinished)} run(s) still have no result "
+              "(e.g. problem {0} run {1}). Their prompt files are needed to "
+              "retry.".format(*unfinished[0]))
+    else:
+        archive_consumed(prompts_dir, by_problem, manifest_path,
+                         unique(dated(prompts_dir.parent, ARCHIVE_NAME)))
+
     return 1 if failed else 0
 
 
