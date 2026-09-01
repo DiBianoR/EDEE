@@ -61,7 +61,7 @@ PROMPT_TEMPLATE = """**AGENT DEFINITIONS**
 **USER FEEDBACK**
 Scaffolding Usable?: {scaffolding_usable}
 Illustration Usable?: {illustration_usable}
-Other notes: {other_notes}
+Designer notes: {other_notes}
 General Problem Class: {fix}
 
 Summarize and Analyze:
