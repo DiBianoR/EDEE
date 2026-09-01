@@ -1,0 +1,1 @@
+- Some problems the artist doesn't change enough, some it changes too much. This seems to be one it changes too much on many runs - it wants to warp the triangle to fit a psuedo 3d image. Was this usually detected? any suggestions to improve? stronger prompts don't seem to be working; we need to explain it differently maybe.

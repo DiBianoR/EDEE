@@ -1,0 +1,1 @@
+Almost all of these passed, that's great. It's not enough to cause a failure but would be nice if we could have them (and similar problems) scattered more randomly, but still not overlapping. There are instructions in many places allowing for scattered objects when it makes sense, and this problem is a prime candidate; analyze why it never actually happens.

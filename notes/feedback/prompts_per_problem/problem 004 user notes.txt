@@ -1,0 +1,3 @@
+it's clear we need to work on
+- making sure this doesn't go down the artistic only path
+- making sure the measurement device rules are triggered and improved. We probably need to add a dedicated step + flag for this alongside with 3d objects, graphs, arranged objects, and artistic planning
