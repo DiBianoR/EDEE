@@ -1,2 +1,0 @@
-- need to work on rules for measurement devices
-- Some problems the artist doesn't change enough, some it changes too much. This seems to be one it changes too little on many runs.

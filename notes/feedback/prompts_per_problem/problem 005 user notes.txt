@@ -1,2 +1,0 @@
-pretty good overall
-- a lot of the issues are ill defined uncanny valley issues rather than outright errors, imo that makes them hard to fix and not a priority.

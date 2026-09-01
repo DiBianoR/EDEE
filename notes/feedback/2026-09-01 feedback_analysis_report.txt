@@ -1,0 +1,93 @@
+Here's the cross-run synthesis of all 11 problems (55 runs). The same handful of systemic failures explain nearly every bad outcome.
+
+---
+
+## Common scaffolding problems
+1. **Forbidden decorations get drawn anyway** — drop shadows, fake highlights, gradients (P1, P3, P4, P5 ×2 — the single most repeated explicit directive violation)
+2. **Bad drafting hygiene** — dimension lines crossing each other, labels on borders/collisions, translucent label boxes, missing unit labels (P6 ×3, P7, P10)
+3. **Over-reach into organic/artistic territory** — weird toes, dipped bags, red-blob flowerbeds, hand-coded Bézier anatomy, brand text on 3D faces (P1, P3, P5, P8)
+4. **Placeholder/meta text rendered literally** — "CEREAL", "Poodle Area", "Bed" (P1, P11)
+5. **Geometry errors** — Cavalier instead of cabinet projection, boundary bleed (path outside park), detached floating scales, translucent fills read as glass (P1, P3, P4, P7)
+
+## Common final-image problems
+1. **Anchor calibration failure, both directions** — too loose: warped triangles, ratio drift, extra rings/backing cards, toe-count changes (P4, P8, P9, P11); too tight: output nearly identical to the scaffolding, "too ugly" (P10 ×3). The retry loop causes the pendulum swing.
+2. **Text is the weakest link** — hallucinated labels ("Original Size"), mirrored dimension lines, mixed fonts, tinted glyphs, missing "cm" (P1, P3, P9, P10)
+3. **Measurement devices are unreadable** — irregular ticks, ambiguous reading points, badge-style total labels (P4 all 5 runs, P10)
+4. **Scaffolding flaws faithfully baked in** — img2img preserves crossed lines, paths through lakes, awkward contours exactly as anchored (P3, P5, P6, P7)
+
+---
+
+## Systemic root causes, most widespread first
+
+### 1. QA verifies literal compliance, never sense (touches ~9 of 11 problems)
+**Agents:** `image_verifier`, `issue_aggregator`, `inspector`, `inspection_manager`, `reviewer`, `review_manager`
+**What happens:** Verifiers pass — and sometimes *praise* — translucent cardboard, forbidden shadows, paths through lakes, legless mice, crossed dimension lines, missing units. One run hallucinated an exact "400px vs 600px" measurement to confirm a ratio that had drifted. `inspection_manager` dismissed valid inspector findings as hallucinations (P3).
+**Root causes:** Checklists ask presence/overlap questions ("is text overlapping a line?") not judgment questions; there is no audit against the system's own negative directives; leniency language ("overrule nitpicks", "attempt 3: pass good-enough", "artist will cover cosmetics") bleeds into structural defects; the "artist will fix it" assumption is false under structure-preserving img2img.
+**Fixes:**
+- Add a **forbidden-elements audit** to code review and inspection: unrequested shadows, decorations, added structural shapes, extra text → MAJOR.
+- Add a **plausibility check** scoped to representational scenes only (paths don't cross water without bridges, animals have limbs, opaque objects aren't transparent, tool markings attach to the tool) — explicitly exempt abstract math figures (Venn diagrams, overlapping shapes) to avoid false positives.
+- Define two defect tiers everywhere: *cosmetic* (waivable, especially attempt 3+) vs *structural/semantic* (never waivable at any attempt). Geometric misalignment, broken measurement semantics, and directive violations are always tier 2.
+
+### 2. Negative directives lose to task context (the shadow bug, generalized)
+**Agents:** `artistic_planner`, `image_detail_planner` → `scaffolding_designer`, `coder`
+**What happens:** Stage 2 planners write "subtle drop shadows", "translucent cyan", "wooden aesthetic" into `latest_description`; the coder's system prompt says no shadows, but LLMs reliably obey the turn-specific spec over the system negative. Every shadow failure followed this exact path.
+**Root cause:** One merged description feeds both the artist *and* the coder. Style language meant for Stage 4 contaminates Stage 3.
+**Fix (general rule):** **Split Stage 2 output into two channels** — a geometric spec (shapes, coordinates, counts, math labels only) for scaffolding, and a style spec (textures, lighting, mood, shadows) for the artist. Have `design_scaffolding` explicitly strip aesthetic vocabulary, and have reviewers flag any lighting/shadow/texture code as a violation. This one change kills the whole failure family instead of patching shadows specifically.
+
+### 3. The Anchor/Creativity dial has no middle setting
+**Agents:** `artist` (`plan_finishing`/`render_final`), `troubleshoot_visual`, `issue_aggregator`
+**What happens:** Math failures get "fixed" by piling on negative constraints, which displaces all style language → flat scaffolding clones (P10). Rich scene prompts ("cozy bedroom") drag the model into 3D perspective that warps the overlay → P11, where stronger prompts demonstrably didn't work.
+**Root causes:** Retry guidance replaces style with locks instead of holding both; "preserve composition" is ambiguous to diffusion models; and fundamentally, **diffusion cannot reliably preserve thin vector lines and text while repainting a scene** — no prompt fixes that.
+**Fixes:**
+- Every artist prompt (including retries) must carry both halves explicitly: *spatial locks* (numeric aspect ratio, counts, endpoints) AND *surface mandates* (textures, materials, lighting). Troubleshooters may edit only the lock half.
+- For P11-type cases, reframe rather than restrain: don't say "preserve the triangle over the bedroom" — say "flat 2D side-elevation cutaway, objects are flat cutouts"; ban environment words ("room", "interior") that carry 3D priors.
+- **The structural fix your own analysts proposed independently on P9, P10, and P11: two-layer compositing.** Let the model paint only the scene; re-stamp dimension lines, labels, and tick marks programmatically from the original Matplotlib coordinates after rendering. This eliminates text hallucination, label swaps, font drift, and overlay warping as a category. It's the highest-leverage architectural change in the whole dataset.
+
+### 4. Measurement devices need to be a first-class problem class
+**Problems:** P4 (all 5 runs failed), P7, P10 — plus your own notes agree.
+**What happens:** `selector` routes ruler/tape problems to `DIRECT_IMAGE_GEN` despite `requires_technical: true`; the `TICKMARKS ACCURATE` rule lives only in `inject_constraints` so the direct path never sees it; nobody defines how a tape measure *reads* (label at the overlap point or via external callout — not a badge in the middle of the band); ticks get carved out to make room for text; units ("cm") are never printed; QA has no gauge checklist.
+**Fix (per your note — do this as a dedicated flag):** Add `needs_measurement_device` to `situational_planning` alongside 3D/arrangement/artistic. When true, inject one directive block into *all* stages:
+- Never route to `DIRECT_IMAGE_GEN`.
+- Ticks are continuous (never skipped for labels), standard subdivisions, consistent styling (no arbitrary bolding).
+- Unit label mandatory near origin or scale end.
+- Total measurements shown at the reading point or as an external dimension callout — never as a floating badge.
+- Device body extends past 0 and max so edge numbers sit inside; scales are physically mounted on the device, never floating.
+- QA: "is the stated value unambiguously readable at a specific tick?"
+
+### 5. Basic drafting conventions are missing entirely
+**Problems:** P6 (crossed lines 3/5 runs), P10, P7. Your note says agents know not to cross lines but fail execution — so prompts alone aren't enough.
+**Fixes:**
+- Add a compact DRAFTING STANDARDS block for coder/designer: dimension lines never cross; prefer exterior placement with extension lines; label boxes fully opaque or in whitespace (never `alpha<1` — that was a *manager-prescribed* anti-pattern); stagger adjacent callouts at 25%/75% positions.
+- Because it's an execution problem, add a **computational check**: `logic_check` (or a cheap AST/geometry lint) verifies that annotation line segments don't intersect, before spending an execution + vision pass. Interval-overlap math is exactly what code review can do reliably and vision QA can't.
+
+### 6. Routing has no hard gates and no fallbacks
+**Problems:** P4 (direct-gen misroute; unrecoverable 3D loop), P9/P10 (mandatory img2img degrades pure technical diagrams), P10/P11 (pipeline fails while a good scaffolding sits approved).
+**Fixes:**
+- Hard rule: `requires_technical: true` ⇒ `DIRECT_IMAGE_GEN` forbidden.
+- `requires_artistic: false` ⇒ allow a `SCAFFOLD_ONLY`/vector path that ships a polished Matplotlib render and skips Stage 4 (spinners, graphs, rulers gain nothing from diffusion).
+- Authorize managers to **downgrade paradigms**: after two 3D failures, pivot to 2D cross-section ("a clean 2D beats a broken 3D"); after two img2img math failures, fall back to shipping the approved scaffolding instead of erroring out.
+
+### 7. Scaffolding tries to do the artist's job on organic shapes
+**Problems:** P1, P3, P5, P8 — and your note that expecting aesthetic feet from Matplotlib is unreasonable.
+**Fix (general rule):** Scaffolding's contract is *bounding geometry + math markup*. Organic subjects become clean capsules/silhouettes/bounding shapes; decorative scenery (flowerbeds, paths, ducks) is described in text for the artist, not drawn as blobs; no non-mathematical text strings ever (`"CEREAL"`, `"Poodle Area"`); if an object can't be drawn recognizably as a clean primitive, omit it. Pair with artist license to "naturalize container/organic silhouettes while keeping counts and coordinates locked."
+
+### 8. Discretionary rules need structured outputs, not prose (customizable objects, P1)
+The branding directive failed 3/5 runs — once the artist even invented "Berry Blast Spheres" in its reasoning and then dropped it from the prompt. Prose rules nested under "CREATIVITY" lose to ANCHOR's negative constraints every time.
+**Fix (generalizable):** Any discretionary rule that *must* fire gets a **required schema field** (`custom_branding_details`, forced empty-string when N/A) so it can't be lost between reasoning and prompt. Add the explicit negative ("never name a cereal 'CEREAL'"), a QA check for category-word branding, and an exception for problem-defined identifiers ("Box A"). Your instinct to add constrained fields for testing this is right — same mechanism.
+
+### 9. Why scattered layouts never happen (P2 user question)
+Every incentive in the pipeline points at grids: `arrangement_planner` must emit exact coordinates and a grid is the safest set; non-overlap and count-accuracy rules punish scatter's risks; QA counts objects, which grids make trivial; and managers actively "correct" toward symmetry (in run 4 a 5/3 split was *fixed* into 2×4). Scatter is merely *permitted* while grids are structurally *rewarded* — permission never beats incentive.
+**Fix:** Make layout style an explicit sampled decision: when the scene is naturalistic (animals, scattered items), `arrangement_planner` must choose from {grid, staggered rows, jittered scatter} and default *away* from grid, emitting explicit jittered coordinates with a minimum-spacing constraint. That keeps count/overlap safety while breaking the uniformity.
+
+---
+
+## If you only fix five things
+1. **Two-layer compositing** (programmatic text/dimension overlay post-render) — eliminates the largest final-image failure category outright.
+2. **Split geometric spec from style spec** at the Stage 2→3 boundary — kills the shadow/decoration contamination family.
+3. **`needs_measurement_device` flag + one shared directive block** — P4 and P10 go from ~0% to plausibly passing.
+4. **Forbidden-elements audit + cosmetic/structural defect tiers in QA** — turns rubber-stamp reviewers into a real safety net and stops attempt-3 leniency from shipping geometric errors.
+5. **Hard routing gates and fallbacks** (no direct-gen for technical, scaffold-only path, 3D→2D pivot, ship-scaffolding fallback) — converts total failures into usable outputs.
+
+One dormant bug also worth a ticket: `extract_visual`'s schema `required` lists `image_request` but the property is `image_request_found` — it will throw validation errors if that branch is ever routed to (found in P5-1).
+
+Want me to save this as a markdown file in `notes/feedback/` alongside the per-problem notes?
