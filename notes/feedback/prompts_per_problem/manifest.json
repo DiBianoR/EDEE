@@ -20,7 +20,12 @@
       "scaffolding_usable": "no - cereal label looks weird",
       "illustration_usable": "no - top is translucent, cereal is still named 'Cereal\"",
       "other_notes": "top part of the box transparent in final image. Did the customizable objects direct give kick in here?",
-      "fix": "customizable objects"
+      "fix": "customizable objects",
+      "model": "gemini-3.7-flash",
+      "input_tokens": 87424,
+      "cached_tokens": 0,
+      "output_tokens": 2868,
+      "cost_usd": 0.076323
     },
     "a5bb9190-01cf-4fdd-96f2-b2365da24576": {
       "problem": 1,

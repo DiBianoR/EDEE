@@ -13,9 +13,10 @@ is copied into the zip but kept in place, since it holds the problem/run
 numbering and the running cost total. Cached results are kept too, so
 re-assembling stays free. Use --no-archive to keep everything.
 
-Each call's token usage and cost are written back into manifest.json alongside
-the run, and the run total (plus a to-date total across every priced run) is
-printed at the end.
+Each call's token usage, cost, and wall-clock seconds are written back into
+manifest.json alongside the run, and the run totals (plus to-date totals across
+every recorded run) are printed at the end. Runs recorded before timing existed
+simply have no "seconds" and are left out of the time totals.
 
 Needs a Gemini API key, unless --assemble-only. It is read from
 google_api_key.txt (gitignored; override with --key-file), falling back to the
@@ -72,6 +73,19 @@ Look over everything and try to find systemic issues that come up over and over 
 # --------------------------------------------------------------------------
 # Dated output files
 # --------------------------------------------------------------------------
+
+def fmt_duration(seconds):
+    """Compact wall-clock duration. None -> 'n/a' for pre-timing manifest rows."""
+    if seconds is None:
+        return "n/a"
+    if seconds < 60:
+        return f"{seconds:.1f}s"
+    minutes, secs = divmod(int(round(seconds)), 60)
+    if minutes < 60:
+        return f"{minutes}m {secs:02d}s"
+    hours, minutes = divmod(minutes, 60)
+    return f"{hours}h {minutes:02d}m"
+
 
 def dated(directory, name):
     return Path(directory) / f"{dt.date.today().isoformat()} {name}"
@@ -362,6 +376,7 @@ def main():
 
     called = cached = failed = 0
     run_cost = 0.0
+    run_seconds = 0.0
     if not args.assemble_only:
         todo = []
         for prob_num in sorted(by_problem):
@@ -386,16 +401,21 @@ def main():
                 continue
             print(f"[{i}/{len(todo)}] problem {prob_num} run {run_num} "
                   f"-> {args.model} ...")
+            started = time.monotonic()
             try:
                 result, usage = call_gemini(
                     prompt_path.read_text(encoding="utf-8"),
                     args.model, api_key)
             except RuntimeError as exc:
-                print(f"  FAILED: {exc}", file=sys.stderr)
+                print(f"  FAILED after {fmt_duration(time.monotonic() - started)}"
+                      f": {exc}", file=sys.stderr)
                 failed += 1
                 continue
+            # Wall clock for the whole call, including any retry backoff.
+            elapsed = time.monotonic() - started
             result_path.write_text(result, encoding="utf-8")
             called += 1
+            run_seconds += elapsed
 
             cost, why_not = price_usage(usage, args.model)
             entry["model"] = args.model
@@ -404,32 +424,38 @@ def main():
             entry["output_tokens"] = (usage.get("candidatesTokenCount", 0)
                                       + usage.get("thoughtsTokenCount", 0))
             entry["cost_usd"] = cost
-            if cost is None:
-                print(f"  {entry['input_tokens']:,} in / "
-                      f"{entry['output_tokens']:,} out -- not priced "
-                      f"({why_not})")
-            else:
+            entry["seconds"] = round(elapsed, 1)
+            priced_part = "not priced ({})".format(why_not) if cost is None \
+                else f"${cost:.4f}"
+            if cost is not None:
                 run_cost += cost
-                print(f"  {entry['input_tokens']:,} in / "
-                      f"{entry['output_tokens']:,} out -- ${cost:.4f}")
-            # Written after every call so an interrupted run keeps its costs.
+            print(f"  {entry['input_tokens']:,} in / "
+                  f"{entry['output_tokens']:,} out -- {priced_part} "
+                  f"in {fmt_duration(elapsed)}")
+            # Written after every call so an interrupted run keeps its numbers.
             save_manifest()
 
         rates = current_rates()
         promo = rates is PRICING_PROMO
         print(f"\n{called} calls made, {cached} already cached, {failed} failed.")
-        print(f"This run: ${run_cost:.4f} at {args.model} "
+        avg = f", avg {fmt_duration(run_seconds / called)}/call" if called else ""
+        print(f"This run: ${run_cost:.4f} in {fmt_duration(run_seconds)}{avg}, "
+              f"at {args.model} "
               f"{'promotional' if promo else 'standard'} rates "
               f"(${rates['input']}/1M in, ${rates['output']}/1M out).")
         if promo:
             print("  Heads up: these rates double on 2027-01-01.")
 
-    total = sum(e["cost_usd"] for e in manifest["runs"].values()
-                if e.get("cost_usd"))
-    priced = sum(1 for e in manifest["runs"].values() if e.get("cost_usd"))
+    entries = manifest["runs"].values()
+    total = sum(e["cost_usd"] for e in entries if e.get("cost_usd"))
+    priced = sum(1 for e in entries if e.get("cost_usd"))
     unpriced = len(manifest["runs"]) - priced
+    timed = [e["seconds"] for e in entries if e.get("seconds") is not None]
     print(f"All priced runs to date: ${total:.4f} across {priced} runs"
-          + (f" ({unpriced} without a recorded cost)." if unpriced else "."))
+          + (f" ({unpriced} without a recorded cost)" if unpriced else "")
+          + (f", {fmt_duration(sum(timed))} of model time"
+             f" (avg {fmt_duration(sum(timed) / len(timed))}/run)" if timed
+             else "") + ".")
 
     out_file = (Path(args.out) if args.out
                 else dated(prompts_dir.parent, OUT_NAME))
