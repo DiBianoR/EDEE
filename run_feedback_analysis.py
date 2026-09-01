@@ -12,8 +12,11 @@ Each call's token usage and cost are written back into manifest.json alongside
 the run, and the run total (plus a to-date total across every priced run) is
 printed at the end.
 
-Needs a Gemini API key in the GEMINI_API_KEY (or GOOGLE_API_KEY) environment
-variable, unless --assemble-only.
+Needs a Gemini API key, unless --assemble-only. It is read from
+google_api_key.txt (gitignored; override with --key-file), falling back to the
+GOOGLE_API_KEY / GEMINI_API_KEY environment variables.
+
+Standard library only -- no virtualenv needed.
 
 Run from the base project folder.
 """
@@ -31,6 +34,7 @@ from pathlib import Path
 PROMPTS_DIR = Path("notes") / "feedback" / "prompts_per_problem"
 RESULTS_DIR = Path("notes") / "feedback" / "results_per_problem"
 OUT_FILE = Path("notes") / "feedback" / "feedback_analysis_prompt.txt"
+KEY_FILE = Path("google_api_key.txt")
 DEFAULT_MODEL = "gemini-3.7-flash"
 
 # Gemini 3.7 Flash pricing, $ per 1M tokens. Promotional rates run through
@@ -55,6 +59,40 @@ Look over everything and try to find systemic issues that come up over and over 
   - We can and should make special rules for major problem classes though, educational math problems fall into a mostly finite and static number of categories.
   - The narrowest fix should be for an entire class of problems, never specific to this single problem.
 """
+
+
+# --------------------------------------------------------------------------
+# API key
+# --------------------------------------------------------------------------
+
+def read_key_file(path):
+    """First non-blank, non-comment line of the key file, or None.
+
+    Accepts a bare key or a GOOGLE_API_KEY=... / GEMINI_API_KEY=... line, so a
+    file copied from a .env still works. Surrounding quotes are stripped.
+    """
+    if not path.is_file():
+        return None
+    for line in path.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if not line or line.startswith("#"):
+            continue
+        if "=" in line and line.split("=", 1)[0].strip().upper() in (
+                "GOOGLE_API_KEY", "GEMINI_API_KEY"):
+            line = line.split("=", 1)[1].strip()
+        return line.strip("'\"") or None
+    return None
+
+
+def resolve_api_key(key_file):
+    """Key from the key file, else the environment. Returns (key, source)."""
+    key = read_key_file(key_file)
+    if key:
+        return key, str(key_file)
+    for var in ("GOOGLE_API_KEY", "GEMINI_API_KEY"):
+        if os.environ.get(var):
+            return os.environ[var], f"${var}"
+    return None, None
 
 
 # --------------------------------------------------------------------------
@@ -188,6 +226,8 @@ def main():
                          "regenerated every run)")
     ap.add_argument("--model", default=DEFAULT_MODEL,
                     help="Gemini model name (default: %(default)s)")
+    ap.add_argument("--key-file", default=str(KEY_FILE),
+                    help="file holding the Gemini API key (default: %(default)s)")
     ap.add_argument("--limit", type=int,
                     help="call the API for at most N missing results this run "
                          "(good for a cheap first test)")
@@ -214,10 +254,14 @@ def main():
 
     results_dir.mkdir(parents=True, exist_ok=True)
 
-    api_key = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
-    if not args.assemble_only and not api_key:
-        raise SystemExit("Set GEMINI_API_KEY (or GOOGLE_API_KEY), or use "
-                         "--assemble-only.")
+    api_key, key_source = resolve_api_key(Path(args.key_file))
+    if not args.assemble_only:
+        if not api_key:
+            raise SystemExit(
+                f"No API key found. Paste your Gemini key into {args.key_file} "
+                "(one line, no quotes needed -- that file is gitignored), or set "
+                "GOOGLE_API_KEY in the environment, or use --assemble-only.")
+        print(f"using API key from {key_source}")
 
     called = cached = failed = 0
     run_cost = 0.0

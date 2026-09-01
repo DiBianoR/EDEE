@@ -212,3 +212,7 @@ notes/feedback/prompts_per_problem/*
 !notes/feedback/prompts_per_problem/*user notes.txt
 notes/feedback/results_per_problem/
 notes/feedback/feedback_analysis_prompt.txt
+
+# API keys -- never commit
+google_api_key.txt
+.env
