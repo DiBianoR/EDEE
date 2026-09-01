@@ -147,9 +147,22 @@ def call_gemini(prompt, model, api_key, retries=3):
         try:
             with urllib.request.urlopen(req, timeout=600) as resp:
                 data = json.loads(resp.read().decode("utf-8"))
-            parts = data["candidates"][0]["content"]["parts"]
-            text = "\n".join(p["text"] for p in parts if "text" in p)
+            candidate = data["candidates"][0]
+            parts = candidate.get("content", {}).get("parts", [])
+            # Skip thought parts: on a thinking model they are reasoning, not
+            # the answer, and must never be cached as the analysis.
+            text = "\n".join(p["text"] for p in parts
+                             if "text" in p and not p.get("thought"))
+            if not text.strip():
+                # Empty answer (safety block, MAX_TOKENS, thoughts-only). Raising
+                # keeps it out of the result cache, which is permanent -- an
+                # empty file would otherwise be treated as done forever.
+                raise RuntimeError(
+                    "empty response (finishReason="
+                    f"{candidate.get('finishReason', 'unknown')})")
             return text, data.get("usageMetadata", {})
+        except RuntimeError:
+            raise
         except urllib.error.HTTPError as exc:
             detail = exc.read().decode("utf-8", errors="replace")[:500]
             last_err = f"HTTP {exc.code}: {detail}"

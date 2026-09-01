@@ -131,15 +131,20 @@ def rows_from_gspread(credentials_path):
 # --------------------------------------------------------------------------
 
 def fetch_history(url, cache):
+    """Returns (text, ok). A failed fetch must not be baked into a prompt file:
+    prompt files are never overwritten, so a transient network blip would
+    otherwise poison that row permanently. The caller skips writing instead,
+    leaving the row to be picked up by the next run."""
     if url in cache:
         return cache[url]
     try:
         with urllib.request.urlopen(url, timeout=120) as resp:
-            text = resp.read().decode("utf-8", errors="replace")
+            result = (resp.read().decode("utf-8", errors="replace"), True)
     except (urllib.error.URLError, urllib.error.HTTPError, OSError) as exc:
-        text = f"[history could not be fetched from {url}: {exc}]"
-    cache[url] = text
-    return text
+        print(f"  history fetch failed ({exc}): {url}", file=sys.stderr)
+        result = (None, False)
+    cache[url] = result
+    return result
 
 
 # --------------------------------------------------------------------------
@@ -204,7 +209,7 @@ def main():
         runs_per_problem[p] = max(runs_per_problem.get(p, 0), entry["run"])
 
     history_cache = {}
-    written = existing = skipped = 0
+    written = existing = skipped = fetch_failed = 0
 
     for offset, row in enumerate(rows[1:], start=1):
         if not any(c.strip() for c in row):
@@ -262,8 +267,16 @@ def main():
             continue
 
         if history_url:
-            task_history = fetch_history(history_url, history_cache)
+            task_history, ok = fetch_history(history_url, history_cache)
+            if not ok:
+                print(f"  skipping problem {prob_num} run {run_num} -- rerun to "
+                      "retry it", file=sys.stderr)
+                fetch_failed += 1
+                continue
         else:
+            print(f"warning: no history URL for problem {prob_num} run "
+                  f"{run_num}; its prompt will have no task history to analyze.",
+                  file=sys.stderr)
             task_history = "[no history URL in column M for this row]"
 
         path.write_text(PROMPT_TEMPLATE.format(
@@ -283,7 +296,10 @@ def main():
 
     print(f"\n{written} written, {existing} already existed, "
           f"{skipped} blank rows skipped, {len(problems)} unique problems.")
-    return 1 if existing else 0
+    if fetch_failed:
+        print(f"{fetch_failed} row(s) skipped because their history download "
+              "failed -- rerun to retry just those.", file=sys.stderr)
+    return 1 if (existing or fetch_failed) else 0
 
 
 if __name__ == "__main__":
