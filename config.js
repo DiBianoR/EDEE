@@ -1235,21 +1235,26 @@ Diagram Request: {latest_description}
 Technical vs. Artistic Requirements: {reasoning_review_request}
 Requires Technical Drawing?: {requires_technical}
 Requires Artistic Drawing?: {requires_artistic}
+Contains Measurement Devices?: {contains_measurement_devices}
 
 Analyze the 'Diagram Request'. Determine the generation strategy.
+
+HARD DISQUALIFIER: If 'Requires Technical Drawing' is true, or a measurement device is present, 'DIRECT_IMAGE_GEN' is FORBIDDEN — choose between options 1 and 2 only.
+An organic, textured, or hard-to-draw SUBJECT is never by itself grounds for direct generation. The question is not "can Matplotlib draw this subject", it is "does ANY element of this image have to be dimensionally exact". A tape measure wrapped around a fruit, a ruler laid beside an object, a gauge on a machine, or a labeled dimension on a person makes the whole image technical no matter how photographic the subject is. In those cases Matplotlib only needs to place the exact elements — the artist paints the organic subject over the scaffolding afterward, so nothing is lost by scaffolding first.
 
 OPTIONS:
 1. 'STANDARD_DIAGRAM': Standard. Use Python/Matplotlib to draw the diagram (Geometry, Graphs, Physics). We will be able to use this initial diagram as a ControlNet / basis for the composition of an AI image later, essentially draw over top of it. So this covers any case where we need some parts of the image to be mathematically accurate that doesn't fall into the COMPOSITE_PRIMITIVES category.
 2. 'COMPOSITE_PRIMITIVES': Contains significant numbers of objects in one or more categories where the number of objects is part of the math problem. This is probably not necessary where there are under 3 types of objects, there's no required grouping or positioning, and total object count in each category is 3 or less. In that case choose whichever of the other categories fits best, and the artist will need to free-draw the objects in question.
-3. 'DIRECT_IMAGE_GEN': The request is purely artistic, with no underlying geometric scaffolding required. Skip coding, go straight to Image Gen.
+3. 'DIRECT_IMAGE_GEN': The request is purely artistic — no measurements, no exact counts, no tick marks, no labeled dimensions, and no spatial relationship anywhere in the image that a student must read a value off of. Skip coding, go straight to Image Gen. If you are torn between this option and option 1, choose option 1: scaffolding an image that turned out not to need it costs little, while an unscaffolded technical image cannot be repaired later.
 `,
     schema: {
       "type": "OBJECT",
       "properties": {
-        "reasoning": { "type": "STRING", "description": "Why this path?" },
+        "technical_elements": { "type": "STRING", "description": "Enumerate every element of the image that must be dimensionally exact: measurements, tick marks, exact object counts, labeled dimensions, plotted points, angles, or fixed size ratios. Write 'none' only if you are certain the image contains no quantity a student must read off of it." },
+        "reasoning": { "type": "STRING", "description": "Why this path? If you listed any technical elements above, or a measurement device is present, justify your choice between options 1 and 2 - DIRECT_IMAGE_GEN is not available to you." },
         "selected_workflow": { "type": "STRING", "enum": ["STANDARD_DIAGRAM", "DIRECT_IMAGE_GEN", "COMPOSITE_PRIMITIVES"] }
       },
-      "required": ["reasoning", "selected_workflow"]
+      "required": ["technical_elements", "reasoning", "selected_workflow"]
     }
   },
 
