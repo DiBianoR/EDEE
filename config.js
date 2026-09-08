@@ -874,21 +874,29 @@ For example:
     assigned_agent: "image_detail_planner",
     instruction: `\
 Determine if we need to do any case-specific planning:
-1) Are there 3D solids or features in our image, particularly in the technical description?
-2) Does it involve drawing graphs?
-3) Are there arranged objects we can't trust the AI Image Generator to add in?
+1) 3D Objects - Are there 3D solids or features in our image, particularly in the technical description?
+2) Graphs - Does it involve drawing graphs?
+3) Arranged Objects - Are there arranged objects we can't trust the AI Image Generator to add in?
     a) we cannot easily approximate their edges with simple geometric shape[ex. a cat]
     b) need to be mathematically specific in terms of numbers[more than 3 of the same object type], relative sizes[fixed size or ratio mentioned in problem], or arrangement[object is parallel to another, at a specific xy point, part of a group arranged in a semicircle, etc.]
-    Only an object that fulfills both conditions qualify. Consider both conditions for each object during reasoning.`,
+    Only an object that fulfills both conditions qualify. Consider both conditions for each object during reasoning.
+4) Highly Customizable Products - form-defined vs. content-defined categories - Some categories are form-defined (cow, shoe, mountain): appearance is criterial, the instance distribution has a dominant mode, and sampling near it yields a valid instance. Others are content-defined (TV show, t-shirt, cereal box, video game): the visible form is a carrier and identity lives in an arbitrary, unbounded payload, so there is no mode to collapse to — you must first invent a specific determinate (a title, premise, art direction, brand) and then render that, because averaging over the category lands off-manifold. In other words, things that are defined by their physical shape versus things that are defined by their information. Are there content-defined objects for which we must invent details?
+5) Measurement Devices - Are there measurement devices with tick marks and units, such as ruler, tape measure, graduated cylinder, [analog] thermometer, clock, etc.?`,
     schema: {
       "type": "OBJECT",
       "properties": {
-        "reasoning": { "type": "STRING", "description": "Step-by-step analysis evaluating the presence of 3D features, graphs, and complex arranged objects." },
+        "reasoning_3D_Objects": { "type": "STRING", "description": "Step-by-step analysis evaluating the presence of 3D solids, isometric views, or 3D features." },
         "needs_3d_planning": { "type": "BOOLEAN", "description": "True if the diagram involves 3D solids, isometric views, or 3D features." },
+        "reasoning_Graphs": { "type": "STRING", "description": "Step-by-step analysis evaluating the presence of plotting data, coordinate planes, or mathematical graphs." },
         "needs_graph_planning": { "type": "BOOLEAN", "description": "True if the request involves plotting data, coordinate planes, or mathematical graphs." },
-        "needs_arrangement_planning": { "type": "BOOLEAN", "description": "True if there are specific counts, sizes, or arrangements of complex real-world objects that we'll need ControlNets or context preserving Image-to-Image generation for." }
+        "reasoning_Arranged_Objects": { "type": "STRING", "description": "Step-by-step analysis evaluating if there are specific counts, sizes, or arrangements of complex real-world objects that we'll need ControlNets or context preserving Image-to-Image generation for." },
+        "needs_arrangement_planning": { "type": "BOOLEAN", "description": "True if there are specific counts, sizes, or arrangements of complex real-world objects that we'll need ControlNets or context preserving Image-to-Image generation for." },
+        "reasoning_Highly_Customizable_Products": { "type": "STRING", "description": "Step-by-step analysis evaluating the presence of content-defined objects, defined by their information significantly enough that we must invent that information in an extra step." },
+        "needs_customizable_product_planning": { "type": "BOOLEAN", "description": "True if we have significantly content-defined objects." },
+        "reasoning_Measurement_Devices": { "type": "STRING", "description": "Step-by-step analysis evaluating the presence of measurement devices with tick marks and units." },
+        "contains_measurement_devices": { "type": "BOOLEAN", "description": "True if there are measurement devices with tick marks and units." }
       },
-      "required": ["reasoning", "needs_3d_planning", "needs_graph_planning", "needs_arrangement_planning"]
+      "required": ["reasoning_3D_Objects", "needs_3d_planning", "reasoning_Graphs", "needs_graph_planning", "reasoning_Arranged_Objects", "needs_arrangement_planning", "reasoning_Highly_Customizable_Products", "needs_customizable_product_planning", "reasoning_Measurement_Devices", "contains_measurement_devices"]
     }
   },
 
