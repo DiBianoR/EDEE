@@ -77,15 +77,7 @@ const activeStyle = styleLibrary[selectedStyle] || styleLibrary["casual_mobile"]
 // Build-time switches baked into the instruction strings below (same mechanism as
 // activeStyle). Flip here; nothing in n8n needs to change.
 
-// PREFER_2D_WHEN_EITHER_WORKS: when a scene could be drawn flat or in 3D/isometric and
-// both would serve the math, nudge the phase-2 planners toward flat. false = prompts are
-// exactly as they were before the flag existed (no directive text is emitted at all).
-const PREFER_2D_WHEN_EITHER_WORKS = true;
-const DIRECTIVE_PREFER_2D = `\
-PREFER 2D: When a scene could be drawn either flat (2D) or in 3D/isometric and both would serve the math equally, choose 2D. It is easier to draw accurately, easier to read, and keeps every measured quantity at true scale. Use 3D only when the problem is genuinely about volume, depth, or the shape of a solid, or when a feature the student must see cannot be shown in a flat view.`;
-// Emits the directive as one bullet at the given indent, with a leading newline so it
-// sits flush after the previous bullet; emits nothing when the flag is off.
-const PREFER_2D_BULLET = (indent) => PREFER_2D_WHEN_EITHER_WORKS ? `\n${indent}- ${DIRECTIVE_PREFER_2D}` : "";
+// none right now
 
 
 // === 🧠 MODEL REGISTRY ===
@@ -996,7 +988,7 @@ Diagram Request: {description}
 - For 3D, make sure whatever the user needs to see is not rotated behind an object or occluded.
 - For 2D, you still usually decide side-view, cross-section, top-down, whatever
 - Isometric is tricky, if it is to be mathematically accurate, generally all math must take place along the ground plane, and that ground plane must be rendered in flat 2d, no perspective.
-- Do NOT try to render a 3d/rotated illustration of a fundamentally 2d problem.${PREFER_2D_BULLET("")}
+- Do NOT try to render a 3d/rotated illustration of a fundamentally 2d problem.
 `,
     schema: {
       "type": "OBJECT",
@@ -1151,7 +1143,7 @@ SYNTHESIZE FINDINGS:
   - Resolve any conflicts (e.g., if Composition says 'center' but 3D says 'isometric', decide which wins).
   - Merge, reduce, and simplify all instructions into a SINGLE, dense, rendering-ready visual description.
   - Ensure the final text covers: Layout, Composition, Dimensions, Coordinates, Shapes, Colors, Viewpoint, Labels, and specific Math Details wherever necessary.
-  - Don't try to render a 3d/rotated illustration of a fundamentally 2d problem, it's harder to code, and it can be confusing to the viewer. No unnecessary perspective transformations that affect the scale of any geometric elements. So artsy isometric trees on a map would be fine, as long as the height of the trees was not part of the problem. Top down trees would be fine too, after mathematical constraints are satisfied, the artist will probably go with whatever is most aesthetically pleasing. This limits us artistically, but the artist needs to work within the limits of the educator, not vice-versa. If any of you planners did suggest rendering a 2d problem in 3d, I urge you to reconsider.${PREFER_2D_BULLET("  ")}
+  - Don't try to render a 3d/rotated illustration of a fundamentally 2d problem, it's harder to code, and it can be confusing to the viewer. No unnecessary perspective transformations that affect the scale of any geometric elements. So artsy isometric trees on a map would be fine, as long as the height of the trees was not part of the problem. Top down trees would be fine too, after mathematical constraints are satisfied, the artist will probably go with whatever is most aesthetically pleasing. This limits us artistically, but the artist needs to work within the limits of the educator, not vice-versa. If any of you planners did suggest rendering a 2d problem in 3d, I urge you to reconsider.
 
 PLAN RESPONSE
   - Determine structure
