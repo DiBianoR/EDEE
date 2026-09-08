@@ -218,6 +218,16 @@ COMPOSITION & PRIMITIVE CONSTRAINTS:
 - Placements (random, in a grid, etc.) and spacing must be reasonable and make sense with respect to the problem description. Ensure no unintentional overlaps.
 - Think about real-world environments: A flock of geese might be in a V-shape; objects being compared for height should be side-by-side with their bases level.`;
 
+// Fires on situational_planning's contains_measurement_devices. Replaces the old
+// unconditional "TICKMARKS ACCURATE" line in the stage-3 briefing, so problems with no
+// measuring device no longer pay for it.
+const DIRECTIVE_MEASUREMENT = `\
+MEASUREMENT DEVICE CONSTRAINTS (rulers, tape measures, graduated cylinders, thermometers, clocks, scales, gauges, and any other device with tick marks):
+- Tick marks must always accurately match the problem description: drawn divisions, labeled values, and the reading the device shows MUST reflect the actual numbers in the problem.
+- If minor tick marks exist, they must be realistic for the device. Imperial rulers and tapes subdivide by powers of 2 (halves, quarters, eighths, sixteenths) — never thirds or fifths — although some imperial machinist's, engineer's, or surveyor's tools do use decimal subdivisions. Metric devices subdivide by 10, 5, or 2 depending on the space available. Dials and clock faces follow their real-world conventions.
+- Units must be shown (in, cm, mL, °C, ...), either along the scale or as one clear label on the device. Be careful not to cover any part of the tick marks with the label. Use the unit system the problem uses.
+- Major ticks are labeled with numbers; minor ticks are not. Tick spacing is uniform along the scale, and major ticks are visibly longer than minor ones.`;
+
 // Execution-environment contract for generated scripts. Single source of truth shared
 // by the AUTHOR (write_code instruction) and the CHECKERS (reviewer & review_manager
 // identities) so cold reviews judge code against the same spec the coder wrote to —
@@ -272,7 +282,7 @@ const STAGE2_AGENTS = ["image_detail_planner", "dimension_expert", "layout_exper
                        "markup_specialist", "educator", "3d_specialist", "data_viz_expert",
                        "arrangement_planner", "artistic_planner"];
 const STAGE3_AGENTS = ["selector", "scaffolding_manager", "scaffolding_designer", "coder", "reviewer", "review_manager", "inspector", "inspection_manager"];
-const STAGE4_AGENTS = ["artist"];  // one agent, two tasks (plan_finishing → render_final), mirroring the coder
+const STAGE4_AGENTS = ["product_designer", "artist"];  // product_designer is optional (needs_customizable_product_planning); artist = one agent, two tasks (plan_finishing → render_final), mirroring the coder
 const STAGE5_AGENTS = ["image_verifier", "issue_aggregator"];
 const STAGE6_AGENTS = ["final_reporter"];
 const ERROR_AGENTS  = ["error_handler", "error_expert", "error_injector"];
@@ -561,6 +571,21 @@ ${DIRECTIVE_MANAGER_WITH_RETRY}`
   },
 
   // --- STAGE 4 ---------------------------------------------------------------
+  "product_designer": {
+    model_tier: "medium", // planner type
+    // Optional one-shot text task gated by needs_customizable_product_planning. Everything
+    // it needs is templated into its prompt, and its output reaches the artist through
+    // latest_description (settled into session_state), so it needs no history and the
+    // artist's scope doesn't need to include it.
+    history_scope: ["product_designer"],
+    system_identity: `\
+${GLOBAL_TASK_EXPLANATION}
+
+${STAGE_4_CONTEXT}
+
+IDENTITY: You are the Product Designer. When an illustration calls for something whose identity lives in its content rather than its shape — a cereal box, a soda can, a t-shirt, a video game, a TV show, a book cover — you invent that content: a name, a premise, a look. You hand the artist a specific product to paint instead of a generic category.`
+  },
+
   "artist": {
     model_tier: "slow",
     model_type: "img2img", // render_final default; plan_finishing overrides to view_img at the task level
@@ -1255,9 +1280,7 @@ CONSTRAINTS:
 - Given-vs-derived rule: draw only quantities given in the problem statement. Never pre-partition into solution fractions/segments, or show derived equivalencies. Demarcating a stated boundary is fine; showing something that does part of the solver's work for them is not.
 - No structural dividers (lines, fences, boxes, panels) between groups unless the problem asks for them; visual distinction by color/position suffices.
 
-STANDALONE RULE: The scaffolding will normally be painted over, but it must stand on its own — a complete, legible diagram with accurate geometry and readable labels, good enough to ship as the final illustration if the artistic pass added nothing. Plain is fine; incomplete or cryptic is not. The artist adds beauty, never correctness.
-
-TICKMARKS ACCURATE: for rulers, tape measures, thermometers, and any other measurement devices with tick marks, drawn divisions MUST reflect the actual number in the problem.{situational_directives}`
+STANDALONE RULE: The scaffolding will normally be painted over, but it must stand on its own — a complete, legible diagram with accurate geometry and readable labels, good enough to ship as the final illustration if the artistic pass added nothing. Plain is fine; incomplete or cryptic is not. The artist adds beauty, never correctness.{situational_directives}`
     }
   },
 
@@ -1625,6 +1648,48 @@ If passing with known flaws, record them in notes so downstream stages can compe
   },
 
   // --- STAGE 4: Advanced Image Generation ------------------------------------
+  "customizable_product_planning": {
+    assigned_agent: "product_designer",
+    // OPTIONAL: n8n runs this only when session_state.needs_customizable_product_planning
+    // is true (same IF-node pattern as the phase-2 plan_3d/plan_graph branches). It sits
+    // between "Load Phase 4 Config" and cfg25, so it runs once per phase 4 entry; the
+    // stage-5 retry loop (retry_count5 → cfg25) skips it, which is correct — the
+    // customized latest_description is already settled in session_state.
+    // reasoning_Highly_Customizable_Products was settled into state by situational_planning
+    // (which always runs before this flag can be true), so templating it is safe here.
+    instruction: `\
+Original Query: \`\`\`{original_query}\`\`\`
+
+Underlying Math Problem: {problem}
+
+Final Illustration Requested: {latest_description}
+
+Scaffolding Image Requested & Drawn: {scaffolding_blueprint}
+
+Planner's assessment of content-defined objects: {reasoning_Highly_Customizable_Products}
+
+Some things in this illustration are content-defined rather than form-defined. A cow, a shoe, or a mountain is defined by its shape: draw a typical one and you have a valid one. A cereal box, soda can, t-shirt, video game, or TV show is not — the visible form is only a carrier, and the identity lives in information: a title, a brand, a premise, artwork, label text. An artist told to draw "a cereal box" with no further detail averages over every cereal box and lands on something that isn't any of them. The fix is to invent one specific, determinate product first, then have that drawn.
+
+Your job is to invent that determinate for each content-defined object in this illustration, then write it into the description the artist will work from.
+
+DIRECTIVES:
+1. IDENTIFY: List each content-defined object. Use the planner's assessment as a starting point, not a verdict — confirm each against the Final Illustration Requested, and catch any it missed.
+2. INVENT: For each one, decide a specific identity: a name/brand/title, a premise or flavor, a visual theme, a palette, a mascot or key art, and any text the artist should letter onto it. Make it original (no real brands, characters, or trademarks), child-appropriate, interesting, and in keeping with the tone of the problem. Keep invented text short and legible at illustration scale. If several instances of the same product appear, give them one consistent identity unless the problem says they differ.
+3. RESPECT THE MATH: The invention must not touch anything the problem depends on. Never change counts, dimensions, prices, labels, numbers, geometry, layout, arrangement, or any other quantity or relationship mentioned in the problem. If a product carries a number from the problem (a price tag, a net weight, a size), that number is fixed — design around it. Don't invent details that give away the answer, and don't add numbers a student might mistake for givens.
+4. CHECK THE SCAFFOLD: If the scaffolding already draws a generic version of the product (a placeholder label, "CEREAL" text, a blank box), note exactly which scaffold elements your design replaces and which must stay as drawn. Describe the product in the illustration description as it should finally appear, so the artist can see what the generic stand-in becomes.
+5. UPDATE THE DESCRIPTION: Rewrite the Final Illustration Requested with the invented details woven in. STRICT: change nothing unrelated to the customization. Do not restructure, restyle, trim, or "improve" the rest — every sentence that isn't about the customized objects should survive verbatim.`,
+    schema: {
+      "type": "OBJECT",
+      "properties": {
+        "reasoning": { "type": "STRING", "description": "Which objects are content-defined and why; what the invented identities are and how they stay clear of the math." },
+        "product_designs": { "type": "STRING", "description": "The invented identity for each product: name/title, premise, theme, palette, mascot/key art, and any label text." },
+        "scaffold_conflicts": { "type": "STRING", "description": "Scaffold elements that are generic stand-ins for a product and will be replaced by the design (and what must stay). 'None' if the scaffold draws no product content." },
+        "latest_description": { "type": "STRING", "description": "The Final Illustration Requested, unchanged except that each content-defined object now carries its invented identity." }
+      },
+      "required": ["reasoning", "product_designs", "scaffold_conflicts", "latest_description"]
+    }
+  },
+
   "plan_finishing": {
     assigned_agent: "artist",
     model_type: "view_img", // ⚠️ REQUIRED override: the artist agent defaults to img2img;
@@ -1654,15 +1719,15 @@ You will be using context preserving image to image, meaning you must write a pr
 
 The style you should normally request is best described as ${activeStyle.description}
 
-You are an artist. If the object to draw is too generic or lacks necessary detail, you have creative license to make changes or add specifics here. For example, if the image request asks for a box of cereal but doesn't say what kind of cereal, you can make up a theme and related details. You are expected to generate something interesting and beautiful. If the image request just asks you to draw something very generic or with poor aesthetics, fix it.
+You are an artist. If the object to draw is too generic or lacks necessary detail, you have creative license to make changes or add specifics here. You are expected to generate something interesting and beautiful. If the image request just asks you to draw something very generic or with poor aesthetics, fix it.
 
 We want the image neither too cluttered nor too sparse. If the description is too bare-bones, add some objects or details, this needs to be both art AND 100% functional.
 
 Directives:
-1. THE ANCHOR (Structure & Math): Explicitly instruct the Artist AI to strictly enforce the exact composition, geometry, aspect ratios, spatial relationships, measuring lines, and text labels defined by the primitives in the schematic scaffold(geometric blockout). Include strict negative constraints: Do not move, scale, or hallucinate the position of the underlying volumes, do not hallucinate new numbers, do not warp straight lines, and do not alter angles.
+1. THE ANCHOR (Structure & Math): Explicitly instruct the Artist AI to strictly enforce the exact composition, geometry, aspect ratios, spatial relationships, measuring lines, and text labels defined by the primitives in the schematic scaffold(geometric blockout). Include strict negative constraints: Do not move, scale, or hallucinate the position of the underlying volumes, do not hallucinate new numbers, do not warp straight lines, and do not alter angles. The only exception is the product-identity case under THE ALTERATION.
 2. THE ALTERATION (Subjects & Context): Instruct the Artist to draw the background, items, and objects described in the final illustration request. If the base diagram uses geometric primitives for physical objects (e.g., circles for apples, a line for a ladder), command the Artist to replace those primitives with the actual objects while maintaining their positions and arrangement. The artist will also need to add any objects mentioned in the final illustration request that didn't need to be shown in the scaffolding.
+  - PRODUCT IDENTITY: If 'Final Illustration Requested' specifies a particular product identity — a brand, title, artwork, mascot, packaging design, or label text — and the scaffold shows only a generic stand-in for it (a plain box, placeholder text like "CEREAL", a blank label), the description wins: instruct the Artist to repaint the stand-in's surface content as the specified design. This is the one case that overrides THE ANCHOR, and it is narrow: the object's position, size, and outline, and any numbers or labels that come from the math problem, stay exactly as scaffolded — only the generic content on the object changes.
 3. THE CREATIVITY: The artist will need to use common sense to add in any implied objects, details, or necessary decorative scenery.
-  - "highly customizable products", cereal, soda, t-shirts, video games, tv show etc. - Anything singular, with a custom theme, art on it, etc. If these exist in the image, the artist needs to invent a custom theme and details to customize the object. If the scaffolding already contains a generic product, you may replace any generic images or text labels on the product - this special case takes precedence over THE ANCHOR.
 4. THE STYLE (Aesthetics): ${activeStyle.aesthetic} No photorealism, draw on a clean white background.
 
 To summarize, you need everything that makes a well written image prompt, plus you need to comprehensively cover what stays the same, what gets added, what gets removed, and what gets replaced with what.{image_retry_directives}`,
@@ -2045,7 +2110,8 @@ const config = {
   // a new constraint type = one schema boolean + one entry here. No new tasks.
   "directive_library": {
     "needs_3d_planning": DIRECTIVE_3D,
-    "needs_arrangement_planning": DIRECTIVE_PRIMITIVES
+    "needs_arrangement_planning": DIRECTIVE_PRIMITIVES,
+    "contains_measurement_devices": DIRECTIVE_MEASUREMENT
   },
 
   // === 🔁 RETRY DIRECTIVE LIBRARY ===
