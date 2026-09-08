@@ -13,10 +13,12 @@
 ✔no shadows in scaffolding
 ✔no redundant labels
 ✔fix misrouted as artistic image
-✔artist creativity step
+artist creativity step
 grids
 
-automate review & correction process
+✔automate review & correction process
+integrate rubricks into agents; try with/without rubrics
+refrain from drawing elements that cross boundaries of geometric primitives; it's mildly confusing
 
 - poor prompts
  - screen prompt / ask for feedback / improvement
@@ -94,6 +96,8 @@ Let managers have more autonomy
   Let them try to consult user during a job(with a timeout)
   ✔Let them leave warning and error messages for user if there is an issue
   ✔Let them write to a log about issues they noticed with subordinates, for iterative process improvement later.
+
+artist - try to avoid drawing anything "geometric" or "mathematical" that is unrelated to the problem, even if it's not a direct issue
 
 Matplotlib's default figure 4:3 aspect ratio. -> toggle or have system choose between 4:3 and square images
 
