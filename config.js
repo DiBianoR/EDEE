@@ -228,7 +228,7 @@ const EXECUTION_CONTRACT = `\
 [EXECUTION ENVIRONMENT]
 Generated scripts run inside a wrapper that, AFTER the code executes, automatically:
 - enforces a 1:1 mathematical aspect ratio (equivalent to ax.set_aspect('equal')),
-- strips all axes, ticks, grids, and spines,
+- strips all axes, and their ticks, grids, and spines,
 - crops surrounding whitespace, and
 - renders and saves the figure.
 Scripts therefore must NOT call plt.show(), plt.savefig(), plt.close(), or plt.clf(),
