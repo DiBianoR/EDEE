@@ -5,6 +5,7 @@ double check that scaffolding and designer can't see it. ✔- "highly customizab
 ✔debug where orange is getting classified artistic only
 
 refrain from drawing elements that cross boundaries of geometric primitives; it's mildly confusing
+put a professional quality image gen system prompt into artist. general image gen knowledge in system prompt plus specific task in user prompt gave good results elsewhere.
 
 ✔- improve aesthetic instructions - images are ugly, or follow original too much rather than morphing [artist: plan_finishing, render_final]
   - do some manually and use what we learn on artist

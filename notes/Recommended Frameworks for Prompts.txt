@@ -148,4 +148,30 @@ Structure: <structure of response>
   Markdown: Use headers or bullets.
   Will use a direct explanation.
   Will use Markdown formatting.
+-------------------------------------------------------------------------------------------------------------------------------
+Diversity and Collapse: https://grok.com/share/bGVnYWN5_00f81eb0-4d17-4313-b24d-757ff00d5cbc
+
+What actually moves coverage(best to worst)
+- Ban the mode explicitly. Exclusion lists beat temperature.
+- Verbalized Sampling. Ask for several candidate lists with probabilities, then haveit pick from the lower-probability ones. VS raised creative-writing diversity 1.6–2.1× over direct prompting; larger models gained more than Flash-class models.
+- Force a covering design. Give axes (“historical era × food science × box gimmick × audience age”) and require one cell each.
+- Personas / knowledge partitioning
+- Structured chat templates can collapse diversity. Let it generate freely in the initial prompt, then format in a followup
+- Model. For raw tail coverage: Grok better than gemini, but the main mode of both is the same
+
+------------------------------
+Structured chat templates - Any kind of formatting request reduces diversity, "format as json", or even "give me a 10 item list" to a lesser extent
+Practical split: invent in loose prose or VS first, then format into box copy. Don’t invent inside the box-copy template.
+------------------------------
+The anti-collapse prompt (Verbalized Sampling):
+<instructions>
+Generate 5 responses to the user query, each within a separate <response> tag. Each <response> must include a <text> and a numeric <probability>.
+Please sample at random from the tails of the distribution, such that the probability of each response is less than 0.10.
+</instructions>
+
+[your actual request here]
+------------------------------
+Or as a system prompt:
+You are a helpful assistant. For each query, please generate a set of five possible responses, each within a separate <response> tag. Each <response> must include a <text> and a numeric <probability>.
+Please sample at random from the tails of the distribution, such that the probability of each response is less than 0.10.
 ------------------------------
