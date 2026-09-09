@@ -89,7 +89,7 @@ const activeStyle = styleLibrary[selectedStyle] || styleLibrary["casual_mobile"]
 // Phase 4 gets reasoning_Highly_Customizable_Products & needs_customizable_product_planning
 // in session_state either way. n8n branches on config.customizable_products_in_phase4
 // (exported at the bottom) to decide whether to run the phase-4 task.
-const PHASE2_SEES_CUSTOMIZABLE_PRODUCTS = true;
+const PHASE2_SEES_CUSTOMIZABLE_PRODUCTS = false;
 
 // The question and its schema fields, shared by both homes so the wording can't drift.
 const CUSTOMIZABLE_PRODUCTS_QUESTION = `\
