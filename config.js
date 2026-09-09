@@ -83,9 +83,9 @@ const activeStyle = styleLibrary[selectedStyle] || styleLibrary["casual_mobile"]
 //           flags. Phase-2/3 agents can then see the question and its reasoning in
 //           history, and tend to start inventing brands/themes early.
 //   false : the question is REMOVED from situational_planning and asked instead by
-//           detect_customizable_products at the very start of phase 4 — same agent
-//           (image_detail_planner), same system message, same inputs — so phases 2 and 3
-//           run exactly as they did before the question existed.
+//           detect_customizable_products (agent product_scout) at the very start of
+//           phase 4, working from original_query + the finished latest_description —
+//           so phases 2 and 3 run exactly as they did before the question existed.
 // Phase 4 gets reasoning_Highly_Customizable_Products & needs_customizable_product_planning
 // in session_state either way. n8n branches on config.customizable_products_in_phase4
 // (exported at the bottom) to decide whether to run the phase-4 task.
@@ -309,7 +309,7 @@ const STAGE2_AGENTS = ["image_detail_planner", "dimension_expert", "layout_exper
                        "markup_specialist", "educator", "3d_specialist", "data_viz_expert",
                        "arrangement_planner", "artistic_planner"];
 const STAGE3_AGENTS = ["selector", "scaffolding_manager", "scaffolding_designer", "coder", "reviewer", "review_manager", "inspector", "inspection_manager"];
-const STAGE4_AGENTS = ["product_designer", "artist"];  // product_designer is optional (needs_customizable_product_planning); artist = one agent, two tasks (plan_finishing → render_final), mirroring the coder
+const STAGE4_AGENTS = ["product_scout", "product_designer", "artist"];  // product_scout runs only when !PHASE2_SEES_CUSTOMIZABLE_PRODUCTS; product_designer only when needs_customizable_product_planning; artist = one agent, two tasks (plan_finishing → render_final), mirroring the coder
 const STAGE5_AGENTS = ["image_verifier", "issue_aggregator"];
 const STAGE6_AGENTS = ["final_reporter"];
 const ERROR_AGENTS  = ["error_handler", "error_expert", "error_injector"];
@@ -598,6 +598,20 @@ ${DIRECTIVE_MANAGER_WITH_RETRY}`
   },
 
   // --- STAGE 4 ---------------------------------------------------------------
+  "product_scout": {
+    model_tier: "slow", // same tier situational_planning runs at (image_detail_planner) — this is the same judgment call, just made later
+    // Optional one-shot text task gated by config.customizable_products_in_phase4 (i.e.
+    // !PHASE2_SEES_CUSTOMIZABLE_PRODUCTS). Everything it needs is templated in; its two
+    // output fields settle into session_state for product_designer and the phase-4 IF.
+    history_scope: ["product_scout"],
+    system_identity: `\
+${GLOBAL_TASK_EXPLANATION}
+
+${STAGE_4_CONTEXT}
+
+IDENTITY: You are the Product Scout. Before the artistic pass begins, you read the finished illustration description and decide whether anything in it is a content-defined product — something whose identity lives in its information (a title, brand, artwork, label text) rather than its shape — that will need to be invented before it can be drawn convincingly.`
+  },
+
   "product_designer": {
     model_tier: "medium", // planner type
     // Optional one-shot text task gated by needs_customizable_product_planning. Everything
@@ -1688,16 +1702,25 @@ If passing with known flaws, record them in notes so downstream stages can compe
 
   // --- STAGE 4: Advanced Image Generation ------------------------------------
   "detect_customizable_products": {
-    assigned_agent: "image_detail_planner",
+    assigned_agent: "product_scout",
     // Phase-4 home of the "Highly Customizable Products" question, used only when
     // PHASE2_SEES_CUSTOMIZABLE_PRODUCTS is false (n8n gates it on
-    // config.customizable_products_in_phase4). Same agent, system message, and inputs as
-    // situational_planning — original_query & description are in its self-history, and
-    // its STAGE2 scope still shows it all of the phase-2 rough planning — but because it
-    // runs at the top of phase 4, nothing in phases 2 or 3 can ever see the question or
-    // its answer. Runs before customizable_product_planning, which templates its output.
+    // config.customizable_products_in_phase4). Works from latest_description rather than
+    // the phase-2 `description`: latest_description is finalized by review_description at
+    // the end of phase 2 and NOTHING in phase 3 writes it (only merge_plans,
+    // review_description, and phase-4's customizable_product_planning ever do), so at the
+    // top of phase 4 it is exactly what the artist will be asked to paint. The
+    // scaffolding blueprint is deliberately NOT an input: an object that isn't part of
+    // the math (a TV in the background) still gets drawn, and still needs its content.
+    // Because this runs after phases 2 and 3 have finished, nothing there can ever see
+    // the question or its answer. Runs before customizable_product_planning, which
+    // templates its output.
     instruction: `\
-Determine if we need to do any additional case-specific planning:
+Original Query: \`\`\`{original_query}\`\`\`
+
+Final Illustration Requested: {latest_description}
+
+Look over the Final Illustration Requested, determine if we need to do any additional case-specific planning:
 1) ${CUSTOMIZABLE_PRODUCTS_QUESTION}`,
     schema: {
       "type": "OBJECT",
