@@ -77,7 +77,27 @@ const activeStyle = styleLibrary[selectedStyle] || styleLibrary["casual_mobile"]
 // Build-time switches baked into the instruction strings below (same mechanism as
 // activeStyle). Flip here; nothing in n8n needs to change.
 
-// none right now
+// PHASE2_SEES_CUSTOMIZABLE_PRODUCTS — where the "Highly Customizable Products" question
+// gets asked.
+//   true  : asked in situational_planning (phase 2), alongside the other situational
+//           flags. Phase-2/3 agents can then see the question and its reasoning in
+//           history, and tend to start inventing brands/themes early.
+//   false : the question is REMOVED from situational_planning and asked instead by
+//           detect_customizable_products at the very start of phase 4 — same agent
+//           (image_detail_planner), same system message, same inputs — so phases 2 and 3
+//           run exactly as they did before the question existed.
+// Phase 4 gets reasoning_Highly_Customizable_Products & needs_customizable_product_planning
+// in session_state either way. n8n branches on config.customizable_products_in_phase4
+// (exported at the bottom) to decide whether to run the phase-4 task.
+const PHASE2_SEES_CUSTOMIZABLE_PRODUCTS = true;
+
+// The question and its schema fields, shared by both homes so the wording can't drift.
+const CUSTOMIZABLE_PRODUCTS_QUESTION = `\
+Highly Customizable Products - form-defined vs. content-defined categories - Some categories are form-defined (cow, shoe, mountain): appearance is criterial, the instance distribution has a dominant mode, and sampling near it yields a valid instance. Others are content-defined (TV show, t-shirt, cereal box, video game): the visible form is a carrier and identity lives in an arbitrary, unbounded payload, so there is no mode to collapse to — you must first invent a specific determinate (a title, premise, art direction, brand) and then render that, because averaging over the category lands off-manifold. In other words, things that are defined by their physical shape versus things that are defined by their information. Are there content-defined objects for which we must invent details?`;
+const CUSTOMIZABLE_PRODUCTS_SCHEMA_FIELDS = {
+  "reasoning_Highly_Customizable_Products": { "type": "STRING", "description": "Step-by-step analysis evaluating the presence of content-defined objects, defined by their information significantly enough that we must invent that information in an extra step." },
+  "needs_customizable_product_planning": { "type": "BOOLEAN", "description": "True if we have significantly content-defined objects." }
+};
 
 
 // === 🧠 MODEL REGISTRY ===
@@ -904,6 +924,9 @@ For example:
 
   "situational_planning": {  //  original_query & description visible in self-history
     assigned_agent: "image_detail_planner",
+    // Item 4 (Highly Customizable Products) and its two schema fields are present only
+    // when PHASE2_SEES_CUSTOMIZABLE_PRODUCTS is true; otherwise the same question is
+    // asked by detect_customizable_products at the start of phase 4 (see FEATURE FLAGS).
     instruction: `\
 Determine if we need to do any case-specific planning:
 1) 3D Objects - Are there 3D solids or features in our image, particularly in the technical description?
@@ -912,8 +935,7 @@ Determine if we need to do any case-specific planning:
     a) we cannot easily approximate their edges with simple geometric shape[ex. a cat]
     b) need to be mathematically specific in terms of numbers[more than 3 of the same object type], relative sizes[fixed size or ratio mentioned in problem], or arrangement[object is parallel to another, at a specific xy point, part of a group arranged in a semicircle, etc.]
     Only an object that fulfills both conditions qualify. Consider both conditions for each object during reasoning.
-4) Highly Customizable Products - form-defined vs. content-defined categories - Some categories are form-defined (cow, shoe, mountain): appearance is criterial, the instance distribution has a dominant mode, and sampling near it yields a valid instance. Others are content-defined (TV show, t-shirt, cereal box, video game): the visible form is a carrier and identity lives in an arbitrary, unbounded payload, so there is no mode to collapse to — you must first invent a specific determinate (a title, premise, art direction, brand) and then render that, because averaging over the category lands off-manifold. In other words, things that are defined by their physical shape versus things that are defined by their information. Are there content-defined objects for which we must invent details?
-5) Measurement Devices - Are there measurement devices with tick marks and units, such as ruler, tape measure, graduated cylinder, [analog] thermometer, clock, etc.?`,
+${PHASE2_SEES_CUSTOMIZABLE_PRODUCTS ? `4) ${CUSTOMIZABLE_PRODUCTS_QUESTION}\n5` : "4"}) Measurement Devices - Are there measurement devices with tick marks and units, such as ruler, tape measure, graduated cylinder, [analog] thermometer, clock, etc.?`,
     schema: {
       "type": "OBJECT",
       "properties": {
@@ -923,12 +945,17 @@ Determine if we need to do any case-specific planning:
         "needs_graph_planning": { "type": "BOOLEAN", "description": "True if the request involves plotting data, coordinate planes, or mathematical graphs." },
         "reasoning_Arranged_Objects": { "type": "STRING", "description": "Step-by-step analysis evaluating if there are specific counts, sizes, or arrangements of complex real-world objects that we'll need ControlNets or context preserving Image-to-Image generation for." },
         "needs_arrangement_planning": { "type": "BOOLEAN", "description": "True if there are specific counts, sizes, or arrangements of complex real-world objects that we'll need ControlNets or context preserving Image-to-Image generation for." },
-        "reasoning_Highly_Customizable_Products": { "type": "STRING", "description": "Step-by-step analysis evaluating the presence of content-defined objects, defined by their information significantly enough that we must invent that information in an extra step." },
-        "needs_customizable_product_planning": { "type": "BOOLEAN", "description": "True if we have significantly content-defined objects." },
+        ...(PHASE2_SEES_CUSTOMIZABLE_PRODUCTS ? CUSTOMIZABLE_PRODUCTS_SCHEMA_FIELDS : {}),
         "reasoning_Measurement_Devices": { "type": "STRING", "description": "Step-by-step analysis evaluating the presence of measurement devices with tick marks and units." },
         "contains_measurement_devices": { "type": "BOOLEAN", "description": "True if there are measurement devices with tick marks and units." }
       },
-      "required": ["reasoning_3D_Objects", "needs_3d_planning", "reasoning_Graphs", "needs_graph_planning", "reasoning_Arranged_Objects", "needs_arrangement_planning", "reasoning_Highly_Customizable_Products", "needs_customizable_product_planning", "reasoning_Measurement_Devices", "contains_measurement_devices"]
+      "required": [
+        "reasoning_3D_Objects", "needs_3d_planning",
+        "reasoning_Graphs", "needs_graph_planning",
+        "reasoning_Arranged_Objects", "needs_arrangement_planning",
+        ...(PHASE2_SEES_CUSTOMIZABLE_PRODUCTS ? Object.keys(CUSTOMIZABLE_PRODUCTS_SCHEMA_FIELDS) : []),
+        "reasoning_Measurement_Devices", "contains_measurement_devices"
+      ]
     }
   },
 
@@ -1660,6 +1687,25 @@ If passing with known flaws, record them in notes so downstream stages can compe
   },
 
   // --- STAGE 4: Advanced Image Generation ------------------------------------
+  "detect_customizable_products": {
+    assigned_agent: "image_detail_planner",
+    // Phase-4 home of the "Highly Customizable Products" question, used only when
+    // PHASE2_SEES_CUSTOMIZABLE_PRODUCTS is false (n8n gates it on
+    // config.customizable_products_in_phase4). Same agent, system message, and inputs as
+    // situational_planning — original_query & description are in its self-history, and
+    // its STAGE2 scope still shows it all of the phase-2 rough planning — but because it
+    // runs at the top of phase 4, nothing in phases 2 or 3 can ever see the question or
+    // its answer. Runs before customizable_product_planning, which templates its output.
+    instruction: `\
+Determine if we need to do any additional case-specific planning:
+1) ${CUSTOMIZABLE_PRODUCTS_QUESTION}`,
+    schema: {
+      "type": "OBJECT",
+      "properties": CUSTOMIZABLE_PRODUCTS_SCHEMA_FIELDS,
+      "required": Object.keys(CUSTOMIZABLE_PRODUCTS_SCHEMA_FIELDS)
+    }
+  },
+
   "customizable_product_planning": {
     assigned_agent: "product_designer",
     // OPTIONAL: n8n runs this only when session_state.needs_customizable_product_planning
@@ -1667,8 +1713,9 @@ If passing with known flaws, record them in notes so downstream stages can compe
     // between "Load Phase 4 Config" and cfg25, so it runs once per phase 4 entry; the
     // stage-5 retry loop (retry_count5 → cfg25) skips it, which is correct — the
     // customized latest_description is already settled in session_state.
-    // reasoning_Highly_Customizable_Products was settled into state by situational_planning
-    // (which always runs before this flag can be true), so templating it is safe here.
+    // reasoning_Highly_Customizable_Products was settled into state before this flag can
+    // be true — by situational_planning (phase 2) or detect_customizable_products (phase 4),
+    // depending on PHASE2_SEES_CUSTOMIZABLE_PRODUCTS — so templating it is safe here.
     instruction: `\
 Original Query: \`\`\`{original_query}\`\`\`
 
@@ -2125,6 +2172,11 @@ const config = {
     "needs_arrangement_planning": DIRECTIVE_PRIMITIVES,
     "contains_measurement_devices": DIRECTIVE_MEASUREMENT
   },
+
+  // === 🎚️ FEATURE FLAG EXPORTS (read by n8n IF nodes) ===
+  // "If Phase-4 Product Scan" branches on this to run detect_customizable_products at the
+  // top of phase 4. Derived from PHASE2_SEES_CUSTOMIZABLE_PRODUCTS (see FEATURE FLAGS).
+  "customizable_products_in_phase4": !PHASE2_SEES_CUSTOMIZABLE_PRODUCTS,
 
   // === 🔁 RETRY DIRECTIVE LIBRARY ===
   // Canonical retry-only prompt blocks, keyed by the task that consumes them. The n8n

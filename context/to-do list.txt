@@ -1,5 +1,11 @@
 🔜=priority  🛠=WIP  🌗=partway  ✔=Done
 
+✔ruler / tape measure specific rules
+double check that scaffolding and designer can't see it. ✔- "highly customizable products", cereal, soda, t-shirts, video games, tv show etc.
+✔debug where orange is getting classified artistic only
+
+refrain from drawing elements that cross boundaries of geometric primitives; it's mildly confusing
+
 ✔- improve aesthetic instructions - images are ugly, or follow original too much rather than morphing [artist: plan_finishing, render_final]
   - do some manually and use what we learn on artist
   ✔- look up best practices
@@ -7,9 +13,7 @@
 ✔- enforce shapes better [dimension_expert: estimate_dimensions, 3d_specialist: plan_3d, image_detail_planner: merge_plans, review_description, scaffolding_designer: design_scaffolding]
 ✔- too much information - some give away solutions / give hints, or restate on a label what you can see at a glance [markup_specialist: plan_markings, image_detail_planner - merge_plans, review_description]
 - labels can be close to image edge, some kind of algorithmic final check maybe - ok for textbook? but looks bad in image
-✔- ruler / tape measure specific rules
 ✔- problem 1 - mice should not always be in separate groups, or a grid, or have a dotted line between groups
-✔- "highly customizable products", cereal, soda, t-shirts, video games, tv show etc.
 ✔no shadows in scaffolding
 ✔no redundant labels
 ✔fix misrouted as artistic image
@@ -18,7 +22,6 @@ grids
 
 ✔automate review & correction process
 integrate rubricks into agents; try with/without rubrics
-refrain from drawing elements that cross boundaries of geometric primitives; it's mildly confusing
 
 - poor prompts
  - screen prompt / ask for feedback / improvement
