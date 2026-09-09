@@ -149,7 +149,7 @@ Structure: <structure of response>
   Will use a direct explanation.
   Will use Markdown formatting.
 -------------------------------------------------------------------------------------------------------------------------------
-Diversity and Collapse: https://grok.com/share/bGVnYWN5_00f81eb0-4d17-4313-b24d-757ff00d5cbc
+Diversity and Collapse: https://grok.com/share/bGVnYWN5_d29b081c-e3a9-4697-ae2a-bcf013898016
 
 What actually moves coverage(best to worst)
 - Ban the mode explicitly. Exclusion lists beat temperature.
@@ -162,16 +162,39 @@ What actually moves coverage(best to worst)
 ------------------------------
 Structured chat templates - Any kind of formatting request reduces diversity, "format as json", or even "give me a 10 item list" to a lesser extent
 Practical split: invent in loose prose or VS first, then format into box copy. Don’t invent inside the box-copy template.
+
 ------------------------------
 The anti-collapse prompt (Verbalized Sampling):
+
+------------------------------
+official VS-Standard (Table 1 / abstract):
+------------------------------
+Generate 5 responses to the user query.
+Each response must include the text and its estimated probability
+relative to the full distribution of possible responses.
+
+[your request here]
+
+------------------------------
+Generate 5 ideas and their corresponding probabilities.
+
+[your request here]
+
+------------------------------
+official README / Figure 2 tuned default
+------------------------------
+You are a helpful assistant. For each query, please generate a set of five possible responses, each within a separate <response> tag. Each <response> must include a <text> and a numeric <probability>.
+Please sample at random from the tails of the distribution, such that the probability of each response is less than 0.10.
+
+[your request here]
+
+------------------------------
 <instructions>
 Generate 5 responses to the user query, each within a separate <response> tag. Each <response> must include a <text> and a numeric <probability>.
 Please sample at random from the tails of the distribution, such that the probability of each response is less than 0.10.
 </instructions>
 
 [your actual request here]
+
 ------------------------------
-Or as a system prompt:
-You are a helpful assistant. For each query, please generate a set of five possible responses, each within a separate <response> tag. Each <response> must include a <text> and a numeric <probability>.
-Please sample at random from the tails of the distribution, such that the probability of each response is less than 0.10.
-------------------------------
+"Only include responses with probability less than 0.10."
