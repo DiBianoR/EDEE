@@ -1,28 +1,24 @@
 🔜=priority  🛠=WIP  🌗=partway  ✔=Done
 
-✔ruler / tape measure specific rules
-double check that scaffolding and designer can't see it. ✔- "highly customizable products", cereal, soda, t-shirts, video games, tv show etc.
-✔debug where orange is getting classified artistic only
-
-refrain from drawing elements that cross boundaries of geometric primitives; it's mildly confusing
-put a professional quality image gen system prompt into artist. general image gen knowledge in system prompt plus specific task in user prompt gave good results elsewhere.
+🔜- paper draft
+🔜- user feedback mechanism
+🔜- look into multi-agent systems -> skills
+- refrain from drawing elements that cross boundaries of geometric primitives; it's mildly confusing
+- labels can be close to image edge, some kind of algorithmic final check maybe - ok for textbook? but looks bad in image
 
 ✔- improve aesthetic instructions - images are ugly, or follow original too much rather than morphing [artist: plan_finishing, render_final]
-  - do some manually and use what we learn on artist
   ✔- look up best practices
-✔- improve aesthetic review, concentrating on things other than beauty atm, downside is it's costly if we have to redraw [image_verifier: review_aesthetics]
-✔- enforce shapes better [dimension_expert: estimate_dimensions, 3d_specialist: plan_3d, image_detail_planner: merge_plans, review_description, scaffolding_designer: design_scaffolding]
+  - put a professional quality image gen system prompt into artist. general image gen knowledge in system prompt plus specific task in user prompt gave good results elsewhere.
+  - do some manually and use what we learn on artist
+✔- "highly customizable products", cereal, soda, t-shirts, video games, tv show etc.
+  - double check that scaffolding and designer can't see it.
+✔- debug where orange is getting classified artistic only
 ✔- too much information - some give away solutions / give hints, or restate on a label what you can see at a glance [markup_specialist: plan_markings, image_detail_planner - merge_plans, review_description]
-- labels can be close to image edge, some kind of algorithmic final check maybe - ok for textbook? but looks bad in image
 ✔- problem 1 - mice should not always be in separate groups, or a grid, or have a dotted line between groups
 ✔no shadows in scaffolding
 ✔no redundant labels
-✔fix misrouted as artistic image
-artist creativity step
-grids
-
 ✔automate review & correction process
-integrate rubricks into agents; try with/without rubrics
+✔integrate rubricks into agents; try with/without rubrics
 
 - poor prompts
  - screen prompt / ask for feedback / improvement
@@ -122,3 +118,11 @@ Experiment with coteach
   - No information suggesting they are pursuing grants
   - No information suggesting they are pursuing research into effectiveness, etc.
   - Quick development suggests lack of barriers to develop similar features
+
+
+✔ruler / tape measure specific rules
+✔- improve aesthetic review, concentrating on things other than beauty atm, downside is it's costly if we have to redraw [image_verifier: review_aesthetics]
+✔- enforce shapes better [dimension_expert: estimate_dimensions, 3d_specialist: plan_3d, image_detail_planner: merge_plans, review_description, scaffolding_designer: design_scaffolding]
+artist creativity step
+grids
+✔fix misrouted as artistic image

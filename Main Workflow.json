@@ -616,7 +616,7 @@
     {
       "parameters": {
         "content": "## Phase 4: Advanced Image Generation",
-        "height": 352,
+        "height": 560,
         "width": 992
       },
       "type": "n8n-nodes-base.stickyNote",
@@ -2278,8 +2278,8 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        3184,
-        1568
+        3152,
+        1792
       ],
       "id": "64997582-798a-4749-af5c-1eba0513e359",
       "name": "cfg25"
@@ -2332,8 +2332,8 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        3504,
-        1568
+        3472,
+        1792
       ],
       "id": "61100db1-0b48-4aa3-9fac-c397a34d749f",
       "name": "cfg26"
@@ -2360,8 +2360,8 @@
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1.3,
       "position": [
-        3632,
-        1568
+        3600,
+        1792
       ],
       "id": "250f53b3-86b0-4370-b0dc-718a73d29852",
       "name": "artist - render_final",
@@ -6806,8 +6806,8 @@
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1.3,
       "position": [
-        3312,
-        1568
+        3280,
+        1792
       ],
       "id": "6376a76c-66d2-4a98-8363-389bb7c61831",
       "name": "artist - plan_finishing",
@@ -6853,6 +6853,200 @@
       ],
       "id": "7e1dc65c-83e2-4320-aaef-e8d0cc05a991",
       "name": "Archive Scaffolding"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "b9c862f9-17c0-4923-968c-f57c35859a6e",
+              "name": "PHASE_ID",
+              "value": "4",
+              "type": "string"
+            },
+            {
+              "id": "385b162f-1005-4d8e-b94a-6be27224b7d3",
+              "name": "AGENT_ID",
+              "value": "product_designer",
+              "type": "string"
+            },
+            {
+              "id": "16b09845-a443-436c-bde4-b8bf509bc238",
+              "name": "TASK_ID",
+              "value": "customizable_product_planning",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        3360,
+        1472
+      ],
+      "id": "e75f9de5-170d-4cd7-91cc-77cce48b11b7",
+      "name": "cfg65"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "96e8ca96-b8ca-475e-958f-550bb8d571f5",
+              "leftValue": "={{ $json.session_state.needs_customizable_product_planning }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        3184,
+        1568
+      ],
+      "id": "063b9ebe-31e9-4fbd-815e-cb9c3847535b",
+      "name": "If Highly Customizable Products"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "UReLQDgBIPpb9P4f",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/UReLQDgBIPpb9P4f",
+          "cachedResultName": "EDEE — Universal Agent Sub-Workflow"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        3488,
+        1472
+      ],
+      "id": "9c3b25b8-3cf1-4f86-966c-d33216b16faa",
+      "name": "product_designer - customizable_product_planning"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "b9c862f9-17c0-4923-968c-f57c35859a6e",
+              "name": "PHASE_ID",
+              "value": "4",
+              "type": "string"
+            },
+            {
+              "id": "385b162f-1005-4d8e-b94a-6be27224b7d3",
+              "name": "AGENT_ID",
+              "value": "product_scout",
+              "type": "string"
+            },
+            {
+              "id": "16b09845-a443-436c-bde4-b8bf509bc238",
+              "name": "TASK_ID",
+              "value": "detect_customizable_products",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        3360,
+        880
+      ],
+      "id": "38a4ed83-f42e-4662-85f7-6f0200cec6f1",
+      "name": "cfg66"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "96e8ca96-b8ca-475e-958f-550bb8d571f5",
+              "leftValue": "={{ $json.config.customizable_products_in_phase4 }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        3184,
+        976
+      ],
+      "id": "36b3ad45-3b84-433f-a007-357883e2b1c3",
+      "name": "If customizable_products_in_phase4"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "UReLQDgBIPpb9P4f",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/UReLQDgBIPpb9P4f",
+          "cachedResultName": "EDEE — Universal Agent Sub-Workflow"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        3488,
+        880
+      ],
+      "id": "57fa1329-0222-42b9-a4aa-3ffd01f28e97",
+      "name": "product_scout - detect_customizable_products"
     }
   ],
   "connections": {
@@ -7497,7 +7691,7 @@
       "main": [
         [
           {
-            "node": "cfg25",
+            "node": "If customizable_products_in_phase4",
             "type": "main",
             "index": 0
           }
@@ -8839,6 +9033,86 @@
         [
           {
             "node": "Phase 3 - Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "cfg65": {
+      "main": [
+        [
+          {
+            "node": "product_designer - customizable_product_planning",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If Highly Customizable Products": {
+      "main": [
+        [
+          {
+            "node": "cfg65",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "cfg25",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "product_designer - customizable_product_planning": {
+      "main": [
+        [
+          {
+            "node": "cfg25",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "cfg66": {
+      "main": [
+        [
+          {
+            "node": "product_scout - detect_customizable_products",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If customizable_products_in_phase4": {
+      "main": [
+        [
+          {
+            "node": "cfg66",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "If Highly Customizable Products",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "product_scout - detect_customizable_products": {
+      "main": [
+        [
+          {
+            "node": "If Highly Customizable Products",
             "type": "main",
             "index": 0
           }

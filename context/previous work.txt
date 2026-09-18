@@ -156,3 +156,6 @@
 - Square-canvas toggle in render-matplotlib, with the 4:3 aspect behavior documented
 - session_viewer accepts a bare session_events array and renders inline image blobs; debug_viewer also displays images
 - README rewritten into full project documentation
+
+*September:
+- 
