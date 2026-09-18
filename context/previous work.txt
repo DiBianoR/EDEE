@@ -170,3 +170,6 @@
 - tested gpt-image-2 generation in a full run
 - drafted professional prompt-generator system prompts for 4 image models (Krea 2, ChatGPT
     Images 2.5 txt2img and img2img, SD 1.5) as source material for the artist agent(or future skills)
+
+*October
+- 
