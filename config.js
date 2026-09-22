@@ -404,9 +404,10 @@ const HUMAN_REVIEW_SCHEMA = {
     "reply_to_human": { "type": "STRING", "description": "Your message to the human: plain language, second person, no pipeline jargon. Either one specific clarifying question, or a restatement of the agreed changes." },
     "understanding_confirmed": { "type": "BOOLEAN", "description": "True ONLY when you are confident you understand everything the human wants and have nothing left to ask. The pipeline stops waiting for the human as soon as this is true." },
     "scaffold_acceptable_as_is": { "type": "BOOLEAN", "description": "True if the human is satisfied with the scaffold as drawn and no re-draw is needed." },
+    "user_wants_to_stop": { "type": "BOOLEAN", "description": "True ONLY if the human has clearly asked to abandon this run rather than have it fixed. This ends the run with no diagram and throws the work away, so if there is any doubt at all — frustration, a harsh critique, 'this is useless' — treat it as a correction to make and ask, rather than setting this." },
     "fix_instructions": { "type": "STRING", "description": "The complete, current list of corrections for the coding team — what is wrong, where, and what the corrected result looks like. Rewritten in full every turn (not a diff). Empty string if scaffold_acceptable_as_is." }
   },
-  "required": ["reasoning", "reply_to_human", "understanding_confirmed", "scaffold_acceptable_as_is", "fix_instructions"]
+  "required": ["reasoning", "reply_to_human", "understanding_confirmed", "scaffold_acceptable_as_is", "user_wants_to_stop", "fix_instructions"]
 };
 
 // === 📜 HISTORY SCOPE GROUPS ===
@@ -1850,7 +1851,9 @@ If passing with known flaws, record them in notes so downstream stages can compe
     instruction: `\
 ${DIRECTIVE_HUMAN_PRIORITY}
 
-The human who requested this diagram is looking at the rendered scaffolding on their screen and wants to discuss it. This is a conversation: reply to the human directly, in plain language, in the second person. Do not address the coding team here — that is what fix_instructions is for.
+The human who requested this diagram is looking at the rendered scaffolding on their screen and has written to you about it. This is a conversation: reply to the human directly, in plain language, in the second person. Do not address the coding team here — that is what fix_instructions is for.
+
+YOU ARE THE ONE WHO DECIDES WHAT HAPPENS NEXT. The human has a single text box and a single button; there are no "approve", "reject" or "cancel" controls. Whatever they wrote may be an approval, a correction, a question, or a request to abandon the run, and it is your job to work out which and set the output fields accordingly. Those fields, not a button, are what the pipeline acts on.
 
 Original Query: \`\`\`{original_query}\`\`\`
 
@@ -1866,9 +1869,10 @@ The human says:
 YOUR JOB:
 1. Work out exactly what the human wants changed. You are not being shown the render itself; you have the blueprint, the inspectors' reports, and the code that drew it. The human can see it and you cannot, so take their account of what is on screen as correct even where it contradicts those.
 2. If anything is ambiguous, ask — one short, specific question at a time. Never guess at something you could simply ask.
-3. If the human says the scaffold is fine as it is, say so and set scaffold_acceptable_as_is.
-4. When you are confident you understand every change, restate the complete list of changes back to the human in one or two sentences and set understanding_confirmed — the pipeline then proceeds to re-draw without waiting for another reply, so do not set it while a question is still open.
-5. Keep fix_instructions complete and current on every turn: the full list of changes for the coding team (what is wrong, where, what the corrected result looks like), rewritten in full each time.`,
+3. If the human is happy with the scaffold as it is — including a bare "looks good", "fine", "go ahead" — say so and set scaffold_acceptable_as_is. Do not invent work they did not ask for.
+4. If the human asks to abandon the run rather than fix it, set user_wants_to_stop. Read this narrowly: a blunt or angry critique is still a correction to make. Unless they are unmistakably telling you to stop, ask them to confirm first and leave the flag false this turn — you can always stop next turn, but a run you end is gone.
+5. When you are confident you understand every change, restate the complete list of changes back to the human in one or two sentences and set understanding_confirmed — the pipeline then proceeds to re-draw without waiting for another reply, so do not set it while a question is still open.
+6. Keep fix_instructions complete and current on every turn: the full list of changes for the coding team (what is wrong, where, what the corrected result looks like), rewritten in full each time.`,
     schema: HUMAN_REVIEW_SCHEMA
   },
 
@@ -1883,7 +1887,7 @@ The human replies:
 {human_message}
 """
 
-(Same rules: ask one specific question if anything is unclear; when you understand everything, restate the agreed changes and set understanding_confirmed; keep fix_instructions complete and current; set scaffold_acceptable_as_is if the human is happy with the scaffold as drawn.)`,
+(Same rules: ask one specific question if anything is unclear; when you understand everything, restate the agreed changes and set understanding_confirmed; keep fix_instructions complete and current; set scaffold_acceptable_as_is if the human is happy with the scaffold as drawn; set user_wants_to_stop only if they are unmistakably asking to abandon the run.)`,
     schema: HUMAN_REVIEW_SCHEMA
   },
 

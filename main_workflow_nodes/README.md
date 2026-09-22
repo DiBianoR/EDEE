@@ -173,15 +173,21 @@ therefore works by letting a short slice lapse and going round again: see §3.6'
 
 Seven rules, all `={{ $json.human_action }}` *string equals*, each renamed output:
 
-| Output key | Goes to |
-|---|---|
-| `message` | `cfg human review` |
-| `corrections` | `Human Gate: Announce` |
-| `extend` | `Human Gate: Announce` |
-| `continue` | `Human outcome` |
-| `rework` | `Human outcome` |
-| `fail` | `Human outcome` |
-| `abort` | `Human outcome` |
+| Output key | Goes to | |
+|---|---|---|
+| `message` | `cfg human review` | the human typed something |
+| `continue` | `Human outcome` | empty box, or a timeout |
+| `extend` | `Human Gate: Announce` | activity loop |
+| `rework` | `Human outcome` | |
+| `fail` | `Human outcome` | |
+| `abort` | `Human outcome` | now only from the manager's verdict |
+| `corrections` | `Human Gate: Announce` | **dead** — keep or delete, see below |
+
+The review UI has one box and one button, so it only ever sends `message` (box had text)
+or `continue` (box empty). `corrections` can no longer be emitted and `abort` no longer
+arrives from a click — it comes from `Human outcome` reading the manager's verdict.
+Leaving both rules in place is harmless; they simply never match. Delete them only if you
+also remove their connections.
 
 `extend` is the activity loop. When a slice lapses, Resolve asks the state manager for
 the gate's current deadline; `POST /human-activity` has been pushing that deadline out
@@ -230,8 +236,10 @@ Same as every other agent call: Universal Agent Sub-Workflow, passthrough input.
 ### 3.10 `Human outcome` — Code (Run Once for All Items)
 
 * Paste [`human_outcome.js`](human_outcome.js).
-* Funnel for `continue | rework | fail | abort`; from the manager path it derives
-  `continue` (scaffold_acceptable_as_is) or `rework`.
+* Funnel for `continue | rework | fail | abort`. On the manager path it now reads three
+  flags in this order: `user_wants_to_stop` → abort, else `scaffold_acceptable_as_is` →
+  continue, else rework. **This is the only node that changes for the single-button
+  review**, and it is the node that replaces the old "Give up" click.
 
 ### 3.11 `cfg log human decision` — Set (Include Other Fields: on)
 
@@ -359,8 +367,15 @@ inside it changes.
       its question → `understanding_confirmed` → coding loop re-runs with counters at 0
       (`cfg18` shows `coding_retry_count: 1`) → new scaffold → gate opens again →
       **Continue** → artist.
-* [ ] Mode *Wait for me*, **Give up** → status `failed`, `report_error` explains that the
-      user stopped the run.
+* [ ] Mode *Wait for me*, submit an empty box → the run continues immediately with no
+      model call, and the transcript records "accepted the scaffolding as drawn".
+* [ ] Mode *Wait for me*, type something that unmistakably asks to stop ("forget it,
+      cancel this run") → the manager sets `user_wants_to_stop`, `Human outcome` emits
+      `abort`, and the run ends as a clean failure explaining that you stopped it.
+* [ ] Type a blunt criticism that is NOT a request to stop ("this is useless, the labels
+      are unreadable") → it must be treated as a correction and redraw, not an abort.
+      This is the judgement the old Give up button used to make for you, so it is worth
+      checking on your own prompts and model tier.
 * [ ] Force MaxRetriesExceeded (temporarily set the threshold in `inspections passed?` to
       `>= 1`) with a non-automatic mode → gate opens with reason `max_retries`; **Accept
       as is** → Archive Scaffolding → Phase 4.

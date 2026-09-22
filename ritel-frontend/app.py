@@ -382,22 +382,29 @@ class DemoBackend:
                                     "parts": [{"text": message}]},
                            agent_hint="inspection_manager")
                 time.sleep(max(self.DELAY * 3, 1.0))
-                happy = any(w in message.lower() for w in ("fine", "good", "ok as is", "looks good", "no changes"))
-                confirmed = happy or round_ >= 2
+                # Crude stand-in for what the real manager infers from the text. The
+                # point of the demo is the WIRING — one box and one button feeding three
+                # possible outcomes — not the language understanding.
+                low = message.lower()
+                happy = any(w in low for w in ("fine", "good", "ok as is", "looks good", "no changes"))
+                stop = any(w in low for w in ("stop", "cancel", "abandon", "give up", "quit", "forget it"))
+                confirmed = happy or stop or round_ >= 2
                 reply = {
-                    "reasoning": "Demo manager: parsing the human's request against the scaffold.",
-                    "reply_to_human": ("Understood — the scaffold stays as it is. Handing it to the artist now." if happy else
+                    "reasoning": "Demo manager: deciding whether that was an approval, a correction, or a request to stop.",
+                    "reply_to_human": ("Understood — stopping here. Nothing further will be generated." if stop else
+                                       "Understood — the scaffold stays as it is. Handing it to the artist now." if happy else
                                        f"Got it. To be sure I understand: you want {message.strip().rstrip('.')}. "
                                        + ("Should the labels move with the shapes, or stay where they are?" if round_ == 1 else
                                           "I'll have the coding team redraw it with exactly those changes.")),
                     "understanding_confirmed": confirmed,
                     "scaffold_acceptable_as_is": happy,
-                    "fix_instructions": "" if happy else f"Human corrections (round {round_}): {message.strip()}",
+                    "user_wants_to_stop": stop,
+                    "fix_instructions": "" if (happy or stop) else f"Human corrections (round {round_}): {message.strip()}",
                 }
                 self._push(job_id, {"author": "inspection_manager", "task": task, "status": "ok",
                                     "parts": [{"text": json.dumps(reply)}], "model": "gemini-3.1-pro-preview", "cost": 0.0131})
                 if confirmed:
-                    return "accept" if happy else "rework"
+                    return "abort" if stop else ("accept" if happy else "rework")
                 action, message = self._wait_for_human(job_id, reason, mode, "conversation", round_, reply["reply_to_human"])
             else:
                 action, message = self._wait_for_human(job_id, reason, mode, "conversation", round_)
@@ -546,9 +553,18 @@ def start_job_callback():
     st.session_state.trigger_job = True
 
 
-def queue_action(action, msg_key=None):
-    msg = st.session_state.get(msg_key, "") if msg_key else ""
-    st.session_state.pending_action = (action, msg)
+def submit_gate(msg_key):
+    """The gate's only button. What you typed decides what happens.
+
+    Empty box means "carry on as drawn", which needs no model call and costs nothing.
+    Anything else goes to the QA Inspection Manager, which reads it as an approval, a
+    correction, a question, or a request to stop, and sets the flags the pipeline
+    branches on. The text is ALWAYS sent — there is no longer a path that quietly
+    discards what you wrote, which is what the old three-button panel did on two of
+    its three buttons.
+    """
+    msg = (st.session_state.get(msg_key) or "").strip()
+    st.session_state.pending_action = ("message" if msg else "continue", msg)
 
 
 def note_activity():
@@ -974,25 +990,24 @@ def render_human_panel(state, events):
         if stage == "resuming":
             st.info("Sending your decision to the pipeline…", icon="⏳")
             return
+        # ONE box, ONE button, at both stages. There is deliberately no approve / reject /
+        # cancel control: the QA manager reads what you wrote and decides whether that is
+        # an approval, a correction, or a request to stop. It already has the flags for
+        # all three, and a button that claims to mean "continue" while you have typed
+        # corrections into the box above it can only ever be a lie about one of them.
         if stage == "gate":
             if reason == "max_retries":
                 st.markdown("<div class='gatebox'>🛑 <b>The inspectors rejected this scaffolding three times.</b> "
-                            "You can accept it as it is, tell the QA manager what to fix, or stop the run.</div>", unsafe_allow_html=True)
+                            "Tell the QA manager what to fix, or leave the box empty to accept it as it is.</div>",
+                            unsafe_allow_html=True)
             else:
                 st.markdown("<div class='gatebox'>🙋 <b>The inspectors approved this scaffolding.</b> "
-                            "Anything to change before the artist paints over it? Corrections you give "
-                            "outrank every AI in the pipeline.</div>", unsafe_allow_html=True)
-            st.text_area("Corrections (optional — sending them opens a conversation with the QA manager)",
-                         key=f"msg_{sig}", height=90, on_change=note_activity,
+                            "Anything to change before the artist paints over it? What you say "
+                            "outranks every AI in the pipeline.</div>", unsafe_allow_html=True)
+            st.text_area("Your reply to the QA manager", key=f"msg_{sig}", height=90, on_change=note_activity,
                          placeholder="e.g. The two bags should be side by side, and the labels are too small.")
-            b1, b2, b3 = st.columns(3)
-            b1.button("✅ Continue" if reason == "review" else "✅ Accept as is", key=f"cont_{sig}",
-                      on_click=queue_action, args=("continue",), **BTN_FILL, type="primary",
-                      help="Proceed with this scaffolding as drawn.")
-            b2.button("✏️ Corrections", key=f"corr_{sig}", on_click=queue_action, args=("corrections", f"msg_{sig}"), **BTN_FILL,
-                      help="Open a conversation with the QA manager about what to change.")
-            b3.button("🛑 Give up", key=f"abort_{sig}", on_click=queue_action, args=("abort",), **BTN_FILL,
-                      help="Stop the run here.")
+            st.caption("Describe any changes, ask a question, or say you want to stop. "
+                       "**Leave it empty to accept the scaffolding as drawn.**")
         elif stage == "conversation":
             st.markdown("<div class='gatebox'>💬 <b>Talking to the QA Inspection Manager.</b> It will ask until it is sure it "
                         "understands, then redraw the scaffolding with your corrections. Every message resets the retry budget.</div>",
@@ -1002,12 +1017,12 @@ def render_human_panel(state, events):
                 st.caption("Type what you'd like changed.")
             for who, text in turns[-6:]:
                 st.markdown(f"<div class='bubble {who}'><span class='tag'>{'You' if who == 'me' else 'QA manager'}</span>{esc(text)}</div>", unsafe_allow_html=True)
-            st.text_area("Your message", key=f"msg_{sig}", height=90, on_change=note_activity)
-            b1, b2, b3 = st.columns(3)
-            b1.button("📨 Send", key=f"send_{sig}", on_click=queue_action, args=("message", f"msg_{sig}"), **BTN_FILL, type="primary")
-            b2.button("👍 Proceed", key=f"done_{sig}", on_click=queue_action, args=("continue",), **BTN_FILL,
-                      help="That's all — go ahead with what the manager understood so far.")
-            b3.button("🛑 Give up", key=f"abort_{sig}", on_click=queue_action, args=("abort",), **BTN_FILL)
+            st.text_area("Your reply", key=f"msg_{sig}", height=90, on_change=note_activity)
+            st.caption("**Leave it empty to move on** with what the manager already understood.")
+        else:
+            return
+        st.button("Continue ▸", key=f"go_{sig}", on_click=submit_gate, args=(f"msg_{sig}",),
+                  **BTN_FILL, type="primary")
 
 
 def render_countdown(state):

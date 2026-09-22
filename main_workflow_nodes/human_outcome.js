@@ -6,7 +6,12 @@
 //     which already carries human_action + human_decision_text — passed through.
 //   • from "Manager understood?" [true]: the Universal Agent's output after a
 //     human_review_* turn. The manager's verdict decides:
+//         user_wants_to_stop        → abort
 //         scaffold_acceptable_as_is → continue      else → rework
+//
+// The human has ONE box and ONE button, so there is no approve/reject/cancel control
+// to read: the manager infers the intent from what they wrote and expresses it in
+// these flags. That is why abort can arrive from here rather than only from a click.
 //
 // Everything then goes: → cfg log human decision → human_gate - log_human_decision
 // → "After human log" (Switch on $('Human outcome').item.json.human_action), which
@@ -25,7 +30,12 @@ let note = input.human_decision_text || "";
 
 if (!action) {
     const round = session_events.filter(e => e.author === "inspection_manager" && String(e.task || "").startsWith("human_review")).length;
-    if (session_state.scaffold_acceptable_as_is === true) {
+    // Order matters: stopping is checked first, because a human who asked to stop has
+    // overridden every other reading of what they wrote.
+    if (session_state.user_wants_to_stop === true) {
+        action = "abort";
+        note = `The human reviewer asked to stop the run at the scaffolding review, after ${round} exchange(s). The QA Inspection Manager read that as a request to abandon rather than to correct.`;
+    } else if (session_state.scaffold_acceptable_as_is === true) {
         action = "continue";
         note = `After ${round} exchange(s) the human reviewer confirmed the scaffolding is fine as drawn.`;
     } else {

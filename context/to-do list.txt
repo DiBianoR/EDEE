@@ -62,10 +62,10 @@ User Feedback
   choose between scaffolding or final
   chance to give feedback after scaffolding, and again after final
   multiple(3) scaffolding images -> multiple final images
-  human review: 'Continue' and 'Give up' silently discard whatever is typed in the box
-    only Corrections/Send pass it - queue_action drops it in the browser, it never reaches the state manager or n8n
-    worst on Give up: that text usually says WHY they quit, which is what error_handler needs to explain the failure
-    fix: pass the text with every decision, append to human_decision_text so it lands in history as a human_gate event
+✔human review: 'Continue' and 'Give up' silently discard whatever is typed in the box
+    FIXED by the single-button gate: one box, one button, and the text is always sent.
+    The manager now decides approve/correct/stop from what you wrote (scaffold_acceptable_as_is,
+    user_wants_to_stop, fix_instructions), so there is no longer a button that throws the text away.
   human review: the user's requests never reach the artist, and phase 5 quietly reverts them
     artist history_scope is [artist, issue_aggregator] - never sees the conversation, the fix_instructions, or the gate decision
     latest_description is last written in phase 2 (merge_plans/review_description); scaffolding_blueprint once by design_scaffolding
