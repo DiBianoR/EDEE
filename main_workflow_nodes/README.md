@@ -369,6 +369,11 @@ inside it changes.
       **Continue** → artist.
 * [ ] Mode *Wait for me*, submit an empty box → the run continues immediately with no
       model call, and the transcript records "accepted the scaffolding as drawn".
+* [ ] Type a bare approval ("looks great") → it must continue in ONE turn. If the gate
+      reopens and asks you to confirm a second time, the manager set
+      `scaffold_acceptable_as_is` but not `understanding_confirmed`; the instruction
+      tells it to set both, and on a max-retries gate that second wait can time out into
+      a failure, which inverts what you asked for.
 * [ ] Mode *Wait for me*, type something that unmistakably asks to stop ("forget it,
       cancel this run") → the manager sets `user_wants_to_stop`, `Human outcome` emits
       `abort`, and the run ends as a clean failure explaining that you stopped it.
