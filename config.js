@@ -1839,12 +1839,18 @@ If passing with known flaws, record them in notes so downstream stages can compe
   // hoisting it keeps it from settling into session_state between turns.
   "human_review_open": {
     assigned_agent: "inspection_manager",
-    model_type: "view_img",  // it is discussing THIS image — n8n attaches the scaffold
+    // NO image attached, and no view_img override (the agent default "text" stands).
+    // The HUMAN is the one looking at the render — the frontend has been showing it
+    // since "Prepare for Vision" broadcast it — so a copy of the base64 in this prompt
+    // would buy nothing and cost a full image payload per conversation round, on a
+    // workflow that already carries the render through 16 nodes and dies of memory
+    // pressure on long runs. The manager works from the blueprint, the inspectors'
+    // reports and the generating code, all already in its scope.
     hoist_result_fields: ["human_message"],
     instruction: `\
 ${DIRECTIVE_HUMAN_PRIORITY}
 
-The human who requested this diagram has looked at the rendered scaffolding (attached) and wants to discuss it. This is a conversation: reply to the human directly, in plain language, in the second person. Do not address the coding team here — that is what fix_instructions is for.
+The human who requested this diagram is looking at the rendered scaffolding on their screen and wants to discuss it. This is a conversation: reply to the human directly, in plain language, in the second person. Do not address the coding team here — that is what fix_instructions is for.
 
 Original Query: \`\`\`{original_query}\`\`\`
 
@@ -1858,7 +1864,7 @@ The human says:
 """
 
 YOUR JOB:
-1. Understand exactly what the human wants changed. Look at the image while you read.
+1. Work out exactly what the human wants changed. You are not being shown the render itself; you have the blueprint, the inspectors' reports, and the code that drew it. The human can see it and you cannot, so take their account of what is on screen as correct even where it contradicts those.
 2. If anything is ambiguous, ask — one short, specific question at a time. Never guess at something you could simply ask.
 3. If the human says the scaffold is fine as it is, say so and set scaffold_acceptable_as_is.
 4. When you are confident you understand every change, restate the complete list of changes back to the human in one or two sentences and set understanding_confirmed — the pipeline then proceeds to re-draw without waiting for another reply, so do not set it while a question is still open.
@@ -1868,7 +1874,6 @@ YOUR JOB:
 
   "human_review_reply": {
     assigned_agent: "inspection_manager",
-    model_type: "view_img",
     hoist_result_fields: ["human_message"],
     // Deliberately terse: this prompt replays as a user turn on every later round, and
     // the framing already replayed once from human_review_open.

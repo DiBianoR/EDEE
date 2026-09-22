@@ -132,8 +132,10 @@ Node names matter: the Code nodes reach back by name (`Human Gate: Announce`,
 * Reads `config.human_review_mode` / `human_review_timeouts`, decides stage
   (`gate` / `conversation`) and reason (`review` / `max_retries`), POSTs
   `status: "awaiting_human"` + `human_review{…, resume_url: $execution.resumeUrl}` to the
-  listener (plus the current scaffold as `latest.png`), and outputs
-  `human_wait_seconds` for the Wait node.
+  listener, and outputs `human_wait_seconds` for the Wait node.
+* It sends **no image**: `Prepare for Vision` already broadcast this render, so
+  `{job_id}/latest.png` is current and the frontend is showing it. That makes the
+  broadcast load-bearing — see §5.2.
 
 ### 3.4 `Human Gate: Wait` — Wait (v1.1)
 
@@ -179,12 +181,20 @@ Six rules, all `={{ $json.human_action }}` *string equals*, each renamed output:
 | `TASK_ID` | string | `={{ $json.session_events.filter(e => e.author === 'inspection_manager' && String(e.task).startsWith('human_review')).length > 0 ? 'human_review_reply' : 'human_review_open' }}` |
 | `prompt_author` | string | `user` |
 | `human_message` | string | `={{ $json.human_message }}` |
-| `base64_img_string` | string | `={{ $('Prepare for Vision').item.json.base64_img_string }}` |
-| `base64_img_string_mime` | string | `={{ $('Prepare for Vision').item.json.base64_img_string_mime }}` |
 
 (`prompt_author: "user"` is what makes the human's words log as `[user]` events and
 replay as real user turns. `human_message` is hoisted by the task so it never settles
 into session_state.)
+
+**No `base64_img_string` here, deliberately.** Unlike every other stage-3 cfg node, this
+one attaches no image. The *human* is the one looking at the render, in the frontend,
+from `{job_id}/latest.png`; the manager works from the blueprint, the inspectors'
+reports and the generating code, which are already in its scope. Attaching a copy would
+add a full image payload **per conversation round** to a workflow that already carries
+the render through 16 nodes and runs out of memory on long executions. The two tasks
+therefore have no `model_type: "view_img"` override either — adding the image back
+means restoring both, or Node 1 will prefix `[warning: no image attached to this vision
+request]` to the prompt.
 
 ### 3.8 `inspection_manager - human_review` — Execute Workflow
 
@@ -288,18 +298,25 @@ inside it changes.
 1. **`Set Job`** — add assignment `human_review_mode` (string):
    `={{ $json.body?.human_review_mode || $json?.human_review_mode || "automatic" }}`.
    (The Test Orchestrator sends nothing → `automatic`, so batch runs never pause.)
-2. **`Python Execution Node`** — add body parameter `keep_axes` =
+2. **`Prepare for Vision`** — raise the GUI broadcast timeout from `1500` to `15000` ms.
+   That POST carries the full render as base64 and is the **only** thing that puts the
+   scaffolding in `{job_id}/latest.png`, which is what the human reviews. At 1.5 s it can
+   silently time out on a large image (the catch block swallows it), and the gate would
+   then open on a stale or missing picture. It stays fire-and-forget — a lost progress
+   ping must not kill a run — but it needs room to actually land. The other image-bearing
+   broadcasts already use 10–30 s.
+3. **`Python Execution Node`** — add body parameter `keep_axes` =
    `={{ $json.session_state.needs_graph_planning === true }}`. Graph problems now keep
    their axes/ticks/grid; everything else is stripped as before. Optional extras the
    service accepts: `square` (bool), `dpi` (50–300), `transparent` (bool).
-3. **`cfg57`** (execution-error injector) — optional robustness: n8n sometimes puts the
+4. **`cfg57`** (execution-error injector) — optional robustness: n8n sometimes puts the
    HTTP response body in `error.description` rather than `error.message`. Add
    `else if (inputData.error.description) { errorText = inputData.error.description; }`
    before the `response.data` branch. The render service's error text now includes
    `line N: <source>` frames, which reach `review_manager.troubleshoot` through here.
-4. **Universal Agent Sub-Workflow** — no changes. `prompt_author` is already a
+5. **Universal Agent Sub-Workflow** — no changes. `prompt_author` is already a
    recognised top-level input of Node 1.
-5. **Global Error Handler** — no changes.
+6. **Global Error Handler** — no changes.
 
 ## 6. Verification checklist
 

@@ -3,7 +3,11 @@
 //
 // Publishes the scaffolding-review gate to the job doc (status "awaiting_human" +
 // a `human_review` block the frontend renders) and hands the following Wait node
-// its time limit. Sits in front of "Human Gate: Wait"; three edges feed it:
+// its time limit. No image rides along: the human is looking at {job_id}/latest.png,
+// which "Prepare for Vision" already broadcast when it rendered this very scaffold.
+// ⚠️ That broadcast is therefore LOAD-BEARING for the review — see the note on its
+//    timeout in main_workflow_nodes/README.md §5.
+// Sits in front of "Human Gate: Wait"; three edges feed it:
 //   • "Human review?" / "Human available?"  — fresh gate after the machine verdict
 //   • "Human decision" [corrections]         — the human clicked Give corrections
 //                                              without typing anything yet
@@ -66,7 +70,6 @@ let waitSeconds = (stage === "gate" && reason === "review" && mode === "timeout"
     ? Number(timeouts.gate_seconds) || 30
     : (Number(timeouts.absent_minutes) || 10) * 60;
 
-const scaffold = latestRun("Prepare for Vision");   // the current render, for the frontend's image panel
 const now = new Date();
 const humanReview = {
     stage,
@@ -94,11 +97,10 @@ if (config.enable_gui_logging === true && config.gui_webhook_url) {
                 phase_id: "3",
                 agent_id: "inspection_manager",
                 task_id: stage === "gate" ? "human_review_gate" : "human_review_conversation",
-                human_review: humanReview,
-                ...(scaffold?.base64_img_string
-                    ? { base64_img_string: scaffold.base64_img_string,
-                        base64_img_string_mime: scaffold.base64_img_string_mime || "image/png" }
-                    : {})
+                human_review: humanReview
+                // NO image: "Prepare for Vision" already broadcast this very render, so
+                // {job_id}/latest.png is current and the frontend is already showing it.
+                // Re-sending the base64 would just be a second full-size copy per gate.
             },
             json: true,
             timeout: 15000

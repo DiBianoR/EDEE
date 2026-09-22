@@ -34,6 +34,18 @@ FIRESTORE_DB = os.environ.get("FIRESTORE_DB", "dee-data")
 BUCKET_NAME = os.environ.get("EDEE_BUCKET", "edee-job-archives-0925957935")
 
 DEMO = "--demo" in sys.argv or os.environ.get("EDEE_DEMO", "").lower() in ("1", "true", "yes")
+
+# Streamlit 1.50 replaced the "fill the parent container" flags with a width argument
+# (buttons previously took use_container_width, images use_column_width).
+# requirements.txt pins >=1.50, but a local checkout often has an older build, so
+# resolve the right kwargs once here instead of crashing on the first widget.
+try:
+    _ST = tuple(int(p) for p in st.__version__.split(".")[:2])
+except (ValueError, AttributeError):
+    _ST = (1, 50)
+BTN_FILL = {"width": "stretch"} if _ST >= (1, 50) else {"use_container_width": True}
+IMG_FILL = {"width": "stretch"} if _ST >= (1, 50) else {"use_column_width": True}
+
 POLL_SECONDS = 1.5
 IDLE_TIMEOUT = 240           # seconds without a state update before we assume the run died
 HUMAN_GRACE_SECONDS = 90     # extra slack past a human-review deadline before the idle rule applies
@@ -263,8 +275,10 @@ class DemoBackend:
             if message:
                 round_ += 1
                 task = "human_review_open" if round_ == 1 else "human_review_reply"
+                # Text only: the real pipeline attaches no image to the human's turn
+                # (the human is the one looking at the render, in this very UI).
                 self._push(job_id, {"author": "user", "task": task, "status": "ok",
-                                    "parts": [{"inlineData": {"mimeType": "image/png", "data": "<IMAGE_BLOB>"}}, {"text": message}]},
+                                    "parts": [{"text": message}]},
                            agent_hint="inspection_manager")
                 time.sleep(max(self.DELAY * 3, 1.0))
                 happy = any(w in message.lower() for w in ("fine", "good", "ok as is", "looks good", "no changes"))
@@ -471,7 +485,7 @@ with st.sidebar:
         max_image_tier = st.selectbox("Max image model tier", ["slow", "medium", "fast"])
     with st.expander("Open an existing job"):
         st.text_input("Job ID", key="open_job_id", placeholder="uuid from a previous run")
-        st.button("Open", on_click=open_job_callback, width="stretch")
+        st.button("Open", on_click=open_job_callback, **BTN_FILL)
 
 backend = get_backend()
 
@@ -484,7 +498,7 @@ col1, col2 = st.columns([1, 1], gap="large")
 with col1:
     user_query = st.text_area("Math problem and/or illustration request", height=140,
                               placeholder="Problem: A farmer's rectangular field is 12 m by 8 m ...\n\nIllustration: (optional) what you'd like drawn")
-    st.button("Generate diagram", type="primary", width="stretch",
+    st.button("Generate diagram", type="primary", **BTN_FILL,
               disabled=st.session_state.is_running, on_click=start_job_callback)
     status_ui = st.empty()
     result_ui = st.empty()
@@ -735,11 +749,11 @@ def render_human_panel(state, events):
                          key=f"msg_{sig}", height=90, placeholder="e.g. The two bags should be side by side, and the labels are too small.")
             b1, b2, b3 = st.columns(3)
             b1.button("✅ Continue" if reason == "review" else "✅ Accept as is", key=f"cont_{sig}",
-                      on_click=queue_action, args=("continue",), width="stretch", type="primary",
+                      on_click=queue_action, args=("continue",), **BTN_FILL, type="primary",
                       help="Proceed with this scaffolding as drawn.")
-            b2.button("✏️ Corrections", key=f"corr_{sig}", on_click=queue_action, args=("corrections", f"msg_{sig}"), width="stretch",
+            b2.button("✏️ Corrections", key=f"corr_{sig}", on_click=queue_action, args=("corrections", f"msg_{sig}"), **BTN_FILL,
                       help="Open a conversation with the QA manager about what to change.")
-            b3.button("🛑 Give up", key=f"abort_{sig}", on_click=queue_action, args=("abort",), width="stretch",
+            b3.button("🛑 Give up", key=f"abort_{sig}", on_click=queue_action, args=("abort",), **BTN_FILL,
                       help="Stop the run here.")
         elif stage == "conversation":
             st.markdown("<div class='gatebox'>💬 <b>Talking to the QA Inspection Manager.</b> It will ask until it is sure it "
@@ -752,10 +766,10 @@ def render_human_panel(state, events):
                 st.markdown(f"<div class='bubble {who}'><span class='tag'>{'You' if who == 'me' else 'QA manager'}</span>{esc(text)}</div>", unsafe_allow_html=True)
             st.text_area("Your message", key=f"msg_{sig}", height=90)
             b1, b2, b3 = st.columns(3)
-            b1.button("📨 Send", key=f"send_{sig}", on_click=queue_action, args=("message", f"msg_{sig}"), width="stretch", type="primary")
-            b2.button("👍 Proceed", key=f"done_{sig}", on_click=queue_action, args=("continue",), width="stretch",
+            b1.button("📨 Send", key=f"send_{sig}", on_click=queue_action, args=("message", f"msg_{sig}"), **BTN_FILL, type="primary")
+            b2.button("👍 Proceed", key=f"done_{sig}", on_click=queue_action, args=("continue",), **BTN_FILL,
                       help="That's all — go ahead with what the manager understood so far.")
-            b3.button("🛑 Give up", key=f"abort_{sig}", on_click=queue_action, args=("abort",), width="stretch")
+            b3.button("🛑 Give up", key=f"abort_{sig}", on_click=queue_action, args=("abort",), **BTN_FILL)
 
 
 def render_countdown(state):
@@ -781,7 +795,7 @@ def show_image(state):
     data = backend.get_blob(path)
     if data and (not shown or shown[1] != hash(data)):
         st.session_state.shown_image = (job_id, hash(data))
-        image_ui.image(data, width="stretch", caption="Latest render" if state.get("status") != "completed" else None)
+        image_ui.image(data, **IMG_FILL, caption="Latest render" if state.get("status") != "completed" else None)
 
 
 def draw_state(state):
@@ -919,13 +933,13 @@ if st.session_state.job_id:
                     path, label = images[st.session_state.carousel_idx]
                     data = backend.get_blob(path)
                     if data:
-                        image_ui.image(data, caption=label, width="stretch")
+                        image_ui.image(data, caption=label, **IMG_FILL)
                     else:
                         image_ui.error("Image not found in storage.")
                     with carousel_ui.container():
                         c1, c2, c3, c4 = st.columns([3, 1, 1, 3])
-                        c2.button("❮", on_click=prev_image, disabled=st.session_state.carousel_idx == 0, width="stretch")
-                        c3.button("❯", on_click=next_image, disabled=st.session_state.carousel_idx == len(images) - 1, width="stretch")
+                        c2.button("❮", on_click=prev_image, disabled=st.session_state.carousel_idx == 0, **BTN_FILL)
+                        c3.button("❯", on_click=next_image, disabled=st.session_state.carousel_idx == len(images) - 1, **BTN_FILL)
                     if state.get("user_message"):
                         with notes_ui.container():
                             st.markdown("**📝 Notes from the pipeline**")
@@ -940,7 +954,7 @@ if st.session_state.job_id:
                     st.rerun()
                 if status in TERMINAL:
                     download_ui.download_button("📦 Download results (ZIP)", generate_zip_bundle(state),
-                                                file_name=f"EDEE_{job_id}.zip", mime="application/zip", width="stretch")
+                                                file_name=f"EDEE_{job_id}.zip", mime="application/zip", **BTN_FILL)
     except Exception as e:  # noqa: BLE001
         st.error(f"Error during polling/rendering: {e}")
         st.session_state.is_running = False
