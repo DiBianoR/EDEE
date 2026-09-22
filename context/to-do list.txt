@@ -62,6 +62,10 @@ User Feedback
   choose between scaffolding or final
   chance to give feedback after scaffolding, and again after final
   multiple(3) scaffolding images -> multiple final images
+  frontend: st.components.v1.html is deprecated ("will be removed after 2026-06-01"), logs a warning every gate
+    it is what runs the typing beacon and the chime, because inline script needs parent-document access
+    st.iframe is the named replacement but takes a URL only; a data: URL iframe is cross-origin, so
+    window.parent is blocked and both features break. No clean migration yet - revisit before it is actually removed.
 ✔human review: 'Continue' and 'Give up' silently discard whatever is typed in the box
     FIXED by the single-button gate: one box, one button, and the text is always sent.
     The manager now decides approve/correct/stop from what you wrote (scaffold_acceptable_as_is,

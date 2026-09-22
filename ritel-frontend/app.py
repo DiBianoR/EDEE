@@ -264,6 +264,20 @@ class DemoBackend:
             hr.update({"last_activity": now.isoformat(), "deadline": deadline.isoformat(), "beacon_ok": True})
             doc["human_review"] = hr
 
+    def _redrawn(self, n):
+        """A visibly different scaffold, standing in for the coder's corrected render."""
+        try:
+            from PIL import Image, ImageDraw
+            im = Image.open(io.BytesIO(self.scaffold)).convert("RGB")
+            d = ImageDraw.Draw(im)
+            d.rectangle([6, 6, im.size[0] - 7, im.size[1] - 7], outline=(200, 30, 30), width=5)
+            d.text((18, 16), f"REDRAWN #{n} — corrections applied", fill=(200, 30, 30))
+            buf = io.BytesIO()
+            im.save(buf, "PNG")
+            return buf.getvalue()
+        except Exception:  # noqa: BLE001
+            return self.scaffold
+
     @staticmethod
     def _make_final(scaffold_png):
         try:
@@ -448,22 +462,35 @@ class DemoBackend:
                 if reason:
                     gate_done = True
                     self.images[job_id]["scaffolding.png"] = self.scaffold
-                    action, message = self._wait_for_human(job_id, reason, mode)
-                    outcome = action
-                    if action in ("corrections", "message"):
-                        outcome = self._converse(job_id, reason, mode, message)
-                    if outcome == "abort":
-                        self._note(job_id, "The human reviewer chose to stop the run at the scaffolding review.")
-                        self._update(job_id, status="failed", error_message="You stopped the run at the scaffolding review.")
-                        return
-                    if outcome == "timeout" and reason == "max_retries":
-                        self._update(job_id, status="failed", error_message="The scaffolding failed inspection three times and nobody answered the review prompt.")
-                        return
                     notes = {"continue": "The human reviewer accepted the scaffolding as drawn.",
                              "timeout": "The human reviewer did not respond in time; proceeding automatically.",
                              "accept": "The human reviewer confirmed the scaffolding is fine as drawn.",
                              "rework": "The human reviewer gave corrections; retries reset, redrawing the scaffolding."}
-                    self._note(job_id, notes.get(outcome, outcome))
+                    # Corrections send us round again: redraw, then REOPEN the gate to ask
+                    # whether the change is right. That second gate is the case where a
+                    # stale image does real damage — the human is being asked to approve a
+                    # change while looking at the picture from before it.
+                    for redraw in range(3):
+                        action, message = self._wait_for_human(job_id, reason, mode)
+                        outcome = action
+                        if action in ("corrections", "message"):
+                            outcome = self._converse(job_id, reason, mode, message)
+                        if outcome == "abort":
+                            self._note(job_id, "The human reviewer chose to stop the run at the scaffolding review.")
+                            self._update(job_id, status="failed", error_message="You stopped the run at the scaffolding review.")
+                            return
+                        if outcome == "timeout" and reason == "max_retries":
+                            self._update(job_id, status="failed", error_message="The scaffolding failed inspection three times and nobody answered the review prompt.")
+                            return
+                        self._note(job_id, notes.get(outcome, outcome))
+                        if outcome != "rework":
+                            break
+                        time.sleep(max(self.DELAY * 4, 1.5))
+                        self.images[job_id]["latest.png"] = self._redrawn(redraw + 1)
+                        self._push(job_id, {"author": "scaffolding_generator", "task": "render", "status": "ok",
+                                            "parts": [{"text": f"Re-rendered the scaffolding with the human's corrections (pass {redraw + 1})."}],
+                                            "model": "none", "cost": 0})
+                        reason = "review"
             if ev["author"] == "artist" and ev["task"] == "render_final":
                 self.images[job_id]["latest.png"] = self.final
         self.images[job_id]["final_illustration.png"] = self.final
@@ -582,7 +609,10 @@ def submit_gate(msg_key):
     its three buttons.
     """
     msg = (st.session_state.get(msg_key) or "").strip()
-    st.session_state.pending_action = ("message" if msg else "continue", msg)
+    # The signature rides along so the resolved gate — and ONLY that gate — is kept from
+    # redrawing while its decision is in flight. A blanket "don't draw gates" flag also
+    # swallows the NEXT gate, and since the poll loop never ends, that one never returns.
+    st.session_state.pending_action = ("message" if msg else "continue", msg, msg_key[4:])
 
 
 def prev_image():
@@ -1088,8 +1118,12 @@ def paint_image(data, tag, caption=None):
     _painted["image"] = tag
 
 
-def show_image(state):
+def show_image(state, check=True):
     """Keep the most recent render on screen, always, and never a stale one.
+
+    `check=False` paints whatever is cached without touching the network. Used for the
+    instant repaint at the top of a rerun, where the priority is that the page is never
+    blank, not that the image is one poll fresher.
 
     Freshness is decided by the object's GENERATION in the bucket, not by catching
     `agent_id` at the right moment. The doc has one agent_id field that every broadcast
@@ -1102,8 +1136,8 @@ def show_image(state):
     status = state.get("status")
     path = f"{job_id}/final_illustration.png" if status == "completed" else f"{job_id}/latest.png"
 
-    version = backend.get_blob_version(path)
     cached = st.session_state.get("img_cache")            # (path, version, bytes)
+    version = backend.get_blob_version(path) if check else (cached[1] if cached else None)
     if version and (not cached or cached[0] != path or cached[1] != version):
         data = backend.get_blob(path)
         if data:
@@ -1116,7 +1150,7 @@ def show_image(state):
                     caption="Latest render" if status != "completed" else None)
 
 
-def draw_state(state):
+def draw_state(state, check_image=True):
     events = sorted_events(state)
     status_ui.markdown(status_line(state, events), unsafe_allow_html=True)
     stepper_ui.markdown(render_stepper(state, events), unsafe_allow_html=True)
@@ -1133,7 +1167,7 @@ def draw_state(state):
         # _painted, not session_state: after a rerun the panel is gone from the page even
         # though the gate is still open, and it has to be drawn again or the human loses
         # their buttons and their draft.
-        if _painted.get("gate") != sig:
+        if _painted.get("gate") != sig and _painted.get("gate_resolved") != sig:
             _painted["gate"] = sig
             render_human_panel(state, events)
             with beacon_ui.container():
@@ -1148,7 +1182,7 @@ def draw_state(state):
                 stop_activity_beacon()
         countdown_ui.empty()
     if status != "completed":
-        show_image(state)  # latest render (scaffolding, then the artist's attempts); the carousel takes over on completion
+        show_image(state, check=check_image)  # latest render; the carousel takes over on completion
     # Only repaint the log when it actually changed. It is one large HTML blob, and
     # re-sending an identical one on every poll is a visible reflow for no reason.
     log_html = build_log_html(events, state.get("agent_id"))
@@ -1180,18 +1214,42 @@ def generate_zip_bundle(state):
     return buf.getvalue()
 
 
+# --- INSTANT REPAINT ------------------------------------------------------------------
+# Streamlit rebuilds every placeholder from scratch on a rerun, and the poll loop below
+# cannot draw anything until a Firestore read (and sometimes a download) comes back. That
+# gap leaves the page blank for a second or two; the document collapses to nothing and the
+# browser throws the scroll position back to the top. From the keyboard that looks exactly
+# like a click that did nothing — so the button gets hunted down and pressed again.
+# Repainting the last known state from cache costs no network and holds the page steady.
+if st.session_state.job_id and st.session_state.get("last_state"):
+    try:
+        draw_state(st.session_state.last_state, check_image=False)
+    except Exception:  # noqa: BLE001 — a cosmetic repaint must never break the live path
+        pass
+
 # --- PENDING HUMAN DECISION (queued by a button callback on the previous run) ---------
 if st.session_state.pending_action and st.session_state.job_id:
-    action, msg = st.session_state.pending_action
+    action, msg, resolved_sig = st.session_state.pending_action
     st.session_state.pending_action = None
+    # Acknowledge BEFORE the call. human_decision round-trips to the state manager and on
+    # into n8n, which takes seconds; leaving the gate on screen through that reads as "it
+    # ignored me" and invites a second click that then lands on a gate already resolved.
+    _painted["gate_resolved"] = resolved_sig
+    with human_ui.container():
+        st.info("Sending your reply…", icon="⏳")
     try:
         backend.human_decision(st.session_state.job_id, action, msg)
         st.session_state.notice = {"continue": "Continuing.", "corrections": "Opening the conversation…",
                                    "message": "Message sent.", "abort": "Stopping the run."}.get(action, "Sent.")
-        _painted["gate"] = None
-        human_ui.empty()
     except Exception as e:  # noqa: BLE001
-        st.session_state.notice = f"Could not send your decision: {e}"
+        detail = str(e).lower()
+        if "no open" in detail or "already moved on" in detail:
+            # A second click, or a wait that lapsed first. The decision is not needed.
+            st.session_state.notice = "Already handled — the pipeline has moved on."
+        else:
+            st.session_state.notice = f"Could not send your reply: {e}"
+            _painted["gate_resolved"] = None   # let the gate come back so it can be retried
+            human_ui.empty()
 if st.session_state.notice:
     st.toast(st.session_state.notice)
     st.session_state.notice = None
@@ -1229,14 +1287,22 @@ if st.session_state.job_id:
             while st.session_state.is_running:
                 state = backend.get_doc(job_id)
                 now = time.time()
+                if state:
+                    st.session_state.last_state = state
                 if state and state.get("timestamp") != last_ts:
                     last_ts, last_update = state.get("timestamp"), now
                     draw_state(state)
                     if state.get("status") in TERMINAL:
                         st.session_state.is_running = False
                         st.rerun()
-                elif state and state.get("status") == "awaiting_human":
-                    render_countdown(state)
+                elif state:
+                    # The doc is unchanged, but the BUCKET may not be. A review gate holds
+                    # `timestamp` still for minutes while the coder re-renders behind it, so
+                    # anything keyed on the doc would keep showing the scaffold the human is
+                    # being asked to approve changes to. One metadata call per tick.
+                    show_image(state)
+                    if state.get("status") == "awaiting_human":
+                        render_countdown(state)
                 # idle watchdog: a human gate is allowed to sit until its deadline
                 limit = IDLE_TIMEOUT
                 if state and state.get("status") == "awaiting_human":
@@ -1251,6 +1317,8 @@ if st.session_state.job_id:
                 time.sleep(POLL_SECONDS)
         else:
             state = backend.get_doc(job_id)
+            if state:
+                st.session_state.last_state = state
             if not state:
                 status_ui.warning("No record of that job (it may have expired).")
             else:
