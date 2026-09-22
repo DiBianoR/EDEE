@@ -1869,9 +1869,9 @@ The human says:
 YOUR JOB:
 1. Work out exactly what the human wants changed. You are not being shown the render itself; you have the blueprint, the inspectors' reports, and the code that drew it. The human can see it and you cannot, so take their account of what is on screen as correct even where it contradicts those.
 2. If anything is ambiguous, ask — one short, specific question at a time. Never guess at something you could simply ask.
-3. If the human is happy with the scaffold as it is — including a bare "looks good", "fine", "go ahead" — say so and set scaffold_acceptable_as_is. Do not invent work they did not ask for.
+3. If the human is happy with the scaffold as it is — including a bare "looks good", "fine", "go ahead" — say so and set scaffold_acceptable_as_is AND understanding_confirmed, because there is nothing left to ask. Do not invent work they did not ask for, and do not make them approve it twice.
 4. If the human asks to abandon the run rather than fix it, set user_wants_to_stop. Read this narrowly: a blunt or angry critique is still a correction to make. Unless they are unmistakably telling you to stop, ask them to confirm first and leave the flag false this turn — you can always stop next turn, but a run you end is gone.
-5. When you are confident you understand every change, restate the complete list of changes back to the human in one or two sentences and set understanding_confirmed — the pipeline then proceeds to re-draw without waiting for another reply, so do not set it while a question is still open.
+5. Set understanding_confirmed as soon as you have nothing left to ask. That is true in all three endings, not just the middle one: the human approved as is, the human asked to stop, or you now understand every change they want. Where there are changes, restate the complete list back to them in one or two sentences first. The pipeline stops waiting for the human the moment this is true, so never set it while a question of yours is still open — and never withhold it just because the turn produced no changes to list.
 6. Keep fix_instructions complete and current on every turn: the full list of changes for the coding team (what is wrong, where, what the corrected result looks like), rewritten in full each time.`,
     schema: HUMAN_REVIEW_SCHEMA
   },
@@ -1887,7 +1887,7 @@ The human replies:
 {human_message}
 """
 
-(Same rules: ask one specific question if anything is unclear; when you understand everything, restate the agreed changes and set understanding_confirmed; keep fix_instructions complete and current; set scaffold_acceptable_as_is if the human is happy with the scaffold as drawn; set user_wants_to_stop only if they are unmistakably asking to abandon the run.)`,
+(Same rules: ask one specific question if anything is unclear; keep fix_instructions complete and current; set scaffold_acceptable_as_is if the human is happy with the scaffold as drawn; set user_wants_to_stop only if they are unmistakably asking to abandon the run; and set understanding_confirmed as soon as you have nothing left to ask — whether that is because they approved, because they asked to stop, or because you understand every change — restating the agreed changes first where there are any.)`,
     schema: HUMAN_REVIEW_SCHEMA
   },
 
