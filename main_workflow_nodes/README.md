@@ -107,6 +107,10 @@ New pieces, all in Phase 3 of the Main Workflow, between `inspections passed?` a
    (relays a decision to the paused execution) and `POST /human-activity/{job_id}` (the
    typing beacon that extends an open gate's deadline). Also wholesale replacement of
    `human_review` on `/update-state`; `requests` added to requirements.
+   ⚠️ **Until this is redeployed, typing detection does not work** — `/human-activity`
+   404s, the gate keeps its plain 30-second deadline, and typing into the box will not
+   hold it open. The frontend now says so in the countdown line rather than leaving you
+   to guess, but the fix is the redeploy.
 3. **`render-matplotlib`** — redeploy (single-namespace exec, `keep_axes` / `square` /
    `dpi` request fields, sandbox import guard, line-numbered errors, "drew nothing" error).
 4. **`ritel-frontend`** — redeploy (Python 3.12 image, Streamlit ≥ 1.50; sends

@@ -1,4 +1,5 @@
 from fastapi import FastAPI, Request, HTTPException
+from fastapi.responses import JSONResponse
 from google.cloud import firestore, storage
 import os
 import json
@@ -337,7 +338,7 @@ def _parse_iso(value):
 
 
 @app.post("/human-activity/{job_id}")
-def human_activity(job_id: str):
+def human_activity(job_id: str, probe: int = 0):
     """Beacon from the review UI: the human is typing or clicking, so push the gate's
     deadline out rather than letting it lapse.
 
@@ -350,22 +351,36 @@ def human_activity(job_id: str):
     becoming 30 seconds *of silence* rather than 30 seconds flat.
 
     Deliberately cheap and forgiving: no body, no auth beyond the job id, and a no-op
-    (never an error) when no gate is open. The UI sends it with fetch(mode:"no-cors")
-    and never reads the reply, so a failed beacon costs nothing but a shorter wait.
+    (never an error) when no gate is open.
+
+    `?probe=1` is the channel check the UI fires once when a gate opens. It records
+    `beacon_ok` and deliberately does NOT extend anything, so the idle timer still means
+    what it says. Its only job is to let the UI tell "nobody is typing" apart from
+    "beacons are not arriving at all" — which is otherwise invisible and, on a stale
+    deployment where this route 404s, looks exactly like a feature that does not work.
+
+    Returns an Access-Control-Allow-Origin header because the browser calls it directly
+    from another origin and must be able to READ the reply. A beacon that fails silently
+    is worse than no beacon.
     """
+    cors = {"Access-Control-Allow-Origin": "*"}
     doc_ref = db.collection("job_states").document(job_id)
     snap = doc_ref.get()
     if not snap.exists:
-        return {"extended": False, "reason": "unknown job"}
+        return JSONResponse({"extended": False, "reason": "unknown job"}, headers=cors)
     state = snap.to_dict() or {}
     gate = state.get("human_review") or {}
     if state.get("status") != "awaiting_human" or gate.get("stage") not in ("gate", "conversation"):
-        return {"extended": False, "reason": "no open gate"}
+        return JSONResponse({"extended": False, "reason": "no open gate"}, headers=cors)
+
+    if probe:
+        doc_ref.update({"human_review.beacon_ok": True})
+        return JSONResponse({"extended": False, "reason": "probe", "beacon_ok": True}, headers=cors)
 
     now = datetime.now(timezone.utc)
     last = _parse_iso(gate.get("last_activity"))
     if last and (now - last).total_seconds() < ACTIVITY_WRITE_DEBOUNCE:
-        return {"extended": False, "reason": "debounced"}
+        return JSONResponse({"extended": False, "reason": "debounced"}, headers=cors)
 
     grace = int(gate.get("active_grace_seconds") or 600)
     deadline = now + timedelta(seconds=grace)
@@ -382,8 +397,9 @@ def human_activity(job_id: str):
     doc_ref.update({
         "human_review.last_activity": now.isoformat(),
         "human_review.deadline": deadline.isoformat(),
+        "human_review.beacon_ok": True,
     })
-    return {"extended": True, "deadline": deadline.isoformat()}
+    return JSONResponse({"extended": True, "deadline": deadline.isoformat()}, headers=cors)
 
 
 @app.post("/human-decision/{job_id}")

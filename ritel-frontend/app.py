@@ -91,6 +91,20 @@ HUMAN_TASKS = ("human_review_open", "human_review_reply")
 FALLBACK_COLOURS = ["#2563eb", "#7c3aed", "#059669", "#d97706", "#db2777", "#0891b2"]
 
 
+# --- WHAT IS CURRENTLY PAINTED ------------------------------------------------------
+# Module level ON PURPOSE. Streamlit re-executes this file top to bottom on every rerun
+# and rebuilds each st.empty() as a blank slot, so anything drawn in a previous run is
+# gone from the page. This dict dies with the run, which makes it an honest record of
+# what is on screen right now.
+#
+# ⚠️ Never memoize "already drawn" in st.session_state: that survives the rerun while
+# the pixels do not, so the guard suppresses a redraw of something that is no longer
+# there. That bug blanked the image and the review panel the moment anything triggered
+# a rerun, and left the image missing until the artist's render happened to land.
+# st.session_state is for data we don't want to re-FETCH; this is for what we've DRAWN.
+_painted = {}
+
+
 def agent_style(agent_id):
     if agent_id in AGENTS:
         return AGENTS[agent_id]
@@ -145,6 +159,19 @@ class GcpBackend:
         if r.status_code != 200:
             raise RuntimeError(f"n8n returned HTTP {r.status_code}: {r.text[:200]}")
 
+    def record_activity(self, job_id):
+        """Server-side activity ping, independent of the browser beacon.
+
+        Second path on purpose: the beacon needs the browser to reach the state manager
+        across origins, and when that is blocked or the deployment is stale it fails
+        invisibly. This one goes out from the app server, so a blur or Ctrl+Enter still
+        holds the gate open even with the beacon completely dead.
+        """
+        try:
+            requests.post(f"{self.activity_url}/{job_id}", timeout=10)
+        except requests.RequestException:
+            pass   # best effort: the gate simply keeps its shorter deadline
+
     def human_decision(self, job_id, action, message=""):
         r = requests.post(f"{STATE_MANAGER_URL}/human-decision/{job_id}",
                           json={"action": action, "message": message}, timeout=30)
@@ -189,7 +216,10 @@ class DemoBackend:
 
         class Handler(BaseHTTPRequestHandler):
             def do_POST(self):
-                backend.record_activity(self.path.rstrip("/").rsplit("/", 1)[-1])
+                path, _, query = self.path.partition("?")
+                job_id = path.rstrip("/").rsplit("/", 1)[-1]
+                # ?probe=1 is the channel check: prove the beacon arrives, extend nothing.
+                backend.record_activity(job_id, probe="probe=1" in query)
                 self.send_response(204)
                 self.send_header("Access-Control-Allow-Origin", "*")
                 self.end_headers()
@@ -201,7 +231,7 @@ class DemoBackend:
         threading.Thread(target=srv.serve_forever, daemon=True).start()
         return f"http://127.0.0.1:{srv.server_port}/human-activity"
 
-    def record_activity(self, job_id):
+    def record_activity(self, job_id, probe=False):
         """Mirror of the state manager's beacon handler: push the deadline out."""
         with self.lock:
             doc = self.docs.get(job_id)
@@ -209,6 +239,10 @@ class DemoBackend:
                 return
             hr = doc.get("human_review") or {}
             if hr.get("stage") not in ("gate", "conversation"):
+                return
+            if probe:
+                hr["beacon_ok"] = True
+                doc["human_review"] = hr
                 return
             now = datetime.now(timezone.utc)
             deadline = now + timedelta(seconds=int(hr.get("active_grace_seconds") or 600))
@@ -227,7 +261,7 @@ class DemoBackend:
             # NB: the doc `timestamp` is deliberately untouched, exactly as the real
             # endpoint leaves it — a beacon must not look like a pipeline event and
             # trigger a full redraw of the log.
-            hr.update({"last_activity": now.isoformat(), "deadline": deadline.isoformat()})
+            hr.update({"last_activity": now.isoformat(), "deadline": deadline.isoformat(), "beacon_ok": True})
             doc["human_review"] = hr
 
     @staticmethod
@@ -449,7 +483,7 @@ def get_backend():
 st.set_page_config(page_title="EDEE Gen", layout="wide", page_icon="📐", initial_sidebar_state="auto")
 
 for key, default in [("job_id", None), ("is_running", False), ("trigger_job", False), ("carousel_idx", 1),
-                     ("pending_action", None), ("last_gate_sig", None), ("job_started_at", None), ("notice", None)]:
+                     ("pending_action", None), ("img_cache", None), ("job_started_at", None), ("notice", None)]:
     st.session_state.setdefault(key, default)
 
 st.markdown("""
@@ -517,6 +551,22 @@ def queue_action(action, msg_key=None):
     st.session_state.pending_action = (action, msg)
 
 
+def note_activity():
+    """Blur / Ctrl+Enter in a gate text box counts as activity.
+
+    Backstop for the browser beacon. This path runs on the app server, so it still works
+    when the beacon is blocked, the deployment is stale, or the browser refuses the
+    cross-origin request. Not per-keystroke, but it means a draft you walked away from
+    mid-edit does not lose the gate the instant you click elsewhere.
+    """
+    job_id = st.session_state.get("job_id")
+    if job_id:
+        try:
+            get_backend().record_activity(job_id)
+        except Exception:  # noqa: BLE001 — a failed ping must never break the widget
+            pass
+
+
 def prev_image():
     st.session_state.carousel_idx -= 1
 
@@ -532,8 +582,7 @@ def open_job_callback():
         st.session_state.is_running = True
         st.session_state.job_started_at = time.time()
         st.session_state.carousel_idx = 1
-        st.session_state.shown_image = None
-        st.session_state.last_gate_sig = None
+        st.session_state.img_cache = None
 
 
 # --- SIDEBAR -------------------------------------------------------------------------
@@ -829,6 +878,19 @@ def activity_beacon(job_id, sig):
   // check the key before firing instead of pinging for a gate that has closed.
   if (p.__edeeGate === KEY) return;
   p.__edeeGate = KEY;
+  p.__edeeUrl = URL;
+
+  // A real cross-origin request, NOT mode:"no-cors". An opaque response cannot be told
+  // apart from a 404, which is exactly how a stale state-manager deployment used to look
+  // identical to a working one that nobody was typing into.
+  const send = (u, why) => fetch(u, {{ method: "POST", keepalive: true }})
+    .then(r => {{ if (!r.ok) console.warn("[EDEE] activity " + why + ": HTTP " + r.status + " from " + u); }})
+    .catch(e => console.warn("[EDEE] activity " + why + " could not reach " + u + ":", e.message));
+
+  // Channel check, fired once per gate. Records beacon_ok WITHOUT extending anything, so
+  // the UI can tell "nobody is typing" from "beacons are not arriving".
+  send(URL + "?probe=1", "probe");
+
   if (!p.__edeeWired) {{
     p.__edeeWired = true;
     let last = 0;
@@ -837,14 +899,13 @@ def activity_beacon(job_id, sig):
       const now = Date.now();
       if (now - last < 4000) return;   // one beacon per 4s of continuous activity
       last = now;
-      try {{ fetch(p.__edeeUrl, {{ method: "POST", mode: "no-cors", keepalive: true }}); }} catch (e) {{}}
+      send(p.__edeeUrl, "beacon");
     }};
     // Typing first, as asked: keydown covers normal entry, input covers paste and IME.
     // click is included because it is deliberate (unlike mouse drift) and reaching for
     // the text box should plainly count as "I'm here".
     ["keydown", "input", "click"].forEach(e => p.document.addEventListener(e, ping, true));
   }}
-  p.__edeeUrl = URL;
 }})();
 </script>""", height=0)
 
@@ -873,7 +934,8 @@ def render_human_panel(state, events):
                             "Anything to change before the artist paints over it? Corrections you give "
                             "outrank every AI in the pipeline.</div>", unsafe_allow_html=True)
             st.text_area("Corrections (optional — sending them opens a conversation with the QA manager)",
-                         key=f"msg_{sig}", height=90, placeholder="e.g. The two bags should be side by side, and the labels are too small.")
+                         key=f"msg_{sig}", height=90, on_change=note_activity,
+                         placeholder="e.g. The two bags should be side by side, and the labels are too small.")
             b1, b2, b3 = st.columns(3)
             b1.button("✅ Continue" if reason == "review" else "✅ Accept as is", key=f"cont_{sig}",
                       on_click=queue_action, args=("continue",), **BTN_FILL, type="primary",
@@ -891,7 +953,7 @@ def render_human_panel(state, events):
                 st.caption("Type what you'd like changed.")
             for who, text in turns[-6:]:
                 st.markdown(f"<div class='bubble {who}'><span class='tag'>{'You' if who == 'me' else 'QA manager'}</span>{esc(text)}</div>", unsafe_allow_html=True)
-            st.text_area("Your message", key=f"msg_{sig}", height=90)
+            st.text_area("Your message", key=f"msg_{sig}", height=90, on_change=note_activity)
             b1, b2, b3 = st.columns(3)
             b1.button("📨 Send", key=f"send_{sig}", on_click=queue_action, args=("message", f"msg_{sig}"), **BTN_FILL, type="primary")
             b2.button("👍 Proceed", key=f"done_{sig}", on_click=queue_action, args=("continue",), **BTN_FILL,
@@ -914,24 +976,47 @@ def render_countdown(state):
     # Once we've seen activity the clock is "time since you last did something", which is
     # worth saying: the 30-second window in timeout mode has quietly become ten minutes.
     note = " Typing keeps this topped up." if hr.get("last_activity") else ""
+    # The probe fires the moment a gate opens, so after a few seconds its absence means
+    # beacons are not arriving at all — which otherwise looks exactly like nobody typing,
+    # and is the difference between "the timer pauses when I type" and "it doesn't".
+    # `last_activity` is checked too, not just the probe flag: an arriving beacon proves
+    # the channel works regardless of whether the probe landed, so this stays quiet
+    # against a state manager too old to report beacon_ok. Only claim it's broken when
+    # nothing at all has come back.
+    if not hr.get("beacon_ok") and not hr.get("last_activity"):
+        opened = parse_iso(hr.get("opened_at"))
+        if opened and (datetime.now(timezone.utc) - opened).total_seconds() > 8:
+            note = ("  <span style='color:#b45309'>⚠️ Typing isn't being detected, so this timer "
+                    "won't pause — use the buttons before it runs out. "
+                    "(The state manager may be out of date: it needs <code>/human-activity</code>.)</span>")
     countdown_ui.markdown(
         f"<div class='meta'>⏳ <span class='countdown'>{fmt_duration(left)}</span> until {what}.{note}</div>",
         unsafe_allow_html=True)
 
 
 def show_image(state):
-    """Latest render for the left panel. Fetched only when the pipeline could have
-    produced a new one (a render/artist turn) or nothing is shown yet."""
+    """Keep the most recent render on screen, always.
+
+    Two different lifetimes are at work. The BYTES are cached in st.session_state so we
+    don't re-download the blob on every 1.5s poll. Whether the image is actually painted
+    is tracked in `_painted`, which resets with the script run exactly as the placeholder
+    does. There is no state in which this function knowingly leaves the panel blank.
+    """
     job_id = state.get("job_id") or st.session_state.job_id
-    path = f"{job_id}/final_illustration.png" if state.get("status") == "completed" else f"{job_id}/latest.png"
-    agent = state.get("agent_id")
-    shown = st.session_state.get("shown_image")
-    if shown and shown[0] == job_id and agent not in ("scaffolding_generator", "artist", "-", None) and state.get("status") != "completed":
-        return
-    data = backend.get_blob(path)
-    if data and (not shown or shown[1] != hash(data)):
-        st.session_state.shown_image = (job_id, hash(data))
-        image_ui.image(data, **IMG_FILL, caption="Latest render" if state.get("status") != "completed" else None)
+    status = state.get("status")
+    path = f"{job_id}/final_illustration.png" if status == "completed" else f"{job_id}/latest.png"
+
+    cached_path, data = st.session_state.get("img_cache") or (None, None)
+    # Re-fetch only when a newer render could plausibly exist, or we have nothing yet.
+    # Anything else reuses the cached bytes — but still paints them.
+    if data is None or cached_path != path or state.get("agent_id") in ("scaffolding_generator", "artist") or status == "completed":
+        fresh = backend.get_blob(path)
+        if fresh:
+            data, st.session_state.img_cache = fresh, (path, fresh)
+
+    if data is not None and _painted.get("image") != data:
+        image_ui.image(data, **IMG_FILL, caption="Latest render" if status != "completed" else None)
+        _painted["image"] = data
 
 
 def draw_state(state):
@@ -948,15 +1033,18 @@ def draw_state(state):
     if status == "awaiting_human":
         hr = state.get("human_review") or {}
         sig = gate_signature(hr)
-        if sig != st.session_state.last_gate_sig:
-            st.session_state.last_gate_sig = sig
+        # _painted, not session_state: after a rerun the panel is gone from the page even
+        # though the gate is still open, and it has to be drawn again or the human loses
+        # their buttons and their draft.
+        if _painted.get("gate") != sig:
+            _painted["gate"] = sig
             render_human_panel(state, events)
             with beacon_ui.container():
                 activity_beacon(state.get("job_id") or st.session_state.job_id, sig)
         render_countdown(state)
     else:
-        if st.session_state.last_gate_sig is not None:
-            st.session_state.last_gate_sig = None
+        if _painted.get("gate") is not None or not _painted.get("gate_cleared"):
+            _painted["gate"], _painted["gate_cleared"] = None, True
             human_ui.empty()
             with beacon_ui.container():
                 stop_activity_beacon()
@@ -997,7 +1085,7 @@ if st.session_state.pending_action and st.session_state.job_id:
         backend.human_decision(st.session_state.job_id, action, msg)
         st.session_state.notice = {"continue": "Continuing.", "corrections": "Opening the conversation…",
                                    "message": "Message sent.", "abort": "Stopping the run."}.get(action, "Sent.")
-        st.session_state.last_gate_sig = None
+        _painted["gate"] = None
         human_ui.empty()
     except Exception as e:  # noqa: BLE001
         st.session_state.notice = f"Could not send your decision: {e}"
@@ -1015,8 +1103,7 @@ if st.session_state.trigger_job:
     st.session_state.job_id = str(uuid.uuid4())
     st.session_state.job_started_at = time.time()
     st.session_state.carousel_idx = 1
-    st.session_state.last_gate_sig = None
-    st.session_state.shown_image = None
+    st.session_state.img_cache = None
     payload = {"query": user_query, "job_id": st.session_state.job_id, "style_preference": style_choice,
                "human_review_mode": review_mode, "max_text_tier": max_text_tier, "max_image_tier": max_image_tier}
     try:
