@@ -596,6 +596,9 @@ with st.sidebar:
                            format_func=lambda k: REVIEW_MODES[k][0],
                            help="The scaffolding is the mathematically exact base diagram. After the AI inspectors approve it you can look it over and talk to the QA manager before the artist paints over it. Both waiting modes watch for typing and clicks, so you are never cut off mid-sentence. If the inspectors give up on the scaffolding, any mode other than Automatic asks you instead of failing.")
     st.caption(REVIEW_MODES[review_mode][1])
+    chime_on = st.checkbox("Chime when it needs you", value=True,
+                           disabled=review_mode == "automatic",
+                           help="Plays a short two-tone chime when the scaffolding review opens and each time the QA manager replies, so you can work in another tab.")
     with st.expander("Speed / cost caps"):
         max_text_tier = st.selectbox("Max text model tier", ["slow", "medium", "fast"], help="Caps the strongest text model any agent may use.")
         max_image_tier = st.selectbox("Max image model tier", ["slow", "medium", "fast"])
@@ -916,6 +919,52 @@ def stop_activity_beacon():
         components.html("<script>window.parent.__edeeGate = null;</script>", height=0)
 
 
+def notify_chime(sig, enabled=True):
+    """Two-tone chime when the gate opens and it is the human's turn.
+
+    Synthesised with the Web Audio API rather than played from a file: no asset to ship
+    or cache, nothing to 404, and no <audio autoplay> for a browser to block. It runs in
+    the PARENT document, which has had a real user gesture (the Generate click), so the
+    audio context is allowed to start — a bare component iframe has no such gesture of
+    its own and would likely be muted.
+
+    Fires once per gate, not once per rerun, and again on each new conversation round,
+    which is the point: every one of those is a fresh "your turn".
+    """
+    if not enabled:
+        return
+    components.html(f"""<script>
+(function () {{
+  const KEY = {json.dumps(str(sig))};
+  const p = window.parent;
+  if (p.__edeeChime === KEY) return;
+  p.__edeeChime = KEY;
+  try {{
+    const AC = p.AudioContext || p.webkitAudioContext;
+    if (!AC) return;
+    // One context reused for the life of the page: browsers cap how many you may create.
+    const ctx = p.__edeeAudio || (p.__edeeAudio = new AC());
+    if (ctx.state === "suspended") ctx.resume();
+    const t0 = ctx.currentTime + 0.02;
+    [[880.00, 0], [1318.51, 0.13]].forEach(function (pair) {{
+      const osc = ctx.createOscillator(), gain = ctx.createGain();
+      osc.type = "sine";
+      osc.frequency.value = pair[0];
+      const at = t0 + pair[1];
+      // Ramped, never switched: a bare start/stop on a sine puts an audible click at
+      // both ends. Peak is deliberately low — this is a nudge, not an alarm.
+      gain.gain.setValueAtTime(0.0001, at);
+      gain.gain.exponentialRampToValueAtTime(0.16, at + 0.015);
+      gain.gain.exponentialRampToValueAtTime(0.0001, at + 0.30);
+      osc.connect(gain).connect(ctx.destination);
+      osc.start(at);
+      osc.stop(at + 0.32);
+    }});
+  }} catch (e) {{ console.warn("[EDEE] chime failed:", e.message); }}
+}})();
+</script>""", height=0)
+
+
 def render_human_panel(state, events):
     """Widgets for the review gate. Rendered once per gate state (keys carry the signature)."""
     hr = state.get("human_review") or {}
@@ -1041,6 +1090,7 @@ def draw_state(state):
             render_human_panel(state, events)
             with beacon_ui.container():
                 activity_beacon(state.get("job_id") or st.session_state.job_id, sig)
+                notify_chime(sig, chime_on)
         render_countdown(state)
     else:
         if _painted.get("gate") is not None or not _painted.get("gate_cleared"):
