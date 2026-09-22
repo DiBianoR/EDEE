@@ -336,14 +336,16 @@ const EXECUTION_CONTRACT = `\
 [EXECUTION ENVIRONMENT]
 Generated scripts run inside a wrapper that, AFTER the code executes, automatically:
 - enforces a 1:1 mathematical aspect ratio (equivalent to ax.set_aspect('equal')),
-- strips all axes, and their ticks, grids, and spines,
+- strips all axes, and their ticks, grids, and spines — except on graph/coordinate-plot problems, where the wrapper keeps them,
 - crops surrounding whitespace, and
 - renders and saves the figure.
 Scripts therefore must NOT call plt.show(), plt.savefig(), plt.close(), or plt.clf(),
 and must NOT set aspect ratios or hide axes themselves. Omitting these is CORRECT
 behavior — never report it as an issue or instruct anyone to add them.
 Available libraries: matplotlib (including mplot3d and matplotlib.patches), numpy, and
-the Python standard library. Any other import is forbidden.`;
+the maths/utility parts of the Python standard library (math, random, itertools, ...).
+Anything with filesystem, network, or system reach (os, sys, subprocess, requests, ...)
+is rejected before the script runs.`;
 
 // Retry-only prompt block for plan_logic. Lives in session_state as {retry_directives}:
 // cfg18 defaults it to "" (first attempt sees nothing), and the n8n retry paths back
@@ -365,6 +367,48 @@ const DIRECTIVE_FINISHING_RETRY = `\
 
 - Begin your reasoning by stating why the previous render was rejected, and how your new prompt will fix it.`;
 
+// === 🙋 HUMAN-IN-THE-LOOP DIRECTIVES ===
+// A human who launched the run from the frontend may review the scaffolding after the
+// machine inspection (config.human_review_mode: automatic | timeout | wait). All of
+// this text is injected ONLY when a human actually intervenes — task-level text on the
+// human_review_* tasks, plus {human_priority_directives}, which n8n's "Human corrections
+// → reset retries" node arms after the first correction — so unattended runs pay
+// nothing for it.
+const DIRECTIVE_HUMAN_PRIORITY = `\
+[HUMAN IN THE LOOP]
+The human who requested this diagram is reviewing the work in real time. Their requests take priority over every AI in this pipeline: over your inspectors' and reviewers' reports, over your subordinates' suggestions or complaints, and over your own directives and preferences. If a human instruction conflicts with a rubric, a situational directive, or an earlier decision, the human wins — note the conflict, then do what they asked. Never argue them out of a request; at most, point out a consequence once, then comply.`;
+
+// plan_logic retry framing when the retry was triggered by HUMAN corrections rather
+// than a machine verdict. Same {retry_directives} slot and leading-newline idiom as
+// DIRECTIVE_PLAN_RETRY; the n8n reset node selects this one.
+const DIRECTIVE_PLAN_RETRY_HUMAN = `\
+
+
+- The human who requested this diagram reviewed the previous scaffolding and asked for changes. The QA Inspection Manager relayed them as fix_instructions, and the human's own words may appear in your history as [user] turns. The human's requests outrank every inspector report and your own preferences.
+- Begin your reasoning by restating the human's corrections in your own words, then explain how your new plan implements each one.`;
+
+// Appended to consolidate_inspection via {human_priority_directives} (seeded "" — see
+// SEED THE SESSION — and armed by the same n8n reset node), so a re-inspection after
+// human corrections is judged against the human's request first.
+const DIRECTIVE_INSPECTION_HUMAN = `\
+
+
+${DIRECTIVE_HUMAN_PRIORITY}
+- This scaffold was re-drawn to satisfy corrections from the human. Judge it FIRST against those corrections (your own earlier human_review turns and fix_instructions are in your history), then against the inspector reports. An inspector objecting to something the human explicitly asked for is overruled.`;
+
+// Shared by human_review_open / human_review_reply: one conversation, one contract.
+const HUMAN_REVIEW_SCHEMA = {
+  "type": "OBJECT",
+  "properties": {
+    "reasoning": { "type": "STRING", "description": "What the human is asking for, what (if anything) is still unclear, and whether you have enough to proceed." },
+    "reply_to_human": { "type": "STRING", "description": "Your message to the human: plain language, second person, no pipeline jargon. Either one specific clarifying question, or a restatement of the agreed changes." },
+    "understanding_confirmed": { "type": "BOOLEAN", "description": "True ONLY when you are confident you understand everything the human wants and have nothing left to ask. The pipeline stops waiting for the human as soon as this is true." },
+    "scaffold_acceptable_as_is": { "type": "BOOLEAN", "description": "True if the human is satisfied with the scaffold as drawn and no re-draw is needed." },
+    "fix_instructions": { "type": "STRING", "description": "The complete, current list of corrections for the coding team — what is wrong, where, and what the corrected result looks like. Rewritten in full every turn (not a diff). Empty string if scaffold_acceptable_as_is." }
+  },
+  "required": ["reasoning", "reply_to_human", "understanding_confirmed", "scaffold_acceptable_as_is", "fix_instructions"]
+};
+
 // === 📜 HISTORY SCOPE GROUPS ===
 // history_scope is now a list of EVENT AUTHORS. An agent sees an event only if the
 // event's author is in this list. Its OWN events come back as role "model" (enabling
@@ -384,10 +428,14 @@ const STAGE4_AGENTS = ["product_scout", "product_designer", "artist"];  // produ
 const STAGE5_AGENTS = ["image_verifier", "issue_aggregator"];
 const STAGE6_AGENTS = ["final_reporter"];
 const ERROR_AGENTS  = ["error_handler", "error_expert", "error_injector"];
+// "user" is the prompt_author of the human's own messages (human_review_* tasks);
+// human_gate logs the human's gate decisions. Listing both lets an agent see the
+// human's actual words (as labelled [user] turns) and what they decided.
+const HUMAN_AGENTS  = ["human_gate", "user"];
 
 const ALL_AGENTS = [
   ...STAGE1_AGENTS, ...STAGE2_AGENTS, ...STAGE3_AGENTS,
-  ...STAGE4_AGENTS, ...STAGE5_AGENTS, ...STAGE6_AGENTS, ...ERROR_AGENTS
+  ...STAGE4_AGENTS, ...STAGE5_AGENTS, ...STAGE6_AGENTS, ...ERROR_AGENTS, ...HUMAN_AGENTS
 ];
 
 
@@ -576,7 +624,9 @@ Your task is to design that first pass: the scaffolding.`
   "coder": {
     model_tier: "slow",  // coder type (write_code default; plan_logic overrides to medium)
     model_type: "text", // use more advanced agent to write code
-    history_scope: ["scaffolding_manager", "coder", "review_manager", "inspection_manager", "error_expert", "error_injector"],
+    // + HUMAN_AGENTS: after a human correction round the coder sees the human's own
+    //   words (labelled [user] turns) next to the manager's fix_instructions.
+    history_scope: ["scaffolding_manager", "coder", "review_manager", "inspection_manager", "error_expert", "error_injector", ...HUMAN_AGENTS],
     system_identity: `\
 ${GLOBAL_TASK_EXPLANATION}
 
@@ -622,7 +672,7 @@ ${EXECUTION_CONTRACT}`
     model_tier: "slow",  // manager type
     // + error agents: it directs the coding retry loop, so it should see prior
     // error_expert diagnoses and error_injector execution reports to judge progress.
-    history_scope: ["scaffolding_manager", "coder", "reviewer", "review_manager", "inspection_manager", "error_expert", "error_injector"],
+    history_scope: ["scaffolding_manager", "coder", "reviewer", "review_manager", "inspection_manager", "error_expert", "error_injector", ...HUMAN_AGENTS],
     system_identity: `\
 ${GLOBAL_TASK_EXPLANATION}
 
@@ -655,7 +705,9 @@ IDENTITY: You are the QA Vision Analyst. You check carefully for visual artifact
     model_type: "text",  // consolidates the inspector's text reports; flip to "view_img" if it should re-check the image itself
     // + error agents: it directs the inspection retry loop, so it should see prior
     // error_expert diagnoses to judge whether retries are making progress.
-    history_scope: ["scaffolding_manager", "scaffolding_designer", "coder", "inspector", "inspection_manager", "error_expert", "error_injector"],
+    // + HUMAN_AGENTS: it holds the human_review_* conversation, so it must see the
+    //   human's turns (its own replies come back as model turns) and gate decisions.
+    history_scope: ["scaffolding_manager", "scaffolding_designer", "coder", "inspector", "inspection_manager", "error_expert", "error_injector", ...HUMAN_AGENTS],
     system_identity: `\
 ${GLOBAL_TASK_EXPLANATION}
 
@@ -804,6 +856,12 @@ IDENTITY: You are the Error Diagnosis Agent. Your job is to review the complete 
   "error_injector": {
     history_scope: [],
     system_identity: "IDENTITY: System utility for safely formatting and logging errors into the project history."  // aka sessionEvents
+  },
+
+  // --- HUMAN IN THE LOOP -------------------------------------------------------
+  "human_gate": {
+    history_scope: [],
+    system_identity: "IDENTITY: System utility that records the human reviewer's decisions (accept / corrections / give up / timed out) into the project history."
   }
 };
 
@@ -1445,7 +1503,7 @@ Scaffolding Image Request: {scaffolding_blueprint}
 Analyze the 'Scaffolding Image Request'. Plan the Python workflow to draw the requested scaffolding image.
 
 1. Select Libraries (matplotlib, mplot3d).
-2. Primitives: If complex objects (e.g., 'a cat') are needed, plan to use simplified placeholders, shapes, or load them as PNGs (e.g., cat_primitive.png) using plt.imread.
+2. Primitives: If complex objects (e.g., 'a cat') are needed, plan simplified placeholders built from shapes (the artist replaces them later).
 3. Plan Drawing Order (Background -> Foreground).
 4. Style Strategy (colors, alpha).{retry_directives}`,
     schema: {
@@ -1475,11 +1533,8 @@ ${EXECUTION_CONTRACT}
 STRICT CONSTRAINTS:
 1. Use 'matplotlib' to construct the requested geometry.
 2. Focus ONLY on drawing the mathematical shapes, lines, and text in the correct relative positions.
-3. PRIMITIVES: If the plan asks for images, assume files like 'cat.png' exist in the local directory. Load them using plt.imread() and display with imshow or OffsetImage.
-4. Output ONLY the raw, runnable Python code without markdown blocks or explanations.
-5. SCOPE RESTRICTION: Your code runs in an exec() environment where helper functions cannot access global variables or top-level imports. Therefore, for any helper function you write:
-  You MUST pass all script-level objects (like ax, fig, or color variables) into the function as arguments.
-  You MUST place any required module imports (e.g., import matplotlib.patches as patches) directly inside the function body.`,
+3. PRIMITIVES: Draw placeholder objects with simple shapes (circles, rounded rectangles, polygons).
+4. Output ONLY the raw, runnable Python code without markdown blocks or explanations.`,
     schema: {
       "type": "OBJECT",
       "properties": {
@@ -1724,7 +1779,7 @@ Scaffolding Image Request: {scaffolding_blueprint}
 Check for technical rendering failures.
 CHECKS:
 1. Is the image blank or white?
-2. Are axes, ticks, or grids visible? (They shouldn't be, unless Scaffolding Image Request specifically asked)
+2. Are axes, ticks, or grids visible? (They shouldn't be, unless the Scaffolding Image Request asked for them or the diagram is a graph / coordinate plot, where they are expected)
 3. Is the aspect ratio distorted? (circles looking like ovals)
 4. Any other obvious glitches or artifacts
 
@@ -1758,7 +1813,7 @@ SYNTHESIZE:
 - Attempt 3 or later: pass a good-enough image rather than quibble over minor details. Reject ONLY if the image is truly unusable: blank, unreadable, or mathematically wrong in a way that would mislead a student.
 
 If rejecting, write fix_instructions as specific, actionable directions for the coding team: what is wrong, where, and what the corrected output should look like. Prioritize the most severe issues rather than relaying every nitpick.
-If passing with known flaws, record them in notes so downstream stages can compensate.`,
+If passing with known flaws, record them in notes so downstream stages can compensate.{human_priority_directives}`,
     schema: {
       "type": "OBJECT",
       "properties": {
@@ -1769,6 +1824,74 @@ If passing with known flaws, record them in notes so downstream stages can compe
       },
       "required": ["analysis", "passed_inspection", "notes", "fix_instructions"]
     }
+  },
+
+  // --- HUMAN IN THE LOOP: scaffolding review ---------------------------------
+  // Both conversation tasks belong to inspection_manager: it already owns the
+  // accept/reject call on the scaffold and writes fix_instructions for the coding
+  // team, so the human's corrections reach the retry loop through the same channel
+  // the machine verdicts do. n8n runs human_review_open on the human's FIRST message
+  // and human_review_reply on every later one, each with prompt_author: "user", so
+  // the human's words are logged as [user] events and replay as real user turns in
+  // the manager's history (Node 1 pairs a prompt with its reply automatically), and
+  // as labelled [user] turns for any agent with "user" in its history_scope.
+  // `human_message` arrives as a top-level n8n field (Node 1 sweeps it into state);
+  // hoisting it keeps it from settling into session_state between turns.
+  "human_review_open": {
+    assigned_agent: "inspection_manager",
+    model_type: "view_img",  // it is discussing THIS image — n8n attaches the scaffold
+    hoist_result_fields: ["human_message"],
+    instruction: `\
+${DIRECTIVE_HUMAN_PRIORITY}
+
+The human who requested this diagram has looked at the rendered scaffolding (attached) and wants to discuss it. This is a conversation: reply to the human directly, in plain language, in the second person. Do not address the coding team here — that is what fix_instructions is for.
+
+Original Query: \`\`\`{original_query}\`\`\`
+
+Diagram Request: {latest_description}
+
+Scaffolding Image Request: {scaffolding_blueprint}
+
+The human says:
+"""
+{human_message}
+"""
+
+YOUR JOB:
+1. Understand exactly what the human wants changed. Look at the image while you read.
+2. If anything is ambiguous, ask — one short, specific question at a time. Never guess at something you could simply ask.
+3. If the human says the scaffold is fine as it is, say so and set scaffold_acceptable_as_is.
+4. When you are confident you understand every change, restate the complete list of changes back to the human in one or two sentences and set understanding_confirmed — the pipeline then proceeds to re-draw without waiting for another reply, so do not set it while a question is still open.
+5. Keep fix_instructions complete and current on every turn: the full list of changes for the coding team (what is wrong, where, what the corrected result looks like), rewritten in full each time.`,
+    schema: HUMAN_REVIEW_SCHEMA
+  },
+
+  "human_review_reply": {
+    assigned_agent: "inspection_manager",
+    model_type: "view_img",
+    hoist_result_fields: ["human_message"],
+    // Deliberately terse: this prompt replays as a user turn on every later round, and
+    // the framing already replayed once from human_review_open.
+    instruction: `\
+The human replies:
+"""
+{human_message}
+"""
+
+(Same rules: ask one specific question if anything is unclear; when you understand everything, restate the agreed changes and set understanding_confirmed; keep fix_instructions complete and current; set scaffold_acceptable_as_is if the human is happy with the scaffold as drawn.)`,
+    schema: HUMAN_REVIEW_SCHEMA
+  },
+
+  // Utility (no_model): records what the human decided at the gate — accepted the
+  // scaffold, gave up, timed out, opened a correction round — so the coder,
+  // managers, final_reporter and error_handler can all see that a human intervened.
+  // {human_decision_text} is composed by the n8n gate-resolve node.
+  "log_human_decision": {
+    assigned_agent: "human_gate",
+    model_tier: "no_model",
+    instruction: "Record the human reviewer's decision into history.",
+    hoist_result_fields: ["human_decision_note", "human_decision_text"],
+    textResult: { human_decision_note: "{human_decision_text}" }
   },
 
   // --- STAGE 4: Advanced Image Generation ------------------------------------
@@ -2279,7 +2402,28 @@ const config = {
   // "cfg inject constraints" flag-composer never picks these up by accident.
   "retry_directive_library": {
     "plan_logic": DIRECTIVE_PLAN_RETRY,
-    "plan_finishing": DIRECTIVE_FINISHING_RETRY
+    "plan_finishing": DIRECTIVE_FINISHING_RETRY,
+    // Human-in-the-loop variants, selected by the n8n "Human corrections → reset
+    // retries" node: plan_logic_human replaces plan_logic's retry framing,
+    // inspection_human arms {human_priority_directives} for consolidate_inspection.
+    "plan_logic_human": DIRECTIVE_PLAN_RETRY_HUMAN,
+    "inspection_human": DIRECTIVE_INSPECTION_HUMAN
+  },
+
+  // === 🙋 HUMAN IN THE LOOP ===
+  // human_review_mode — "automatic" (never pause), "timeout" (pause after the machine
+  // inspection passes; proceed if the human hasn't clicked "Give corrections" within
+  // gate_seconds), "wait" (pause until the human answers). Comes from the frontend
+  // sidebar via the webhook field human_review_mode (Set Job must forward it). Read by
+  // the n8n "Human review?" and "Human available?" IF nodes.
+  // On the max-retries path a non-automatic mode ALWAYS asks the human (accept as is,
+  // give corrections, or give up) instead of failing; absent_minutes bounds every wait
+  // that isn't the gate_seconds window, so a human who walks away never stalls a run.
+  "human_review_mode": ["automatic", "timeout", "wait"].includes(items[0].json.human_review_mode)
+    ? items[0].json.human_review_mode : "automatic",
+  "human_review_timeouts": {
+    gate_seconds: 30,      // "timeout" mode: window to click "Give corrections" after a pass
+    absent_minutes: 10     // every other wait on the human (wait mode, conversation turns, max-retries rescue)
   },
 
   // === 📚 REGISTRIES (the flat ADK contract Node 1 reads) ===
@@ -2311,7 +2455,11 @@ return [{
     config: incoming.config || config,
     session_state: incoming.session_state || {
       original_query: incoming.original_query,
-      scaffolding_blueprint: "No scaffolding image, work purely from provided descriptions."
+      scaffolding_blueprint: "No scaffolding image, work purely from provided descriptions.",
+      // Templated into consolidate_inspection; "" until the n8n human-review reset node
+      // arms it with config.retry_directive_library.inspection_human. Seeded so the
+      // template never throws on an unattended run.
+      human_priority_directives: ""
       // NOTE: retry counters (coding/inspection/image_gen_retry_count) are NOT seeded
       // here and are NOT templated into any prompt — they exist only for n8n's
       // max-retry branching. Managers infer the attempt number from their own prior

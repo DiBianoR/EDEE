@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "frontend-demo",
+      "runtimeExecutable": "py",
+      "runtimeArgs": ["-3", "-m", "streamlit", "run", "ritel-frontend/app.py", "--server.port", "8501", "--server.headless", "true", "--browser.gatherUsageStats", "false", "--", "--demo"],
+      "port": 8501
+    }
+  ]
+}

@@ -3,6 +3,8 @@ from google.cloud import firestore, storage
 import os
 import json
 import base64
+import requests
+from datetime import datetime, timezone
 from google.oauth2 import service_account
 
 app = FastAPI()
@@ -104,6 +106,13 @@ async def update_state(request: Request):
         # and debug cross-check in the terminal block below.
         snapshot = top_level_data.pop("session_events", None)
 
+        # Human-in-the-loop gate state, written by the n8n "Human Gate" nodes alongside
+        # status "awaiting_human". Replaced WHOLESALE (update, not merge) so a closed
+        # gate can't leave a stale resume_url/deadline behind for the frontend to act on.
+        # Shape: { stage: gate|conversation|resuming|closed, reason, mode, resume_url,
+        #          deadline, wait_seconds, round, last_reply, understanding_confirmed }
+        human_review = top_level_data.pop("human_review", None)
+
         # 4. Append this turn's events to the WORKING transcript,
         #    `session_events_incremental` (exact ADK event shape — the final
         #    session_events.json is materialized from it verbatim).
@@ -115,6 +124,8 @@ async def update_state(request: Request):
             top_level_data["session_events_incremental"] = firestore.ArrayUnion(events)
 
         doc_ref.set(top_level_data, merge=True)
+        if human_review is not None:
+            doc_ref.update({"human_review": human_review})
 
         # 5. Terminal status ⇒ materialize the transcript into the bucket as
         #    {job_id}/session_events.json (formerly history.json, renamed with the
@@ -308,6 +319,77 @@ def archive_incremental(job_id: str):
     )
     return {"job_id": job_id, "archived": True, "events": len(transcript),
             "url": f"https://storage.googleapis.com/{BUCKET_NAME}/{path}"}
+
+
+HUMAN_ACTIONS = ("continue", "corrections", "message", "abort")
+
+
+@app.post("/human-decision/{job_id}")
+async def human_decision(job_id: str, request: Request):
+    """Relay a human's scaffolding-review decision to the paused n8n execution.
+
+    The pipeline pauses on an n8n Wait node and publishes the node's one-shot resume
+    URL in the job doc (`human_review.resume_url`, status "awaiting_human"). The
+    frontend never talks to n8n directly: it posts here, we validate that a gate is
+    actually open, stamp the decision on the doc so the UI reacts immediately, and
+    forward it to the resume URL. n8n then takes over and broadcasts as usual.
+
+    Body: { "action": "continue" | "corrections" | "message" | "abort",
+            "message": "<free text — required for 'message', optional otherwise>" }
+      continue     — the scaffold is fine (or, on the max-retries rescue, accept it as is)
+      corrections  — open the conversation (message optional; the first real message
+                     can follow as 'message')
+      message      — a conversation turn for the QA Inspection Manager
+      abort        — give up: the run ends as a clean failure
+    """
+    body = await request.json()
+    action = (body or {}).get("action")
+    message = str((body or {}).get("message") or "").strip()
+    if action not in HUMAN_ACTIONS:
+        raise HTTPException(status_code=400, detail=f"action must be one of {HUMAN_ACTIONS}")
+    if action == "message" and not message:
+        raise HTTPException(status_code=400, detail="'message' requires a non-empty message")
+    # Corrections typed straight into the first box arrive as a real message.
+    if action == "corrections" and message:
+        action = "message"
+
+    doc_ref = db.collection("job_states").document(job_id)
+    snap = doc_ref.get()
+    if not snap.exists:
+        raise HTTPException(status_code=404, detail=f"No state for job {job_id}")
+    state = snap.to_dict() or {}
+    gate = state.get("human_review") or {}
+    resume_url = gate.get("resume_url")
+    if state.get("status") != "awaiting_human" or not resume_url or gate.get("stage") in (None, "closed", "resuming"):
+        raise HTTPException(status_code=409, detail="No open human-review gate for this job (it may have timed out or already been answered)")
+
+    now = datetime.now(timezone.utc).isoformat()
+    decision = {"job_id": job_id, "action": action, "message": message, "decided_at": now,
+                "stage": gate.get("stage"), "round": gate.get("round", 0)}
+
+    # Optimistic update FIRST: the UI drops the gate the moment we accept the click,
+    # even if n8n takes a few seconds to resume and broadcast.
+    doc_ref.set({"status": "running", "timestamp": now,
+                 "human_decisions": firestore.ArrayUnion([decision])}, merge=True)
+    doc_ref.update({"human_review": {**gate, "stage": "resuming", "last_action": action,
+                                     "last_message": message, "resumed_at": now}})
+
+    try:
+        resp = requests.post(resume_url, json=decision, timeout=20)
+    except requests.RequestException as e:
+        doc_ref.set({"status": "awaiting_human"}, merge=True)   # roll back: the gate is still open
+        doc_ref.update({"human_review": gate})
+        raise HTTPException(status_code=502, detail=f"Could not reach the pipeline to resume it: {e}")
+
+    if resp.status_code == 404:
+        # The Wait already resumed (timeout) — nothing to do; n8n will broadcast shortly.
+        raise HTTPException(status_code=409, detail="The pipeline already moved on (the wait timed out before this decision arrived)")
+    if resp.status_code >= 400:
+        doc_ref.set({"status": "awaiting_human"}, merge=True)
+        doc_ref.update({"human_review": gate})
+        raise HTTPException(status_code=502, detail=f"Pipeline refused the resume call: HTTP {resp.status_code} {resp.text[:300]}")
+
+    return {"status": "resumed", "job_id": job_id, "action": action, "n8n_status": resp.status_code}
 
 
 @app.get("/")

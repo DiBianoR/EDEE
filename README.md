@@ -28,14 +28,30 @@ A separate **Global Error Handler** workflow catches crashes and unrecoverable l
 
 Retry loops are built in at several checkpoints — description review, code syntax/logic checks, and visual inspection — with retry caps and a deliberately lenient second-pass inspector to prevent infinite loops.
 
+## Human in the loop (scaffolding review)
+
+The person who launched the run can review the scaffolding after the AI inspectors have approved it, before the artist paints over it. The frontend sidebar offers three modes, sent to the pipeline as `human_review_mode`:
+
+| Mode | Inspectors approve the scaffold | Inspectors reject it three times |
+|---|---|---|
+| **Automatic** (default) | continue | fail, as before |
+| **Ask me, 30 s window** | pause 30 s; continue unless *Corrections* is clicked | ask the human (up to 10 min) instead of failing |
+| **Wait for me** | pause until the human answers (10 min cap) | ask the human (up to 10 min) instead of failing |
+
+At the gate the human can **Continue**, **Give up**, or **give corrections**. Corrections open a multi-turn conversation with the QA Inspection Manager (`human_review_open` / `human_review_reply`), which asks until it is confident it understands, then restates the changes and sends the coding team back through Phase 3 with all retry counters reset and the `[HUMAN IN THE LOOP]` directive armed: the human's requests outrank every inspector report, subordinate suggestion and the manager's own directives. Every new message resets the retries again; a human who walks away for 10 minutes lets the run proceed with whatever corrections were gathered. The human's messages and every gate decision are ordinary transcript events (`author: "user"`, `author: "human_gate"`), so the reports and the ZIP include them.
+
+Mechanically: an n8n **Wait** node pauses the execution and publishes its one-shot resume URL in the job doc (`status: "awaiting_human"`, `human_review{…}`); the frontend renders the gate and posts decisions to `ritel-state-manager` `/human-decision/{job_id}`, which validates that a gate is open and resumes the execution. The n8n nodes and wiring are documented in [`main_workflow_nodes/README.md`](main_workflow_nodes/README.md).
+
 ## Architecture
 
 ```
 Streamlit frontend ──► n8n cloud (Main Workflow)
-     ▲                      │
-     │                      ├─► Universal Agent Sub-Workflow ──► Gemini / OpenAI APIs
-     │                      ├─► render-matplotlib (Cloud Function) ──► scaffolding PNG
-     │                      └─► ritel-state-manager (Cloud Run)
+     ▲     │                │
+     │     │                ├─► Universal Agent Sub-Workflow ──► Gemini / OpenAI APIs
+     │     │                ├─► render-matplotlib (Cloud Function) ──► scaffolding PNG
+     │     │                ├─► ritel-state-manager (Cloud Run)  /update-state
+     │     │                │         │
+     │     └─ /human-decision ────────┼──► resumes the paused n8n Wait node
      │                                │
      └────── Firestore (job state, logs) + GCS bucket (images, history)
 ```
@@ -46,9 +62,9 @@ Streamlit frontend ──► n8n cloud (Main Workflow)
   2. *API Call* — provider switch (Google / OpenAI) with tiered models (`fast` / `medium` / `slow`) per task or agent.
   3. *Parse & Snowball* — parses the response and folds ("snowballs") results back into `session_state` and the event log for downstream agents.
 - **`config.js`** — the single source of truth for the whole agent system: agent identities, task instructions, output schemas, history scopes, model tiers, the model registry, and the style library. Tasks and agents are flat registries (ADK-style contract); a task points at its agent via `assigned_agent`, and `history_scope` is an explicit list of event authors each agent is allowed to see.
-- **`render-matplotlib/`** — a Google Cloud Function that executes the LLM-written matplotlib code and returns a PNG. It applies post-processing safeguards (strips axes/grids/ticks, enforces a strict 1:1 aspect ratio, adds margins, crops whitespace) so coder-agent mistakes can't ruin the render, and returns the raw Python traceback on failure so the reviewer agent can fix the code.
-- **`ritel-state-manager/`** — a FastAPI service (Cloud Run) that receives progress updates from the pipeline and persists job state and agent thought logs to Firestore, plus images and run history to a GCS bucket. `POST /update-state` is the write path (nodes 1 and 3 of the Universal Agent broadcast one event each per turn); `GET /summary/{job_id}` and `GET /transcript/{job_id}` serve job state live for consumers that need it after a crash, when nothing was written to the bucket; `POST /archive-incremental/{job_id}` copies the Firestore transcript into the bucket for consumers that need a link rather than a response body.
-- **`ritel-frontend/`** — a Streamlit app where a user submits a problem, watches the agents' live thought log while the job runs, and browses the results (scaffolding vs. final image carousel, downloadable job archive).
+- **`render-matplotlib/`** — a Google Cloud Function that executes the LLM-written matplotlib code and returns a PNG. It applies post-processing safeguards (strips axes/grids/ticks unless `keep_axes` is requested for graph problems, enforces a strict 1:1 aspect ratio, crops whitespace with no added border) so coder-agent mistakes can't ruin the render. The script runs in a single fresh namespace (helper functions see top-level imports), file/network/process modules are refused before execution, a script that draws nothing is an error, and failures come back as a line-annotated traceback so the reviewer agents can fix the code. Request fields: `code`, `keep_axes`, `square`, `dpi`, `transparent`.
+- **`ritel-state-manager/`** — a FastAPI service (Cloud Run) that receives progress updates from the pipeline and persists job state and agent thought logs to Firestore, plus images and run history to a GCS bucket. `POST /update-state` is the write path (nodes 1 and 3 of the Universal Agent broadcast one event each per turn); `GET /summary/{job_id}` and `GET /transcript/{job_id}` serve job state live for consumers that need it after a crash, when nothing was written to the bucket; `POST /archive-incremental/{job_id}` copies the Firestore transcript into the bucket for consumers that need a link rather than a response body; `POST /human-decision/{job_id}` relays a human reviewer's decision (`continue` / `corrections` / `message` / `abort`) to the paused n8n execution.
+- **`ritel-frontend/`** — a Streamlit app where a user submits a problem, watches the agents' colour-coded chain of thought live (one card per turn: instruction collapsed, response fields rendered, model/cost/time chips, phase dividers and a stage stepper), reviews the scaffolding when the pipeline pauses for them, and browses the results (scaffolding vs. final image carousel, downloadable job archive, reopen any job by ID). `streamlit run app.py -- --demo` replays a recorded transcript offline, including the review gate, with no GCP credentials.
 
 ## Repository layout
 
@@ -59,9 +75,10 @@ Universal Agent Sub-Workflow.json      n8n: reusable agent runner
 Load Config Sub-workflow.json          n8n: loads config.js into the workflow
 EDEE Global Error Handler.json         n8n: pipeline-wide error diagnosis
 universal_agent_*.js                   Source for the Universal Agent's three code nodes
+main_workflow_nodes/                   Human-review Code-node sources + the n8n change list (README)
 render-matplotlib/                     Cloud Function: sandboxed matplotlib rendering
 ritel-state-manager/                   Cloud Run: job state + artifact persistence
-ritel-frontend/                        Streamlit UI
+ritel-frontend/                        Streamlit UI (demo/ holds a recorded transcript for offline runs)
 agent_definitions.txt                  Editable agent definitions extracted from config.js
 generate_docs.py                       Extracts agent definitions from config.js → agent_definitions.txt
 publish_agents.py                      Pushes edited agent_definitions.txt back into config.js
@@ -84,4 +101,5 @@ python publish_agents.py   # agent_definitions.txt → config_updated.js
 
 - The n8n workflows run on n8n cloud; the frontend triggers a run via the `generate-diagram` webhook.
 - `render-matplotlib` deploys as a GCP Cloud Function (`functions-framework`); `ritel-state-manager` and `ritel-frontend` each have a Dockerfile for Cloud Run.
-- GCP credentials are supplied via the `FIRESTORE_KEY_JSON` environment variable (falls back to application-default credentials). The frontend reads `N8N_START_URL` and `API_KEY` from the environment.
+- GCP credentials are supplied via the `FIRESTORE_KEY_JSON` environment variable (falls back to application-default credentials). The frontend reads `N8N_START_URL`, `API_KEY` and `STATE_MANAGER_URL` from the environment.
+- Local frontend testing without GCP: `streamlit run ritel-frontend/app.py -- --demo` (put `MAXRETRY` or `FAIL` in the problem text to exercise the rescue gate or a failed run). `render-matplotlib/main.py` exposes `render_png()` for testing without the functions framework.

@@ -1,4 +1,5 @@
-streamlit
+streamlit>=1.50,<2
 requests
+pillow
 google-cloud-firestore
 google-cloud-storage
