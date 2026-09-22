@@ -62,6 +62,22 @@ User Feedback
   choose between scaffolding or final
   chance to give feedback after scaffolding, and again after final
   multiple(3) scaffolding images -> multiple final images
+  human review: 'Continue' and 'Give up' silently discard whatever is typed in the box
+    only Corrections/Send pass it - queue_action drops it in the browser, it never reaches the state manager or n8n
+    worst on Give up: that text usually says WHY they quit, which is what error_handler needs to explain the failure
+    fix: pass the text with every decision, append to human_decision_text so it lands in history as a human_gate event
+  human review: the user's requests never reach the artist, and phase 5 quietly reverts them
+    artist history_scope is [artist, issue_aggregator] - never sees the conversation, the fix_instructions, or the gate decision
+    latest_description is last written in phase 2 (merge_plans/review_description); scaffolding_blueprint once by design_scaffolding
+    the human rework loop re-enters at cfg18 (plan_logic), downstream of both, so neither text is ever updated
+    => an added object (say the user asks for a bear) survives as scaffold PIXELS ONLY; every text the artist reads omits it
+    review_math and aggregate_feedback judge the final image against those same stale texts, and Simplicity penalizes extraneous detail
+    => likely flagged, rejected, and the retry loop tells the artist to remove what the user asked for - and the user is never told
+    issue_aggregator does see inspection_manager's half of the conversation but not the user's turns; one side of a dialogue
+    fix A (preferred): manager rewrites latest_description when a request is visible in the final image, same pattern +
+      STRICT wording as customizable_product_planning; fixes the artist and all phase-5 reviewers at once, no new plumbing
+    fix B (lower risk): {human_requests} var seeded "" and armed only after a conversation, into plan_finishing + verifier
+      prompts (same idiom as {situational_directives} / {human_priority_directives}, costs nothing on unattended runs)
   
 🛠Empirical results - Would like 100 sample images of each sample problem, cost permitting. 10 of each is more realistic at current pricing.
   ✔Batch processing
