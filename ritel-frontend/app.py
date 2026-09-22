@@ -11,6 +11,7 @@ Run offline on dummy data:   streamlit run app.py -- --demo
 
 Environment: N8N_START_URL, API_KEY, STATE_MANAGER_URL, FIRESTORE_KEY_JSON (optional)
 """
+import base64
 import html
 import io
 import json
@@ -145,6 +146,18 @@ class GcpBackend:
         except Exception:
             return None
 
+    def get_blob_version(self, path):
+        """Current generation of the object, or None if it isn't there.
+
+        Metadata only — this is what makes a per-poll freshness check affordable, so we
+        can notice a new render without downloading the image every 1.5 seconds.
+        """
+        try:
+            blob = self.bucket.get_blob(path)
+            return str(blob.generation) if blob else None
+        except Exception:
+            return None
+
     def start_job(self, payload, env_choice):
         # 7-day TTL stub, written before the pipeline's first broadcast
         try:
@@ -158,19 +171,6 @@ class GcpBackend:
         r = requests.post(url, json=payload, headers={"x-api-key": API_KEY}, timeout=15)
         if r.status_code != 200:
             raise RuntimeError(f"n8n returned HTTP {r.status_code}: {r.text[:200]}")
-
-    def record_activity(self, job_id):
-        """Server-side activity ping, independent of the browser beacon.
-
-        Second path on purpose: the beacon needs the browser to reach the state manager
-        across origins, and when that is blocked or the deployment is stale it fails
-        invisibly. This one goes out from the app server, so a blur or Ctrl+Enter still
-        holds the gate open even with the beacon completely dead.
-        """
-        try:
-            requests.post(f"{self.activity_url}/{job_id}", timeout=10)
-        except requests.RequestException:
-            pass   # best effort: the gate simply keeps its shorter deadline
 
     def human_decision(self, job_id, action, message=""):
         r = requests.post(f"{STATE_MANAGER_URL}/human-decision/{job_id}",
@@ -293,6 +293,10 @@ class DemoBackend:
     def get_blob(self, path):
         job_id, _, name = path.partition("/")
         return self.images.get(job_id, {}).get(name)
+
+    def get_blob_version(self, path):
+        data = self.get_blob(path)
+        return str(len(data)) + ":" + str(hash(data)) if data else None
 
     def start_job(self, payload, env_choice):
         job_id = payload["job_id"]
@@ -493,6 +497,20 @@ for key, default in [("job_id", None), ("is_running", False), ("trigger_job", Fa
                      ("pending_action", None), ("img_cache", None), ("job_started_at", None), ("notice", None)]:
     st.session_state.setdefault(key, default)
 
+# --- SURVIVING A LOST SESSION ---------------------------------------------------------
+# The running job id also lives in the URL. Streamlit state is per-session and per-server
+# process: background a tab long enough for the websocket to drop, get reconnected to a
+# fresh session, or have the process restart under you, and st.session_state is empty —
+# the page comes back as a blank form with no sign that a job is still running somewhere.
+# The query parameter survives all three, so the page reattaches to its own job instead
+# of stranding it.
+if not st.session_state.job_id:
+    resumed = st.query_params.get("job")
+    if resumed:
+        st.session_state.job_id = resumed
+        st.session_state.is_running = True
+        st.session_state.job_started_at = time.time()
+
 st.markdown("""
 <style>
   .block-container { padding-top: 2.4rem !important; padding-bottom: 1rem; }
@@ -567,22 +585,6 @@ def submit_gate(msg_key):
     st.session_state.pending_action = ("message" if msg else "continue", msg)
 
 
-def note_activity():
-    """Blur / Ctrl+Enter in a gate text box counts as activity.
-
-    Backstop for the browser beacon. This path runs on the app server, so it still works
-    when the beacon is blocked, the deployment is stale, or the browser refuses the
-    cross-origin request. Not per-keystroke, but it means a draft you walked away from
-    mid-edit does not lose the gate the instant you click elsewhere.
-    """
-    job_id = st.session_state.get("job_id")
-    if job_id:
-        try:
-            get_backend().record_activity(job_id)
-        except Exception:  # noqa: BLE001 — a failed ping must never break the widget
-            pass
-
-
 def prev_image():
     st.session_state.carousel_idx -= 1
 
@@ -595,6 +597,7 @@ def open_job_callback():
     jid = (st.session_state.get("open_job_id") or "").strip()
     if jid:
         st.session_state.job_id = jid
+        st.query_params["job"] = jid
         st.session_state.is_running = True
         st.session_state.job_started_at = time.time()
         st.session_state.carousel_idx = 1
@@ -659,7 +662,12 @@ with col2:
 
 # --- HELPERS --------------------------------------------------------------------------
 def esc(s):
-    return html.escape(str(s), quote=False)
+    # "$" becomes &#36; because Streamlit renders $...$ as LaTeX math. Two dollars
+    # anywhere in one markdown block — two cost chips, or a word problem about prices —
+    # make everything between them vanish into a math span and spill the rest of the
+    # HTML onto the page as literal text. This is the single most destructive character
+    # we can hand that renderer, and agent output is full of it.
+    return html.escape(str(s), quote=False).replace("$", "&#36;")
 
 
 def parse_iso(ts):
@@ -755,7 +763,7 @@ def chips(ev):
         parts.append(f"<span class='chip model'>{esc(model)}</span>" if model != "none" else "<span class='chip none'>canned</span>")
     cost = ev.get("cost")
     if cost:
-        parts.append(f"<span class='chip cost'>${cost:.4f}</span>")
+        parts.append(f"<span class='chip cost'>&#36;{cost:.4f}</span>")
     parts.append(f"<span class='chip time'>{fmt_time(ev.get('timestamp'))}</span>")
     return "".join(parts)
 
@@ -843,7 +851,7 @@ def status_line(state, events):
     if elapsed is not None:
         bits.append(f"<span class='meta'>⏱ {fmt_duration(elapsed)}</span>")
     if cost is not None:
-        bits.append(f"<span class='meta'>💸 ${float(cost):.4f}</span>")
+        bits.append(f"<span class='meta'>💸 &#36;{float(cost):.4f}</span>")
     if events:
         bits.append(f"<span class='meta'>🧵 {len(events)} events</span>")
     return "<div style='display:flex;gap:14px;align-items:center;flex-wrap:wrap'>" + "".join(bits) + "</div>"
@@ -1004,7 +1012,7 @@ def render_human_panel(state, events):
                 st.markdown("<div class='gatebox'>🙋 <b>The inspectors approved this scaffolding.</b> "
                             "Anything to change before the artist paints over it? What you say "
                             "outranks every AI in the pipeline.</div>", unsafe_allow_html=True)
-            st.text_area("Your reply to the QA manager", key=f"msg_{sig}", height=90, on_change=note_activity,
+            st.text_area("Your reply to the QA manager", key=f"msg_{sig}", height=90,
                          placeholder="e.g. The two bags should be side by side, and the labels are too small.")
             st.caption("Describe any changes, ask a question, or say you want to stop. "
                        "**Leave it empty to accept the scaffolding as drawn.**")
@@ -1017,7 +1025,7 @@ def render_human_panel(state, events):
                 st.caption("Type what you'd like changed.")
             for who, text in turns[-6:]:
                 st.markdown(f"<div class='bubble {who}'><span class='tag'>{'You' if who == 'me' else 'QA manager'}</span>{esc(text)}</div>", unsafe_allow_html=True)
-            st.text_area("Your reply", key=f"msg_{sig}", height=90, on_change=note_activity)
+            st.text_area("Your reply", key=f"msg_{sig}", height=90)
             st.caption("**Leave it empty to move on** with what the manager already understood.")
         else:
             return
@@ -1058,29 +1066,54 @@ def render_countdown(state):
         unsafe_allow_html=True)
 
 
-def show_image(state):
-    """Keep the most recent render on screen, always.
+def paint_image(data, tag, caption=None):
+    """Draw the image as an inline data URI rather than through st.image.
 
-    Two different lifetimes are at work. The BYTES are cached in st.session_state so we
-    don't re-download the blob on every 1.5s poll. Whether the image is actually painted
-    is tracked in `_painted`, which resets with the script run exactly as the placeholder
-    does. There is no state in which this function knowingly leaves the panel blank.
+    st.image hands the bytes to Streamlit's media server and renders <img src="/media/…">.
+    That URL is served by the process that registered it and is reference-counted per
+    script run, so it can 404 into a broken-image icon after a rerun, a reconnect, or
+    (on Cloud Run) a request landing on a different instance. Inlining the bytes removes
+    the whole failure mode: once the markup is in the DOM there is nothing left to fetch.
+
+    `tag` identifies what is currently painted, so a repaint only happens when the image
+    genuinely changed — which matters because the data URI is large.
+    """
+    if _painted.get("image") == tag:
+        return
+    b64 = base64.b64encode(data).decode("ascii")
+    cap = f"<div class='meta' style='text-align:center;margin-top:4px'>{esc(caption)}</div>" if caption else ""
+    image_ui.markdown(
+        f"<img src='data:image/png;base64,{b64}' style='width:100%;border-radius:8px;display:block'>{cap}",
+        unsafe_allow_html=True)
+    _painted["image"] = tag
+
+
+def show_image(state):
+    """Keep the most recent render on screen, always, and never a stale one.
+
+    Freshness is decided by the object's GENERATION in the bucket, not by catching
+    `agent_id` at the right moment. The doc has one agent_id field that every broadcast
+    overwrites, so a render event that is followed by another turn inside the 1.5s poll
+    interval is simply never observed — and the panel then shows the previous scaffold
+    for the rest of the run, which is exactly the "it looks like it failed" symptom.
+    A generation check is one small metadata request and cannot be missed.
     """
     job_id = state.get("job_id") or st.session_state.job_id
     status = state.get("status")
     path = f"{job_id}/final_illustration.png" if status == "completed" else f"{job_id}/latest.png"
 
-    cached_path, data = st.session_state.get("img_cache") or (None, None)
-    # Re-fetch only when a newer render could plausibly exist, or we have nothing yet.
-    # Anything else reuses the cached bytes — but still paints them.
-    if data is None or cached_path != path or state.get("agent_id") in ("scaffolding_generator", "artist") or status == "completed":
-        fresh = backend.get_blob(path)
-        if fresh:
-            data, st.session_state.img_cache = fresh, (path, fresh)
-
-    if data is not None and _painted.get("image") != data:
-        image_ui.image(data, **IMG_FILL, caption="Latest render" if status != "completed" else None)
-        _painted["image"] = data
+    version = backend.get_blob_version(path)
+    cached = st.session_state.get("img_cache")            # (path, version, bytes)
+    if version and (not cached or cached[0] != path or cached[1] != version):
+        data = backend.get_blob(path)
+        if data:
+            cached = (path, version, data)
+            st.session_state.img_cache = cached
+    # A missing object (latest.png is deleted on completion) leaves the last good image
+    # up rather than blanking the panel.
+    if cached:
+        paint_image(cached[2], (cached[0], cached[1]),
+                    caption="Latest render" if status != "completed" else None)
 
 
 def draw_state(state):
@@ -1116,7 +1149,12 @@ def draw_state(state):
         countdown_ui.empty()
     if status != "completed":
         show_image(state)  # latest render (scaffolding, then the artist's attempts); the carousel takes over on completion
-    log_ui.markdown(build_log_html(events, state.get("agent_id")), unsafe_allow_html=True)
+    # Only repaint the log when it actually changed. It is one large HTML blob, and
+    # re-sending an identical one on every poll is a visible reflow for no reason.
+    log_html = build_log_html(events, state.get("agent_id"))
+    if _painted.get("log") != log_html:
+        log_ui.markdown(log_html, unsafe_allow_html=True)
+        _painted["log"] = log_html
     return events
 
 
@@ -1166,6 +1204,7 @@ if st.session_state.trigger_job:
         st.warning("Please enter a math problem or illustration request first.")
         st.stop()
     st.session_state.job_id = str(uuid.uuid4())
+    st.query_params["job"] = st.session_state.job_id   # so a dropped session can find it again
     st.session_state.job_started_at = time.time()
     st.session_state.carousel_idx = 1
     st.session_state.img_cache = None
@@ -1225,7 +1264,7 @@ if st.session_state.job_id:
                     path, label = images[st.session_state.carousel_idx]
                     data = backend.get_blob(path)
                     if data:
-                        image_ui.image(data, caption=label, **IMG_FILL)
+                        paint_image(data, (path, "carousel"), caption=label)
                     else:
                         image_ui.error("Image not found in storage.")
                     with carousel_ui.container():
