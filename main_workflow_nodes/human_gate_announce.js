@@ -66,22 +66,42 @@ const reason = input.human_reason
     || (stage === "gate" ? (session_state.passed_inspection === true ? "review" : "max_retries")
                          : ((latestRun("Human Gate: Announce") || {}).human_reason || "review"));
 
+const graceSeconds = (Number(timeouts.absent_minutes) || 10) * 60;
+
+// SLICE, not the whole budget. A Wait node's time limit is fixed when it starts, so a
+// running wait can never be extended. Instead each wait covers one slice; when it
+// lapses, "Human Gate: Resolve" checks the deadline that /human-activity keeps pushing
+// out and sends us round again if the human is demonstrably still there. So the opening
+// 30s of "timeout" mode is 30s OF SILENCE, and every other wait is "N minutes since the
+// last sign of life" rather than N minutes flat.
 let waitSeconds = (stage === "gate" && reason === "review" && mode === "timeout")
     ? Number(timeouts.gate_seconds) || 30
-    : (Number(timeouts.absent_minutes) || 10) * 60;
+    : graceSeconds;
+
+// Re-announce after activity: serve out what is left of the extended deadline instead
+// of starting a fresh full slice.
+if (input.human_extend_seconds) {
+    waitSeconds = Math.max(15, Math.min(graceSeconds, Math.round(Number(input.human_extend_seconds))));
+}
 
 const now = new Date();
+// opened_at survives extensions: the frontend keys its gate widgets on it, so a moving
+// deadline must NOT change it — re-keying would discard whatever the human has typed
+// so far, at precisely the moment they are typing it.
+const openedAt = input.human_opened_at || now.toISOString();
 const humanReview = {
     stage,
     reason,
     mode,
-    resume_url: $execution.resumeUrl,
+    resume_url: $execution.resumeUrl,          // fresh every slice; the listener reads it live
     deadline: new Date(now.getTime() + waitSeconds * 1000).toISOString(),
     wait_seconds: waitSeconds,
+    active_grace_seconds: graceSeconds,        // /human-activity extends to now + this
+    last_activity: input.human_last_activity ?? null,
     round,
     last_reply: session_state.reply_to_human ?? null,
     understanding_confirmed: session_state.understanding_confirmed === true,
-    opened_at: now.toISOString()
+    opened_at: openedAt
 };
 
 if (config.enable_gui_logging === true && config.gui_webhook_url) {
@@ -117,5 +137,6 @@ return [{ json: {
     human_reason: reason,
     human_round: round,
     human_wait_seconds: waitSeconds,   // ← "Human Gate: Wait" reads this: {{ $json.human_wait_seconds }}
-    human_deadline: humanReview.deadline
+    human_deadline: humanReview.deadline,
+    human_opened_at: openedAt          // carried through extensions, for the widget keys
 } }];

@@ -2426,9 +2426,14 @@ const config = {
   // that isn't the gate_seconds window, so a human who walks away never stalls a run.
   "human_review_mode": ["automatic", "timeout", "wait"].includes(items[0].json.human_review_mode)
     ? items[0].json.human_review_mode : "automatic",
+  // Both are measured from the last sign of life, not from when the gate opened: the
+  // review UI beacons on typing and clicks, POST /human-activity pushes the gate's
+  // deadline out, and the workflow opens another wait slice instead of lapsing. So
+  // gate_seconds is a window of SILENCE, and a human who starts typing inside it gets
+  // absent_minutes to finish.
   "human_review_timeouts": {
-    gate_seconds: 30,      // "timeout" mode: window to click "Give corrections" after a pass
-    absent_minutes: 10     // every other wait on the human (wait mode, conversation turns, max-retries rescue)
+    gate_seconds: 30,      // "timeout" mode: how long a pass sits untouched before proceeding
+    absent_minutes: 10     // how long we keep waiting after the human's last keystroke
   },
 
   // === 📚 REGISTRIES (the flat ADK contract Node 1 reads) ===

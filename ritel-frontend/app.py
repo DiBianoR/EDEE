@@ -24,6 +24,7 @@ from datetime import datetime, timedelta, timezone
 
 import requests
 import streamlit as st
+import streamlit.components.v1 as components
 
 # --- CONFIGURATION -----------------------------------------------------------
 N8N_START_URL = os.environ.get("N8N_START_URL", "https://edee.app.n8n.cloud/webhook/generate-diagram")
@@ -55,8 +56,8 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 STYLE_OPTIONS = ["casual_mobile", "storybook", "cel_shaded_anime", "claymation_diorama", "mid_century_modern"]
 REVIEW_MODES = {
     "automatic": ("Automatic", "Never pause. The pipeline paints over the scaffolding as soon as the inspectors approve it."),
-    "timeout": ("Ask me, 30 s window", "After the inspectors approve the scaffolding you get 30 seconds to click Give corrections; otherwise it proceeds."),
-    "wait": ("Wait for me", "Pause on the approved scaffolding until you answer (moves on by itself if you're away for 10 minutes)."),
+    "timeout": ("Ask me, 30 s to react", "Pauses on the approved scaffolding and moves on after 30 seconds of **no activity**. Start typing and it waits for you instead, as if you'd picked *Wait for me*."),
+    "wait": ("Wait for me", "Pauses on the approved scaffolding until you answer. It only gives up after 10 minutes with no typing or clicking, so you can take as long as you need."),
 }
 
 # --- AGENT PRESENTATION -------------------------------------------------------
@@ -118,6 +119,7 @@ class GcpBackend:
             self.db = firestore.Client(project=GCP_PROJECT, database=FIRESTORE_DB)
             client = storage.Client(project=GCP_PROJECT)
         self.bucket = client.bucket(BUCKET_NAME)
+        self.activity_url = f"{STATE_MANAGER_URL}/human-activity"
 
     def get_doc(self, job_id):
         snap = self.db.collection("job_states").document(job_id).get()
@@ -173,6 +175,60 @@ class DemoBackend:
         self.final = self._make_final(self.scaffold)
         self.docs, self.images, self.gates = {}, {}, {}
         self.lock = threading.Lock()
+        self.activity_url = self._serve_activity()
+
+    def _serve_activity(self):
+        """Loopback stand-in for the state manager's POST /human-activity.
+
+        Worth the twenty lines: without it the activity beacon could only be tested
+        against real GCP, and the whole point of demo mode is that the interesting paths
+        are exercised offline.
+        """
+        from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+        backend = self
+
+        class Handler(BaseHTTPRequestHandler):
+            def do_POST(self):
+                backend.record_activity(self.path.rstrip("/").rsplit("/", 1)[-1])
+                self.send_response(204)
+                self.send_header("Access-Control-Allow-Origin", "*")
+                self.end_headers()
+
+            def log_message(self, *args):
+                pass   # keep the beacon out of the Streamlit console
+
+        srv = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+        threading.Thread(target=srv.serve_forever, daemon=True).start()
+        return f"http://127.0.0.1:{srv.server_port}/human-activity"
+
+    def record_activity(self, job_id):
+        """Mirror of the state manager's beacon handler: push the deadline out."""
+        with self.lock:
+            doc = self.docs.get(job_id)
+            if not doc or doc.get("status") != "awaiting_human":
+                return
+            hr = doc.get("human_review") or {}
+            if hr.get("stage") not in ("gate", "conversation"):
+                return
+            now = datetime.now(timezone.utc)
+            deadline = now + timedelta(seconds=int(hr.get("active_grace_seconds") or 600))
+            opened = hr.get("opened_at")
+            if opened:
+                try:
+                    deadline = min(deadline, datetime.fromisoformat(opened) + timedelta(minutes=30))
+                except ValueError:
+                    pass
+            current = hr.get("deadline")
+            if current:
+                try:
+                    deadline = max(deadline, datetime.fromisoformat(current))
+                except ValueError:
+                    pass
+            # NB: the doc `timestamp` is deliberately untouched, exactly as the real
+            # endpoint leaves it — a beacon must not look like a pipeline event and
+            # trigger a full redraw of the log.
+            hr.update({"last_activity": now.isoformat(), "deadline": deadline.isoformat()})
+            doc["human_review"] = hr
 
     @staticmethod
     def _make_final(scaffold_png):
@@ -249,17 +305,28 @@ class DemoBackend:
             d["task_id"] = ev.get("task")
             d["timestamp"] = ev["timestamp"]
 
-    def _wait_for_human(self, job_id, reason, mode, stage="gate", round_=0, last_reply=None, confirmed=False):
-        wait = 30 if (mode == "timeout" and reason == "review" and stage == "gate") else 600
+    def _wait_for_human(self, job_id, reason, mode, stage="gate", round_=0, last_reply=None,
+                        confirmed=False, opened_at=None):
+        grace = 600
+        wait = 30 if (mode == "timeout" and reason == "review" and stage == "gate") else grace
         deadline = datetime.now(timezone.utc) + timedelta(seconds=wait)
         gate = self.gates[job_id]
         gate["event"].clear()
         gate["decision"] = None
         self._update(job_id, status="awaiting_human", human_review={
             "stage": stage, "reason": reason, "mode": mode, "resume_url": "demo://resume",
-            "deadline": deadline.isoformat(), "wait_seconds": wait, "round": round_,
-            "last_reply": last_reply, "understanding_confirmed": confirmed, "opened_at": _now_iso()})
-        gate["event"].wait(timeout=wait)
+            "deadline": deadline.isoformat(), "wait_seconds": wait, "active_grace_seconds": grace,
+            "last_activity": None, "round": round_, "last_reply": last_reply,
+            "understanding_confirmed": confirmed, "opened_at": opened_at or _now_iso()})
+        # Re-read the deadline as we go instead of sleeping for a fixed span: record_activity
+        # pushes it out while the human types. This is the demo's stand-in for the n8n
+        # slice-and-re-announce loop, and it gives the same observable behaviour.
+        while True:
+            with self.lock:
+                current = (self.docs[job_id].get("human_review") or {}).get("deadline")
+            remaining = (datetime.fromisoformat(current) - datetime.now(timezone.utc)).total_seconds() if current else 0
+            if remaining <= 0 or gate["event"].wait(timeout=min(remaining, 0.5)):
+                break
         decision = gate["decision"] or ("timeout", "")
         self._update(job_id, status="running", human_review={"stage": "closed", "reason": reason, "last_action": decision[0]})
         return decision
@@ -478,7 +545,7 @@ with st.sidebar:
     style_choice = st.selectbox("Style", STYLE_OPTIONS)
     review_mode = st.radio("Human review of the scaffolding", list(REVIEW_MODES), index=0,
                            format_func=lambda k: REVIEW_MODES[k][0],
-                           help="The scaffolding is the mathematically exact base diagram. After the AI inspectors approve it you can look it over and talk to the QA manager before the artist paints over it. If the inspectors give up on it, any mode other than Automatic asks you instead of failing.")
+                           help="The scaffolding is the mathematically exact base diagram. After the AI inspectors approve it you can look it over and talk to the QA manager before the artist paints over it. Both waiting modes watch for typing and clicks, so you are never cut off mid-sentence. If the inspectors give up on the scaffolding, any mode other than Automatic asks you instead of failing.")
     st.caption(REVIEW_MODES[review_mode][1])
     with st.expander("Speed / cost caps"):
         max_text_tier = st.selectbox("Max text model tier", ["slow", "medium", "fast"], help="Caps the strongest text model any agent may use.")
@@ -488,6 +555,10 @@ with st.sidebar:
         st.button("Open", on_click=open_job_callback, **BTN_FILL)
 
 backend = get_backend()
+# Where the browser-side activity beacon posts. Each backend supplies its own: the real
+# one points at the state manager, the demo one at a loopback server it runs itself, so
+# the same JS path is exercised either way.
+ACTIVITY_URL = getattr(backend, "activity_url", None)
 
 # --- HEADER --------------------------------------------------------------------------
 st.markdown("<div class='edee-title'>📐 EDEE — Educational Diagram Generator</div>"
@@ -506,6 +577,7 @@ with col1:
     agent_ui = st.empty()
     human_ui = st.empty()
     countdown_ui = st.empty()
+    beacon_ui = st.empty()   # zero-height: carries the activity listener, draws nothing
     image_ui = st.empty()
     carousel_ui = st.empty()
     notes_ui = st.empty()
@@ -725,7 +797,62 @@ def conversation_from_events(events):
 
 
 def gate_signature(hr):
-    return f"{hr.get('stage')}|{hr.get('round', 0)}|{hr.get('deadline')}"
+    # Keyed on opened_at, NOT the deadline. Typing pushes the deadline out (see
+    # activity_beacon), and the gate's widgets are keyed on this signature — keying on a
+    # moving deadline would rebuild the text area and discard a half-typed message at
+    # exactly the moment the human is typing it. opened_at is carried across extensions
+    # by "Human Gate: Announce" and changes only when a genuinely new gate opens.
+    return f"{hr.get('stage')}|{hr.get('round', 0)}|{hr.get('opened_at') or hr.get('deadline')}"
+
+
+def activity_beacon(job_id, sig):
+    """Tell the backend the human is still here, so the gate waits for them.
+
+    Streamlit gives no keystroke-level signal: a text area only reports on blur, and
+    while the poll loop is running the script isn't re-executing anyway. So this drops a
+    listener on the parent document and pings a throttled beacon, which the state
+    manager turns into "push the deadline out" (see POST /human-activity).
+
+    Fire-and-forget by design: mode "no-cors" keeps it a simple request with no preflight
+    and no CORS configuration, and nothing reads the reply. A blocked or failed beacon
+    just means the gate keeps its original, shorter deadline.
+    """
+    if not ACTIVITY_URL:
+        return
+    components.html(f"""<script>
+(function () {{
+  const KEY = {json.dumps(str(sig))};
+  const URL = {json.dumps(f"{ACTIVITY_URL}/{job_id}")};
+  const p = window.parent;
+  // Re-wiring for a new gate silently retires the previous gate's listeners: they stay
+  // attached to the parent document (this iframe gets torn down, they don't), so they
+  // check the key before firing instead of pinging for a gate that has closed.
+  if (p.__edeeGate === KEY) return;
+  p.__edeeGate = KEY;
+  if (!p.__edeeWired) {{
+    p.__edeeWired = true;
+    let last = 0;
+    const ping = () => {{
+      if (!p.__edeeGate) return;
+      const now = Date.now();
+      if (now - last < 4000) return;   // one beacon per 4s of continuous activity
+      last = now;
+      try {{ fetch(p.__edeeUrl, {{ method: "POST", mode: "no-cors", keepalive: true }}); }} catch (e) {{}}
+    }};
+    // Typing first, as asked: keydown covers normal entry, input covers paste and IME.
+    // click is included because it is deliberate (unlike mouse drift) and reaching for
+    // the text box should plainly count as "I'm here".
+    ["keydown", "input", "click"].forEach(e => p.document.addEventListener(e, ping, true));
+  }}
+  p.__edeeUrl = URL;
+}})();
+</script>""", height=0)
+
+
+def stop_activity_beacon():
+    """Retire the listeners once no gate is open, so idle clicking stops pinging."""
+    if ACTIVITY_URL:
+        components.html("<script>window.parent.__edeeGate = null;</script>", height=0)
 
 
 def render_human_panel(state, events):
@@ -780,7 +907,16 @@ def render_countdown(state):
         return
     left = (deadline - datetime.now(timezone.utc)).total_seconds()
     what = "the run fails" if hr.get("reason") == "max_retries" and hr.get("stage") == "gate" else "the pipeline moves on by itself"
-    countdown_ui.markdown(f"<div class='meta'>⏳ <span class='countdown'>{fmt_duration(left)}</span> until {what}.</div>", unsafe_allow_html=True)
+    if left <= 0:
+        # The slice lapsed; the pipeline is deciding whether the human is still active.
+        countdown_ui.markdown("<div class='meta'>⏳ Checking whether you're still there…</div>", unsafe_allow_html=True)
+        return
+    # Once we've seen activity the clock is "time since you last did something", which is
+    # worth saying: the 30-second window in timeout mode has quietly become ten minutes.
+    note = " Typing keeps this topped up." if hr.get("last_activity") else ""
+    countdown_ui.markdown(
+        f"<div class='meta'>⏳ <span class='countdown'>{fmt_duration(left)}</span> until {what}.{note}</div>",
+        unsafe_allow_html=True)
 
 
 def show_image(state):
@@ -815,11 +951,15 @@ def draw_state(state):
         if sig != st.session_state.last_gate_sig:
             st.session_state.last_gate_sig = sig
             render_human_panel(state, events)
+            with beacon_ui.container():
+                activity_beacon(state.get("job_id") or st.session_state.job_id, sig)
         render_countdown(state)
     else:
         if st.session_state.last_gate_sig is not None:
             st.session_state.last_gate_sig = None
             human_ui.empty()
+            with beacon_ui.container():
+                stop_activity_beacon()
         countdown_ui.empty()
     if status != "completed":
         show_image(state)  # latest render (scaffolding, then the artist's attempts); the carousel takes over on completion

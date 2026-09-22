@@ -323,6 +323,68 @@ def archive_incremental(job_id: str):
 
 HUMAN_ACTIONS = ("continue", "corrections", "message", "abort")
 
+# A human who is demonstrably still working never gets cut off mid-sentence, but a
+# runaway beacon with nobody behind it must not hold an execution open forever.
+MAX_GATE_MINUTES = 30        # hard ceiling measured from when the gate opened
+ACTIVITY_WRITE_DEBOUNCE = 2  # seconds; the UI throttles too, this just bounds the writes
+
+
+def _parse_iso(value):
+    try:
+        return datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+    except (ValueError, TypeError):
+        return None
+
+
+@app.post("/human-activity/{job_id}")
+def human_activity(job_id: str):
+    """Beacon from the review UI: the human is typing or clicking, so push the gate's
+    deadline out rather than letting it lapse.
+
+    This is the whole of the "is anyone there?" mechanism. The pipeline pauses on an
+    n8n Wait node whose time limit is fixed when it starts, so a running wait cannot be
+    extended in place. Instead the wait runs in slices: when one lapses, the workflow
+    reads the deadline this endpoint maintains, and if it now sits in the future it
+    opens another slice instead of giving up. The effect is "the gate closes N minutes
+    after the last sign of life", with the 30-second opening window in `timeout` mode
+    becoming 30 seconds *of silence* rather than 30 seconds flat.
+
+    Deliberately cheap and forgiving: no body, no auth beyond the job id, and a no-op
+    (never an error) when no gate is open. The UI sends it with fetch(mode:"no-cors")
+    and never reads the reply, so a failed beacon costs nothing but a shorter wait.
+    """
+    doc_ref = db.collection("job_states").document(job_id)
+    snap = doc_ref.get()
+    if not snap.exists:
+        return {"extended": False, "reason": "unknown job"}
+    state = snap.to_dict() or {}
+    gate = state.get("human_review") or {}
+    if state.get("status") != "awaiting_human" or gate.get("stage") not in ("gate", "conversation"):
+        return {"extended": False, "reason": "no open gate"}
+
+    now = datetime.now(timezone.utc)
+    last = _parse_iso(gate.get("last_activity"))
+    if last and (now - last).total_seconds() < ACTIVITY_WRITE_DEBOUNCE:
+        return {"extended": False, "reason": "debounced"}
+
+    grace = int(gate.get("active_grace_seconds") or 600)
+    deadline = now + timedelta(seconds=grace)
+    opened = _parse_iso(gate.get("opened_at"))
+    if opened:
+        deadline = min(deadline, opened + timedelta(minutes=MAX_GATE_MINUTES))
+    current = _parse_iso(gate.get("deadline"))
+    if current and current > deadline:
+        deadline = current   # never shorten a wait that was already longer
+
+    # Dotted paths, not a read-modify-write of the whole block: a gate that closes
+    # underneath us then gets overwritten wholesale by the next announce, instead of
+    # this beacon resurrecting a stale resume_url.
+    doc_ref.update({
+        "human_review.last_activity": now.isoformat(),
+        "human_review.deadline": deadline.isoformat(),
+    })
+    return {"extended": True, "deadline": deadline.isoformat()}
+
 
 @app.post("/human-decision/{job_id}")
 async def human_decision(job_id: str, request: Request):

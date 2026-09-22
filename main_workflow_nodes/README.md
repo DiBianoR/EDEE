@@ -103,9 +103,10 @@ New pieces, all in Phase 3 of the Main Workflow, between `inspections passed?` a
    ⚠️ The live node currently differs from the repo in one line —
    `"provider_by_type": { ..., img2img: "openai" }` — the repo says `google`. Re-apply
    whichever you want after pasting.
-2. **`ritel-state-manager`** — redeploy (new `POST /human-decision/{job_id}` endpoint and
-   wholesale replacement of `human_review` on `/update-state`; `requests` added to
-   requirements).
+2. **`ritel-state-manager`** — redeploy. Two new endpoints: `POST /human-decision/{job_id}`
+   (relays a decision to the paused execution) and `POST /human-activity/{job_id}` (the
+   typing beacon that extends an open gate's deadline). Also wholesale replacement of
+   `human_review` on `/update-state`; `requests` added to requirements.
 3. **`render-matplotlib`** — redeploy (single-namespace exec, `keep_axes` / `square` /
    `dpi` request fields, sandbox import guard, line-numbered errors, "drew nothing" error).
 4. **`ritel-frontend`** — redeploy (Python 3.12 image, Streamlit ≥ 1.50; sends
@@ -153,6 +154,11 @@ Node names matter: the Code nodes reach back by name (`Human Gate: Announce`,
 On webhook resume the node outputs the request (`{headers, params, query, body}`);
 on timeout it passes the Announce item through. `Human Gate: Resolve` handles both.
 
+⚠️ `human_wait_seconds` is **one slice, not the whole budget.** A Wait node's limit is
+fixed when it starts, so a running wait can never be extended. Activity detection
+therefore works by letting a short slice lapse and going round again: see §3.6's
+`extend` output.
+
 ### 3.5 `Human Gate: Resolve` — Code (Run Once for All Items)
 
 * Paste [`human_gate_resolve.js`](human_gate_resolve.js).
@@ -161,16 +167,26 @@ on timeout it passes the Announce item through. `Human Gate: Resolve` handles bo
 
 ### 3.6 `Human decision` — Switch (v3, rules mode)
 
-Six rules, all `={{ $json.human_action }}` *string equals*, each renamed output:
+Seven rules, all `={{ $json.human_action }}` *string equals*, each renamed output:
 
 | Output key | Goes to |
 |---|---|
 | `message` | `cfg human review` |
 | `corrections` | `Human Gate: Announce` |
+| `extend` | `Human Gate: Announce` |
 | `continue` | `Human outcome` |
 | `rework` | `Human outcome` |
 | `fail` | `Human outcome` |
 | `abort` | `Human outcome` |
+
+`extend` is the activity loop. When a slice lapses, Resolve asks the state manager for
+the gate's current deadline; `POST /human-activity` has been pushing that deadline out
+on every keystroke, so a deadline still in the future means the human is mid-thought and
+we open another slice instead of deciding for them. The effect is that the 30-second
+window in `timeout` mode is 30 seconds **of silence**, and every other wait is "ten
+minutes since the last sign of life" rather than ten minutes flat. It terminates on its
+own: the deadline only moves while someone is actually typing, and the state manager
+caps a single gate at `MAX_GATE_MINUTES` (30) regardless.
 
 ### 3.7 `cfg human review` — Set (Include Other Fields: on)
 
@@ -280,6 +296,7 @@ Human available?  [true]  → Human Gate: Announce      [false] → cfg53
 Human Gate: Announce → Human Gate: Wait → Human Gate: Resolve → Human decision
 Human decision [message]     → cfg human review → inspection_manager - human_review → Manager understood?
 Human decision [corrections] → Human Gate: Announce
+Human decision [extend]      → Human Gate: Announce      (activity loop: another slice)
 Human decision [continue|rework|fail|abort] → Human outcome
 Manager understood? [true] → Human outcome            [false] → Human Gate: Announce
 Human outcome → cfg log human decision → human_gate - log_human_decision → After human log
@@ -322,9 +339,17 @@ inside it changes.
 
 * [ ] Load Config: run the Main Workflow manually (`Mock Input1`, query 3) with
       `human_review_mode` absent → run completes exactly as before (no gate).
-* [ ] Frontend, mode *Ask me, 30 s window*: after the inspectors pass, the frontend shows
+* [ ] Frontend, mode *Ask me, 30 s to react*: after the inspectors pass, the frontend shows
       the gate with a 0:30 countdown and the scaffold; do nothing → run continues and the
       transcript has a `human_gate` note "did not respond within 30s".
+* [ ] Same mode, but start typing in the corrections box before the 30 s elapses: the
+      countdown jumps to ~10:00, the note "Typing keeps this topped up" appears, the gate
+      survives well past 30 s, and the half-typed text is **not** cleared when the
+      deadline moves. (That last part is what `opened_at` keying protects — a regression
+      here wipes the message mid-sentence.) Watch for `extend` firing in the n8n
+      execution: one `Human Gate: Announce` run per slice.
+* [ ] Block the beacon (dev tools offline, or a bad `STATE_MANAGER_URL`): the gate falls
+      back to the plain 30 s / 10 min deadline rather than hanging or erroring.
 * [ ] Mode *Wait for me*: click **Corrections**, type a change, **Send** → a `[user]`
       event and an `inspection_manager · human_review_open` reply appear in the log; answer
       its question → `understanding_confirmed` → coding loop re-runs with counters at 0
@@ -345,6 +370,8 @@ inside it changes.
 frontend ──(webhook: human_review_mode)──► Set Job ─► Load Config (config.human_review_mode)
 n8n Announce ──POST /update-state {status: awaiting_human, human_review{resume_url,…}}──► ritel-state-manager ─► Firestore
 frontend ◄──poll Firestore doc──  shows gate / countdown / conversation
+frontend ──POST /human-activity/{job_id} (throttled, on keydown/input/click)──► pushes human_review.deadline out
+n8n slice lapses → Resolve reads that deadline → still in the future? → "extend" → Announce opens another slice
 frontend ──POST /human-decision/{job_id} {action, message}──► ritel-state-manager ──POST resume_url──► n8n Wait resumes
 n8n Resolve → (agents run, node 1/3 broadcast as usual; prompt author "user") → Announce again or Archive Scaffolding
 ```

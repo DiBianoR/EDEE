@@ -42,7 +42,7 @@ const latestRun = (nodeName) => {
 const announced = latestRun("Human Gate: Announce");
 if (!announced) throw new Error("Human Gate: Resolve — no output from 'Human Gate: Announce' found");
 const { config, session_state, session_events, human_stage: stage, human_reason: reason,
-        human_round: round, human_wait_seconds: waitSeconds } = announced;
+        human_round: round, human_wait_seconds: waitSeconds, human_opened_at: openedAt } = announced;
 
 const incoming = items[0].json || {};
 const body = incoming.body && typeof incoming.body === "object" ? incoming.body : null;
@@ -50,6 +50,47 @@ let action = body && body.action ? String(body.action).toLowerCase() : "timeout"
 const message = body && body.message ? String(body.message).trim() : "";
 if (action === "corrections" && message) action = "message";
 const timedOut = action === "timeout";
+
+// === ⏱️ STILL THERE? ===
+// The slice lapsed. /human-activity has been pushing the gate's deadline out on every
+// keystroke, so a deadline still in the future means the human is mid-thought: open
+// another slice rather than deciding for them. Only asked on the timeout branch, and
+// only when a human could plausibly be present.
+let extendSeconds = 0;
+let lastActivity = null;
+if (timedOut && (config.human_review_mode || "automatic") !== "automatic") {
+    try {
+        const summary = await this.helpers.httpRequest({
+            method: "GET",
+            url: `${config.gui_webhook_url.replace(/\/update-state$/, "")}/summary/${config.job_id}`,
+            json: true,
+            timeout: 10000
+        });
+        const gate = summary?.human_review || {};
+        lastActivity = gate.last_activity ?? null;
+        const remaining = (new Date(gate.deadline).getTime() - Date.now()) / 1000;
+        if (gate.last_activity && Number.isFinite(remaining) && remaining > 5) {
+            extendSeconds = remaining;
+        }
+    } catch (e) {
+        // Unreachable listener: fall through and time out normally. Waiting longer on
+        // the strength of a lookup we could not perform would be the wrong default.
+        console.error("Activity check failed, treating the wait as expired:", e.message);
+    }
+}
+
+if (extendSeconds) {
+    return [{ json: {
+        config, session_state, session_events,
+        human_action: "extend",
+        human_stage: stage,
+        human_reason: reason,
+        human_round: round,
+        human_opened_at: openedAt,
+        human_last_activity: lastActivity,
+        human_extend_seconds: extendSeconds
+    } }];
+}
 
 const heldCorrections = round > 0 && session_state.scaffold_acceptable_as_is !== true;
 const minutes = Math.round((waitSeconds || 0) / 60);
@@ -94,5 +135,8 @@ return [{ json: {
     human_stage: outcome === "corrections" ? "conversation" : stage,   // corrections click → Announce opens the conversation
     human_reason: reason,
     human_round: round,
+    // A corrections click reopens the SAME gate as a conversation, so the frontend's
+    // widgets should survive the transition; a decision that ends the gate does not care.
+    human_opened_at: outcome === "corrections" ? openedAt : null,
     human_decision_text: note
 } }];
