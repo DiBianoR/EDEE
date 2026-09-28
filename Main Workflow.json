@@ -487,7 +487,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const results = [];\n\nfor (let i = 0; i < items.length; i++) {\n  // 1. Force n8n to read the file from disk\n  const binaryBuffer = await this.helpers.getBinaryDataBuffer(i, 'data');\n  \n  // 2. Convert to Base64\n  const base64String = binaryBuffer.toString('base64');\n  const mimeType = items[i].binary.data.mimeType;\n\n  // 3. Construct the exact same output JSON to preserve downstream compatibility\n  const outputJson = {\n    ...items[i].json, \n    base64_img_string: base64String,\n    base64_img_string_mime: mimeType\n  };\n\n  results.push({ json: outputJson });\n\n  // 4. 📡 GUI PROGRESS BROADCAST (Fire & Forget)\n  const config = outputJson.config || {};\n  if (config.enable_gui_logging === true && config.gui_webhook_url) {\n      try {\n          const firestorePayload = {\n              job_id: config.job_id, \n              phase_id: outputJson.PHASE_ID || \"3\", \n              agent_id: \"scaffolding_generator\", \n              status: \"running\",\n              timestamp: new Date().toISOString(),\n              base64_img_string: base64String\n          };\n\n          await this.helpers.httpRequest({\n              method: 'POST',\n              url: config.gui_webhook_url,\n              headers: { 'Content-Type': 'application/json' },\n              body: firestorePayload,\n              json: true,\n              timeout: 1500 \n          });\n      } catch (e) { \n          // Ignore timeouts/errors so the pipeline continues to Phase 4\n      }\n  }\n}\n\nreturn results;"
+        "jsCode": "const results = [];\n\nfor (let i = 0; i < items.length; i++) {\n  // 1. Force n8n to read the file from disk\n  const binaryBuffer = await this.helpers.getBinaryDataBuffer(i, 'data');\n  \n  // 2. Convert to Base64\n  const base64String = binaryBuffer.toString('base64');\n  const mimeType = items[i].binary.data.mimeType;\n\n  // 3. Construct the exact same output JSON to preserve downstream compatibility\n  const outputJson = {\n    ...items[i].json, \n    base64_img_string: base64String,\n    base64_img_string_mime: mimeType\n  };\n\n  results.push({ json: outputJson });\n\n  // 4. 📡 GUI PROGRESS BROADCAST (Fire & Forget)\n  const config = outputJson.config || {};\n  if (config.enable_gui_logging === true && config.gui_webhook_url) {\n      try {\n          const firestorePayload = {\n              job_id: config.job_id, \n              phase_id: outputJson.PHASE_ID || \"3\", \n              agent_id: \"scaffolding_generator\", \n              status: \"running\",\n              timestamp: new Date().toISOString(),\n              base64_img_string: base64String\n          };\n\n          await this.helpers.httpRequest({\n              method: 'POST',\n              url: config.gui_webhook_url,\n              headers: { 'Content-Type': 'application/json' },\n              body: firestorePayload,\n              json: true,\n              timeout: 5000 \n          });\n      } catch (e) { \n          // Ignore timeouts/errors so the pipeline continues to Phase 4\n      }\n  }\n}\n\nreturn results;"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -508,6 +508,10 @@
             {
               "name": "code",
               "value": "={{ $json.python_code }}"
+            },
+            {
+              "name": "keep_axes",
+              "value": "={{ $json.session_state.needs_graph_planning === true }}"
             }
           ]
         },
@@ -3730,6 +3734,12 @@
               "name": "max_image_tier",
               "value": "={{ $json.body?.max_image_tier || $json?.max_image_tier }}",
               "type": "string"
+            },
+            {
+              "id": "6116e099-2cd5-475b-acd2-e2117f0e777c",
+              "name": "human_review_mode",
+              "value": "={{ $json.body?.human_review_mode || $json?.human_review_mode || \"automatic\" }}",
+              "type": "string"
             }
           ]
         },
@@ -5715,7 +5725,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// === 🐛 CFG INJECT EXECUTION ERROR ===\nconst inputData = items[0].json;\n\n// 1. Extract the specific error\nlet errorText = \"Unknown Error\";\nif (inputData.error) {\n    if (inputData.error.message) {\n        errorText = inputData.error.message;\n    } else if (inputData.error.response && inputData.error.response.data) {\n        const rawData = inputData.error.response.data;\n        errorText = typeof rawData === 'object' ? JSON.stringify(rawData) : rawData.toString();\n    }\n}\n\n// 2. Format the Multiline Context\nconst formattedError = `While attempting to execute python code:\n*** PYTHON RUNTIME ERROR ***\nThe code crashed with this error:\n${errorText}`;\n\n// 3. Clean Payload (Remove raw error object)\nconst cleanData = { ...inputData };\ndelete cleanData.error; \n\n// 4. Set routing for the Global Error Injector\nreturn [{\n    json: {\n        ...cleanData,\n        PHASE_ID: \"3\",\n        AGENT_ID: \"review_manager\",\n        TASK_ID: \"log_error\",\n        error_text: formattedError // The UA will swap this into $error_text\n    }\n}];"
+        "jsCode": "// === 🐛 CFG INJECT EXECUTION ERROR ===\nconst inputData = items[0].json;\n\n// 1. Extract the specific error\nlet errorText = \"Unknown Error\";\nif (inputData.error) {\n    if (inputData.error.message) {\n        errorText = inputData.error.message;\n    } else if (inputData.error.response && inputData.error.response.data) {\n        const rawData = inputData.error.response.data;\n        errorText = typeof rawData === 'object' ? JSON.stringify(rawData) : rawData.toString();\n    } else if (inputData.error.description) { errorText = inputData.error.description; }\n}\n\n// 2. Format the Multiline Context\nconst formattedError = `While attempting to execute python code:\n*** PYTHON RUNTIME ERROR ***\nThe code crashed with this error:\n${errorText}`;\n\n// 3. Clean Payload (Remove raw error object)\nconst cleanData = { ...inputData };\ndelete cleanData.error; \n\n// 4. Set routing for the Global Error Injector\nreturn [{\n    json: {\n        ...cleanData,\n        PHASE_ID: \"3\",\n        AGENT_ID: \"review_manager\",\n        TASK_ID: \"log_error\",\n        error_text: formattedError // The UA will swap this into $error_text\n    }\n}];"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -6284,7 +6294,7 @@
             {
               "id": "b1a7c3d2-0e64-4a19-8f55-2d9b7c1e0a31",
               "name": "query_index",
-              "value": 1,
+              "value": 3,
               "type": "number"
             },
             {
@@ -7047,6 +7057,706 @@
       ],
       "id": "57fa1329-0222-42b9-a4aa-3ffd01f28e97",
       "name": "product_scout - detect_customizable_products"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "d3f3583b-94f4-47be-a766-9b8a4f64c2fc",
+              "leftValue": "={{ $json.config.human_review_mode !== 'automatic' }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        2672,
+        480
+      ],
+      "id": "102968a0-b204-4d7e-9b47-a72929745cd8",
+      "name": "Human review?"
+    },
+    {
+      "parameters": {
+        "jsCode": "// =============================================================================\n// 🙋 HUMAN GATE: ANNOUNCE  (Code node, \"Run Once for All Items\")\n//\n// Publishes the scaffolding-review gate to the job doc (status \"awaiting_human\" +\n// a `human_review` block the frontend renders) and hands the following Wait node\n// its time limit. No image rides along: the human is looking at {job_id}/latest.png,\n// which \"Prepare for Vision\" already broadcast when it rendered this very scaffold.\n// ⚠️ That broadcast is therefore LOAD-BEARING for the review — see the note on its\n//    timeout in main_workflow_nodes/README.md §5.\n// Sits in front of \"Human Gate: Wait\"; three edges feed it:\n//   • \"Human review?\" / \"Human available?\"  — fresh gate after the machine verdict\n//   • \"Human decision\" [corrections]         — the human clicked Give corrections\n//                                              without typing anything yet\n//   • \"Manager understood?\" [false]          — the manager asked a question; wait\n//                                              for the human's answer\n//\n// STAGE   gate          the human may continue / give corrections / give up\n//         conversation  a message round with the QA Inspection Manager\n// REASON  review        the inspectors PASSED the scaffold (normal gate)\n//         max_retries   the inspectors gave up on it; the human is the rescue\n// WAIT    gate+review in \"timeout\" mode → config.human_review_timeouts.gate_seconds\n//         everything else                → absent_minutes × 60 (\"human walked away\")\n//\n// The listener must be told about the gate, or waiting is pointless — but a dead\n// listener must not hang the run for ten minutes either, so on a failed POST the\n// wait collapses to one second and \"Human Gate: Resolve\" sees an ordinary timeout.\n//\n// ⚠️ $execution.resumeUrl is the ONE-SHOT resume URL of the Wait node that follows.\n//    The frontend never calls it directly: ritel-state-manager /human-decision does.\n// ⚠️ NEVER reach back by name with a bare .first()/.last()/.all() — see the\n//    latestRun() note in \"Archive Scaffolding\". Same helper, same reason.\n// =============================================================================\n\nconst latestRun = (nodeName) => {\n    let latest = null;\n    for (let run = 0; run < 50; run++) {\n        let data;\n        try { data = $(nodeName).all(0, run); }\n        catch (e) { break; }\n        if (data && data.length) latest = data[data.length - 1].json;\n    }\n    return latest;\n};\n\nconst input = items[0].json;\nconst { config, session_state, session_events } = input;\nif (!config || !session_state || !session_events) {\n    throw new Error(\"Human Gate: Announce — missing config / session_state / session_events on the incoming item\");\n}\n\nconst mode = config.human_review_mode || \"automatic\";\nconst timeouts = config.human_review_timeouts || { gate_seconds: 30, absent_minutes: 10 };\n\n// Rounds so far = manager replies in the human_review conversation (no counter state).\nconst round = session_events.filter(e => e.author === \"inspection_manager\" && String(e.task || \"\").startsWith(\"human_review\")).length;\n\n// Stage: explicit from \"Human Gate: Resolve\" (corrections click), else inferred —\n// straight after a human_review reply we are mid-conversation; otherwise it's a gate.\nconst lastEvent = session_events[session_events.length - 1] || {};\nconst midConversation = lastEvent.author === \"inspection_manager\" && String(lastEvent.task || \"\").startsWith(\"human_review\");\nconst stage = input.human_stage || (midConversation ? \"conversation\" : \"gate\");\n\n// Reason: on a fresh gate the machine verdict decides; inside a conversation keep\n// whatever the gate was opened with.\nconst reason = input.human_reason\n    || (stage === \"gate\" ? (session_state.passed_inspection === true ? \"review\" : \"max_retries\")\n                         : ((latestRun(\"Human Gate: Announce\") || {}).human_reason || \"review\"));\n\nconst graceSeconds = (Number(timeouts.absent_minutes) || 10) * 60;\n\n// SLICE, not the whole budget. A Wait node's time limit is fixed when it starts, so a\n// running wait can never be extended. Instead each wait covers one slice; when it\n// lapses, \"Human Gate: Resolve\" checks the deadline that /human-activity keeps pushing\n// out and sends us round again if the human is demonstrably still there. So the opening\n// 30s of \"timeout\" mode is 30s OF SILENCE, and every other wait is \"N minutes since the\n// last sign of life\" rather than N minutes flat.\nlet waitSeconds = (stage === \"gate\" && reason === \"review\" && mode === \"timeout\")\n    ? Number(timeouts.gate_seconds) || 30\n    : graceSeconds;\n\n// Re-announce after activity: serve out what is left of the extended deadline instead\n// of starting a fresh full slice.\nif (input.human_extend_seconds) {\n    waitSeconds = Math.max(15, Math.min(graceSeconds, Math.round(Number(input.human_extend_seconds))));\n}\n\nconst now = new Date();\n// opened_at survives extensions: the frontend keys its gate widgets on it, so a moving\n// deadline must NOT change it — re-keying would discard whatever the human has typed\n// so far, at precisely the moment they are typing it.\nconst openedAt = input.human_opened_at || now.toISOString();\nconst humanReview = {\n    stage,\n    reason,\n    mode,\n    resume_url: $execution.resumeUrl,          // fresh every slice; the listener reads it live\n    deadline: new Date(now.getTime() + waitSeconds * 1000).toISOString(),\n    wait_seconds: waitSeconds,\n    active_grace_seconds: graceSeconds,        // /human-activity extends to now + this\n    last_activity: input.human_last_activity ?? null,\n    round,\n    last_reply: session_state.reply_to_human ?? null,\n    understanding_confirmed: session_state.understanding_confirmed === true,\n    opened_at: openedAt\n};\n\nif (config.enable_gui_logging === true && config.gui_webhook_url) {\n    try {\n        await this.helpers.httpRequest({\n            method: \"POST\",\n            url: config.gui_webhook_url,\n            headers: { \"Content-Type\": \"application/json\" },\n            body: {\n                job_id: config.job_id,\n                status: \"awaiting_human\",\n                timestamp: now.toISOString(),\n                phase_id: \"3\",\n                agent_id: \"inspection_manager\",\n                task_id: stage === \"gate\" ? \"human_review_gate\" : \"human_review_conversation\",\n                human_review: humanReview\n                // NO image: \"Prepare for Vision\" already broadcast this very render, so\n                // {job_id}/latest.png is current and the frontend is already showing it.\n                // Re-sending the base64 would just be a second full-size copy per gate.\n            },\n            json: true,\n            timeout: 15000\n        });\n    } catch (e) {\n        console.error(\"Human gate could not be announced — skipping the wait:\", e.message);\n        waitSeconds = 1;\n    }\n}\n\nreturn [{ json: {\n    config, session_state, session_events,\n    human_stage: stage,\n    human_reason: reason,\n    human_round: round,\n    human_wait_seconds: waitSeconds,   // ← \"Human Gate: Wait\" reads this: {{ $json.human_wait_seconds }}\n    human_deadline: humanReview.deadline,\n    human_opened_at: openedAt          // carried through extensions, for the widget keys\n} }];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2816,
+        464
+      ],
+      "id": "5814b067-9cc4-4a7c-8e22-21455c66fb9f",
+      "name": "Human Gate: Announce"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "d3f3583b-94f4-47be-a766-9b8a4f64c2fc",
+              "leftValue": "={{ $json.config.human_review_mode !== 'automatic' }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        2672,
+        704
+      ],
+      "id": "2efc59d5-f412-46c4-8a01-81779eb94032",
+      "name": "Human available?"
+    },
+    {
+      "parameters": {
+        "resume": "webhook",
+        "httpMethod": "POST",
+        "limitWaitTime": true,
+        "resumeAmount": "={{ $json.human_wait_seconds }}",
+        "resumeUnit": "seconds",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        2992,
+        464
+      ],
+      "id": "4c9fbbb0-77fd-4cfe-ad37-053d15aa6865",
+      "name": "Human Gate: Wait",
+      "webhookId": "3e9ce26a-5361-4479-952d-bd605c68f5c4"
+    },
+    {
+      "parameters": {
+        "jsCode": "// =============================================================================\n// 🙋 HUMAN GATE: RESOLVE  (Code node, \"Run Once for All Items\")\n//\n// Runs right after \"Human Gate: Wait\" and normalizes the two ways a Wait node can\n// resume into ONE item for the \"Human decision\" Switch:\n//   • resumed by webhook  → items[0].json is the request ({headers, params, query,\n//                           body}); body = what ritel-state-manager /human-decision\n//                           forwarded: { action, message, job_id, decided_at, ... }\n//   • time limit reached  → items[0].json is our own Announce item passed through\n//                           (no `body`) — the human did not answer\n//\n// Output (top-level, for the Switch and the cfg nodes downstream):\n//   human_action   continue | message | corrections | rework | fail | abort\n//   human_message  the human's text (message rounds)\n//   human_stage / human_reason / human_round  — echoed from Announce\n//   human_decision_text — the note log_human_decision writes into history\n//\n// DECISION TABLE (stage / reason / what came back → action)\n//   gate         continue            → continue   (accept as drawn; on max_retries: accept anyway)\n//   gate         corrections (empty) → corrections (open the conversation, wait for text)\n//   gate/conv    corrections + text  → message\n//   conv         message             → message\n//   any          abort               → abort\n//   gate review  timeout             → continue   (the \"30 s then automatic\" mode, or absent human)\n//   gate max_r.  timeout             → fail       (nobody rescued it — same outcome as no human)\n//   conv         continue / timeout  → rework if the manager already holds corrections\n//                                      (round ≥ 1 and scaffold not marked acceptable),\n//                                      else continue / fail exactly as the gate would\n// =============================================================================\n\nconst latestRun = (nodeName) => {\n    let latest = null;\n    for (let run = 0; run < 50; run++) {\n        let data;\n        try { data = $(nodeName).all(0, run); }\n        catch (e) { break; }\n        if (data && data.length) latest = data[data.length - 1].json;\n    }\n    return latest;\n};\n\nconst announced = latestRun(\"Human Gate: Announce\");\nif (!announced) throw new Error(\"Human Gate: Resolve — no output from 'Human Gate: Announce' found\");\nconst { config, session_state, session_events, human_stage: stage, human_reason: reason,\n        human_round: round, human_wait_seconds: waitSeconds, human_opened_at: openedAt } = announced;\n\nconst incoming = items[0].json || {};\nconst body = incoming.body && typeof incoming.body === \"object\" ? incoming.body : null;\nlet action = body && body.action ? String(body.action).toLowerCase() : \"timeout\";\nconst message = body && body.message ? String(body.message).trim() : \"\";\nif (action === \"corrections\" && message) action = \"message\";\nconst timedOut = action === \"timeout\";\n\n// === ⏱️ STILL THERE? ===\n// The slice lapsed. /human-activity has been pushing the gate's deadline out on every\n// keystroke, so a deadline still in the future means the human is mid-thought: open\n// another slice rather than deciding for them. Only asked on the timeout branch, and\n// only when a human could plausibly be present.\nlet extendSeconds = 0;\nlet lastActivity = null;\nif (timedOut && (config.human_review_mode || \"automatic\") !== \"automatic\") {\n    try {\n        const summary = await this.helpers.httpRequest({\n            method: \"GET\",\n            url: `${config.gui_webhook_url.replace(/\\/update-state$/, \"\")}/summary/${config.job_id}`,\n            json: true,\n            timeout: 10000\n        });\n        const gate = summary?.human_review || {};\n        lastActivity = gate.last_activity ?? null;\n        const remaining = (new Date(gate.deadline).getTime() - Date.now()) / 1000;\n        if (gate.last_activity && Number.isFinite(remaining) && remaining > 5) {\n            extendSeconds = remaining;\n        }\n    } catch (e) {\n        // Unreachable listener: fall through and time out normally. Waiting longer on\n        // the strength of a lookup we could not perform would be the wrong default.\n        console.error(\"Activity check failed, treating the wait as expired:\", e.message);\n    }\n}\n\nif (extendSeconds) {\n    return [{ json: {\n        config, session_state, session_events,\n        human_action: \"extend\",\n        human_stage: stage,\n        human_reason: reason,\n        human_round: round,\n        human_opened_at: openedAt,\n        human_last_activity: lastActivity,\n        human_extend_seconds: extendSeconds\n    } }];\n}\n\nconst heldCorrections = round > 0 && session_state.scaffold_acceptable_as_is !== true;\nconst minutes = Math.round((waitSeconds || 0) / 60);\nconst failedTimes = (session_state.inspection_retry_count || (announced.session_state || {}).inspection_retry_count || 3);\n\nlet outcome, note = \"\";\nswitch (action) {\n    case \"message\":\n    case \"corrections\":\n        outcome = action;                       // no history note: the conversation IS the record\n        break;\n    case \"abort\":\n        outcome = \"abort\";\n        note = \"The human reviewer chose to stop the run at the scaffolding review.\";\n        break;\n    default: {                                  // continue | timeout\n        if (stage === \"conversation\" && heldCorrections) {\n            outcome = \"rework\";\n            note = timedOut\n                ? `The human reviewer gave corrections but stopped answering (${minutes} min); proceeding with the corrections gathered so far. Retry counters reset.`\n                : `The human reviewer gave corrections and asked us to proceed. The QA Inspection Manager's fix_instructions carry them. Retry counters reset.`;\n        } else if (reason === \"max_retries\" && timedOut) {\n            outcome = \"fail\";\n            note = `The scaffolding failed inspection repeatedly and the human reviewer did not respond within ${minutes} min.`;\n        } else if (reason === \"max_retries\") {\n            outcome = \"continue\";\n            note = \"The scaffolding failed inspection repeatedly; the human reviewer chose to accept it as it is and continue.\";\n        } else if (timedOut) {\n            outcome = \"continue\";\n            note = `The human reviewer was offered a review of the approved scaffolding and did not respond within ${waitSeconds}s; proceeding automatically.`;\n        } else {\n            outcome = \"continue\";\n            note = \"The human reviewer looked at the approved scaffolding and accepted it as drawn.\";\n        }\n    }\n}\n\nreturn [{ json: {\n    config, session_state, session_events,\n    human_action: outcome,\n    human_message: message,\n    human_stage: outcome === \"corrections\" ? \"conversation\" : stage,   // corrections click → Announce opens the conversation\n    human_reason: reason,\n    human_round: round,\n    // A corrections click reopens the SAME gate as a conversation, so the frontend's\n    // widgets should survive the transition; a decision that ends the gate does not care.\n    human_opened_at: outcome === \"corrections\" ? openedAt : null,\n    human_decision_text: note\n} }];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3152,
+        464
+      ],
+      "id": "ec243865-2cea-4133-abaf-8e757d06ebd7",
+      "name": "Human Gate: Resolve"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.human_action }}",
+                    "rightValue": "message",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "31c5222b-a4ca-4e59-b27c-2717b4d95255"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "message"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "7a60e6e8-deff-4981-919c-33a568b35926",
+                    "leftValue": "={{ $json.human_action }}",
+                    "rightValue": "corrections",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "corrections"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "bf04c1a6-6b13-46c3-9798-3554295b2b19",
+                    "leftValue": "={{ $json.human_action }}",
+                    "rightValue": "continue",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "continue"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "772d2a3b-defa-4e7e-aa62-c55c10f679af",
+                    "leftValue": "={{ $json.human_action }}",
+                    "rightValue": "rework",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "rework"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "55b0a84a-becd-42e0-8926-fa6d849f3ef2",
+                    "leftValue": "={{ $json.human_action }}",
+                    "rightValue": "fail",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "fail"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "41f563a6-d6ac-45eb-88f8-6c6a26d0a3f0",
+                    "leftValue": "={{ $json.human_action }}",
+                    "rightValue": "abort",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "abort"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        3296,
+        400
+      ],
+      "id": "a6ba228d-fa7f-4973-b1d2-b585968bcba6",
+      "name": "Human decision"
+    },
+    {
+      "parameters": {
+        "jsCode": "// =============================================================================\n// 🙋 HUMAN OUTCOME  (Code node, \"Run Once for All Items\")\n//\n// Funnel for every way the human review can END. Two kinds of item arrive:\n//   • from \"Human decision\" (continue | rework | fail | abort): the Resolve item,\n//     which already carries human_action + human_decision_text — passed through.\n//   • from \"Manager understood?\" [true]: the Universal Agent's output after a\n//     human_review_* turn. The manager's verdict decides:\n//         user_wants_to_stop        → abort\n//         scaffold_acceptable_as_is → continue      else → rework\n//\n// The human has ONE box and ONE button, so there is no approve/reject/cancel control\n// to read: the manager infers the intent from what they wrote and expresses it in\n// these flags. That is why abort can arrive from here rather than only from a click.\n//\n// Everything then goes: → cfg log human decision → human_gate - log_human_decision\n// → \"After human log\" (Switch on $('Human outcome').item.json.human_action), which\n// reads THIS node's output because the Universal Agent call in between returns only\n// { config, session_state, session_events } and drops top-level fields.\n// =============================================================================\n\nconst input = items[0].json;\nconst { config, session_state, session_events } = input;\nif (!config || !session_state || !session_events) {\n    throw new Error(\"Human outcome — missing config / session_state / session_events on the incoming item\");\n}\n\nlet action = input.human_action;\nlet note = input.human_decision_text || \"\";\n\nif (!action) {\n    const round = session_events.filter(e => e.author === \"inspection_manager\" && String(e.task || \"\").startsWith(\"human_review\")).length;\n    // Order matters: stopping is checked first, because a human who asked to stop has\n    // overridden every other reading of what they wrote.\n    if (session_state.user_wants_to_stop === true) {\n        action = \"abort\";\n        note = `The human reviewer asked to stop the run at the scaffolding review, after ${round} exchange(s). The QA Inspection Manager read that as a request to abandon rather than to correct.`;\n    } else if (session_state.scaffold_acceptable_as_is === true) {\n        action = \"continue\";\n        note = `After ${round} exchange(s) the human reviewer confirmed the scaffolding is fine as drawn.`;\n    } else {\n        action = \"rework\";\n        note = `The human reviewer gave corrections (${round} exchange(s)); the QA Inspection Manager confirmed it understands them and relayed them as fix_instructions. Retry counters reset; redrawing the scaffolding.`;\n    }\n}\n\nreturn [{ json: {\n    config, session_state, session_events,\n    human_action: action,                 // continue | rework | fail | abort\n    human_decision_text: note,            // templated by log_human_decision ({human_decision_text})\n    human_round: input.human_round ?? null\n} }];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3488,
+        544
+      ],
+      "id": "2d4ae605-be99-43d3-ae59-ee26bd949654",
+      "name": "Human outcome"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "03ad2143-530c-4ca7-b8d9-c389eb51a105",
+              "name": "PHASE_ID",
+              "value": "3",
+              "type": "string"
+            },
+            {
+              "id": "dfb3159d-4310-4809-a9b2-088a67de01eb",
+              "name": "AGENT_ID",
+              "value": "inspection_manager",
+              "type": "string"
+            },
+            {
+              "id": "9c25f69a-c39f-44d3-865d-049af8055228",
+              "name": "TASK_ID",
+              "value": "={{ $json.session_events.filter(e => e.author === 'inspection_manager' && String(e.task).startsWith('human_review')).length > 0 ? 'human_review_reply' : 'human_review_open' }}",
+              "type": "string"
+            },
+            {
+              "id": "49774691-2c14-4dd1-be44-43c47a0524eb",
+              "name": "prompt_author",
+              "value": "user",
+              "type": "string"
+            },
+            {
+              "id": "c1313704-de37-4313-b723-741d4c7d2025",
+              "name": "human_message",
+              "value": "={{ $json.human_message }}",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        3520,
+        192
+      ],
+      "id": "8bab86ac-eb2b-435a-9f72-0d0e8c06a429",
+      "name": "cfg human review"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "UReLQDgBIPpb9P4f",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/UReLQDgBIPpb9P4f",
+          "cachedResultName": "EDEE — Universal Agent Sub-Workflow"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        3680,
+        192
+      ],
+      "id": "01015b6a-9bd6-45f3-ae49-95df9c42b075",
+      "name": "inspection_manager - human_review"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "50d47f3e-f87c-4800-843b-130e66e0f6e2",
+              "leftValue": "={{ $json.session_state.understanding_confirmed === true }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        3872,
+        192
+      ],
+      "id": "d8f99cc0-7c15-4c85-bf15-d43ae477ce61",
+      "name": "Manager understood?"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "b6f67093-af22-441f-8cc4-614ef666b3d4",
+              "name": "PHASE_ID",
+              "value": "3",
+              "type": "string"
+            },
+            {
+              "id": "63d91186-fde9-419f-90eb-2925807a4b09",
+              "name": "AGENT_ID",
+              "value": "human_gate",
+              "type": "string"
+            },
+            {
+              "id": "d185b6a8-ed52-4e91-b0e8-8eaddf685e56",
+              "name": "TASK_ID",
+              "value": "log_human_decision",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        3648,
+        544
+      ],
+      "id": "238fe4c4-82bd-4d41-ba20-8753f9e76d05",
+      "name": "cfg log human decision"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "UReLQDgBIPpb9P4f",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/UReLQDgBIPpb9P4f",
+          "cachedResultName": "EDEE — Universal Agent Sub-Workflow"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        3824,
+        544
+      ],
+      "id": "738ab427-1fe6-45d4-b7e9-40db592b889c",
+      "name": "human_gate - log_human_decision"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $('Human outcome').item.json.human_action }}",
+                    "rightValue": "continue",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "11b4aeb4-20d5-4ca2-a353-6bdfe3c9aa8f"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "continue"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "53ed9a14-40f2-43c4-8912-222eeb8c2d56",
+                    "leftValue": "={{ $('Human outcome').item.json.human_action }}",
+                    "rightValue": "rework",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "rework"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "ad52b21f-87e7-412d-b688-b15a28acc2b6",
+                    "leftValue": "={{ $('Human outcome').item.json.human_action }}",
+                    "rightValue": "fail",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "fail"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "554d3e18-e153-414a-b09d-58df68009900",
+                    "leftValue": "={{ $('Human outcome').item.json.human_action }}",
+                    "rightValue": "abort",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "abort"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        4000,
+        512
+      ],
+      "id": "8fbcb58a-8baa-40f6-9f18-60188050811b",
+      "name": "After human log"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "50b2b2b7-9eb1-42e2-beb8-33f52afadeb3",
+              "name": "coding_retry_count",
+              "value": 0,
+              "type": "number"
+            },
+            {
+              "id": "792e02c1-7c1f-4a69-9339-509631d31207",
+              "name": "execution_retry_count",
+              "value": 0,
+              "type": "number"
+            },
+            {
+              "id": "e8842979-0d13-4037-afd6-e1103e8972fc",
+              "name": "inspection_retry_count",
+              "value": 0,
+              "type": "number"
+            },
+            {
+              "id": "48f0dac4-f4ff-4beb-a027-19f3759cb3f8",
+              "name": "retry_directives",
+              "value": "={{ $json.config.retry_directive_library.plan_logic_human }}",
+              "type": "string"
+            },
+            {
+              "id": "f703e3b9-90e3-4f04-9c30-32a4154580dd",
+              "name": "human_priority_directives",
+              "value": "={{ $json.config.retry_directive_library.inspection_human }}",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        4208,
+        400
+      ],
+      "id": "f8608cbb-717b-4d8d-bfa7-7a03066314e0",
+      "name": "Human corrections → reset retries"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "748fb80f-23e2-4aaa-89d2-7c90b40fdfc9",
+              "name": "PHASE_ID",
+              "value": "-",
+              "type": "string"
+            },
+            {
+              "id": "93b67161-3571-4b70-8e84-6ea4aa17bef0",
+              "name": "AGENT_ID",
+              "value": "error_handler",
+              "type": "string"
+            },
+            {
+              "id": "d748da49-d92e-4cf1-a8b1-74baa24728eb",
+              "name": "TASK_ID",
+              "value": "report_error",
+              "type": "string"
+            },
+            {
+              "id": "3a505c9e-e32d-43f7-804f-1daa4714fc80",
+              "name": "error",
+              "value": "UserAborted",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        4176,
+        592
+      ],
+      "id": "b64ed7f4-c3f1-44ae-b72b-f60b9c2f9821",
+      "name": "cfg human abort"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "UReLQDgBIPpb9P4f",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/UReLQDgBIPpb9P4f",
+          "cachedResultName": "EDEE — Universal Agent Sub-Workflow"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        4336,
+        592
+      ],
+      "id": "3748274d-9996-44bf-a679-b2eb48e010f1",
+      "name": "error_handler - report_error7"
     }
   ],
   "connections": {
@@ -8729,14 +9439,14 @@
       "main": [
         [
           {
-            "node": "Archive Scaffolding",
+            "node": "Human review?",
             "type": "main",
             "index": 0
           }
         ],
         [
           {
-            "node": "cfg53",
+            "node": "Human available?",
             "type": "main",
             "index": 0
           }
@@ -9113,6 +9823,248 @@
         [
           {
             "node": "If Highly Customizable Products",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Human review?": {
+      "main": [
+        [
+          {
+            "node": "Human Gate: Announce",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Archive Scaffolding",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Human Gate: Announce": {
+      "main": [
+        [
+          {
+            "node": "Human Gate: Wait",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Human available?": {
+      "main": [
+        [
+          {
+            "node": "Human Gate: Announce",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "cfg53",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Human Gate: Wait": {
+      "main": [
+        [
+          {
+            "node": "Human Gate: Resolve",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Human Gate: Resolve": {
+      "main": [
+        [
+          {
+            "node": "Human decision",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Human decision": {
+      "main": [
+        [
+          {
+            "node": "cfg human review",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Human Gate: Announce",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Human outcome",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Human outcome",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Human outcome",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Human outcome",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Human outcome": {
+      "main": [
+        [
+          {
+            "node": "cfg log human decision",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "cfg human review": {
+      "main": [
+        [
+          {
+            "node": "inspection_manager - human_review",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "inspection_manager - human_review": {
+      "main": [
+        [
+          {
+            "node": "Manager understood?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Manager understood?": {
+      "main": [
+        [
+          {
+            "node": "Human outcome",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Human Gate: Announce",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "cfg log human decision": {
+      "main": [
+        [
+          {
+            "node": "human_gate - log_human_decision",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "human_gate - log_human_decision": {
+      "main": [
+        [
+          {
+            "node": "After human log",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "After human log": {
+      "main": [
+        [
+          {
+            "node": "Archive Scaffolding",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Human corrections → reset retries",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "cfg53",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "cfg human abort",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Human corrections → reset retries": {
+      "main": [
+        [
+          {
+            "node": "cfg18",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "cfg human abort": {
+      "main": [
+        [
+          {
+            "node": "error_handler - report_error7",
             "type": "main",
             "index": 0
           }
