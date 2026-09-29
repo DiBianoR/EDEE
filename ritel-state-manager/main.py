@@ -65,8 +65,8 @@ async def update_state(request: Request):
         if base64_img:
             image_data = base64.b64decode(base64_img)
             if status == "completed":
-                final_path = f"{job_id}/final_illustration.png"
-                blob = bucket.blob(final_path)
+                live_name = "final_illustration.png"
+                blob = bucket.blob(f"{job_id}/{live_name}")
                 blob.upload_from_string(image_data, content_type=mime_type)
 
                 # Delete the temporary running image to save space
@@ -74,9 +74,22 @@ async def update_state(request: Request):
                 if latest_blob.exists():
                     latest_blob.delete()
             else:
-                latest_path = f"{job_id}/latest.png"
-                blob = bucket.blob(latest_path)
+                live_name = "latest.png"
+                blob = bucket.blob(f"{job_id}/{live_name}")
                 blob.upload_from_string(image_data, content_type=mime_type)
+
+            # Announce WHICH image is current and WHICH version of it, on the doc the
+            # frontend already polls every tick. Every render mid-run — each scaffold
+            # attempt and each artist attempt — overwrites the SAME object, latest.png, so
+            # a new image is a new generation of an existing file, never a new file. Only
+            # the writer knows for certain that happened, so the writer says so: a
+            # durable field that changes exactly when the image changes, cannot be missed
+            # between polls, and costs the frontend no extra bucket request to notice.
+            top_level_data["live_image"] = {
+                "name": live_name,
+                "version": str(blob.generation),
+                "updated": datetime.now(timezone.utc).isoformat(),
+            }
 
         # Handle the scaffolding image.
         # Written at the END OF PHASE 3 by the n8n "Archive Scaffolding" node, not on

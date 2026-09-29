@@ -264,6 +264,19 @@ class DemoBackend:
             hr.update({"last_activity": now.isoformat(), "deadline": deadline.isoformat(), "beacon_ok": True})
             doc["human_review"] = hr
 
+    def _set_live(self, job_id, name, data):
+        """Write an image and stamp `live_image` on the doc, as the state manager does.
+
+        Deliberately does NOT touch the doc's `timestamp`. The real broadcast that carries
+        an image usually does bump it, but proving the panel follows `live_image` on its
+        own — with no doc change to ride along on — is the stricter test, and the one
+        that matches a render landing between two turns.
+        """
+        self.images[job_id][name] = data
+        with self.lock:
+            self.docs[job_id]["live_image"] = {"name": name, "version": f"{len(data)}:{hash(data)}",
+                                               "updated": _now_iso()}
+
     def _redrawn(self, n):
         """A visibly different scaffold, standing in for the coder's corrected render."""
         try:
@@ -351,6 +364,8 @@ class DemoBackend:
         ev = dict(ev, timestamp=_now_iso())
         with self.lock:
             d = self.docs[job_id]
+            if d.get("status") == "starting":
+                d["status"] = "running"   # as node 1/3's per-turn broadcasts do for real
             d["session_events_incremental"].append(ev)
             d["total_cost"] = round(d.get("total_cost", 0) + (ev.get("cost") or 0), 6)
             d["agent_id"] = agent_hint or (ev["author"] if ev["author"] not in ("system", "user") else d.get("agent_id"))
@@ -440,7 +455,7 @@ class DemoBackend:
         for i, ev in enumerate(self.events):
             time.sleep(self.DELAY)
             if ev["task"] == "verify_adherence" and ev["author"] == "system":
-                self.images[job_id]["latest.png"] = self.scaffold
+                self._set_live(job_id, "latest.png", self.scaffold)
                 self._push(job_id, {"author": "scaffolding_generator", "task": "render", "status": "ok",
                                     "parts": [{"text": "Rendered the scaffolding (see image panel)."}], "model": "none", "cost": 0})
             if want_fail and ev["task"] == "plan_finishing":
@@ -486,14 +501,14 @@ class DemoBackend:
                         if outcome != "rework":
                             break
                         time.sleep(max(self.DELAY * 4, 1.5))
-                        self.images[job_id]["latest.png"] = self._redrawn(redraw + 1)
+                        self._set_live(job_id, "latest.png", self._redrawn(redraw + 1))
                         self._push(job_id, {"author": "scaffolding_generator", "task": "render", "status": "ok",
                                             "parts": [{"text": f"Re-rendered the scaffolding with the human's corrections (pass {redraw + 1})."}],
                                             "model": "none", "cost": 0})
                         reason = "review"
             if ev["author"] == "artist" and ev["task"] == "render_final":
-                self.images[job_id]["latest.png"] = self.final
-        self.images[job_id]["final_illustration.png"] = self.final
+                self._set_live(job_id, "latest.png", self.final)
+        self._set_live(job_id, "final_illustration.png", self.final)
         self.images[job_id]["scaffolding.png"] = self.scaffold
         self.images[job_id].pop("latest.png", None)
         doc = self.get_doc(job_id)
@@ -1138,29 +1153,45 @@ def show_image(state, check=True):
     instant repaint at the top of a rerun, where the priority is that the page is never
     blank, not that the image is one poll fresher.
 
-    Freshness is decided by the object's GENERATION in the bucket, not by catching
-    `agent_id` at the right moment. The doc has one agent_id field that every broadcast
-    overwrites, so a render event that is followed by another turn inside the 1.5s poll
-    interval is simply never observed — and the panel then shows the previous scaffold
-    for the rest of the run, which is exactly the "it looks like it failed" symptom.
-    A generation check is one small metadata request and cannot be missed.
+    WHY THIS IS SUBTLE: every render mid-run — each scaffold attempt, each artist attempt
+    — overwrites the SAME object, latest.png. A new image is a new generation of an
+    existing file, never a new file, and only at completion does the picture get its own
+    name. So "has a file appeared?" catches the first scaffold and nothing after it, and
+    "which agent just ran?" is one doc field that every broadcast overwrites, so a render
+    followed by another turn inside one poll interval is never seen.
+
+    SOURCE OF TRUTH, best first:
+      1. `live_image` on the job doc — {name, version, updated}, stamped by the state
+         manager in the same request that wrote the image. Durable, exact, and free: we
+         read the doc every tick anyway.
+      2. The object's generation, asked of the bucket — for an older state manager that
+         doesn't stamp live_image yet. One metadata request per tick.
     """
     job_id = state.get("job_id") or st.session_state.job_id
     status = state.get("status")
-    path = f"{job_id}/final_illustration.png" if status == "completed" else f"{job_id}/latest.png"
+    cached = st.session_state.get("img_cache")            # (path, version, bytes, updated)
 
-    cached = st.session_state.get("img_cache")            # (path, version, bytes)
-    version = backend.get_blob_version(path) if check else (cached[1] if cached else None)
-    if version and (not cached or cached[0] != path or cached[1] != version):
-        data = backend.get_blob(path)
-        if data:
-            cached = (path, version, data)
-            st.session_state.img_cache = cached
+    if check:
+        live = state.get("live_image") or {}
+        if live.get("name") and live.get("version"):
+            path, version, updated = f"{job_id}/{live['name']}", live["version"], live.get("updated")
+        else:
+            path = f"{job_id}/final_illustration.png" if status == "completed" else f"{job_id}/latest.png"
+            version, updated = backend.get_blob_version(path), None
+        if version and (not cached or cached[0] != path or cached[1] != version):
+            data = backend.get_blob(path)
+            if data:
+                cached = (path, version, data, updated)
+                st.session_state.img_cache = cached
     # A missing object (latest.png is deleted on completion) leaves the last good image
     # up rather than blanking the panel.
     if cached:
-        paint_image(cached[2], (cached[0], cached[1]),
-                    caption="Latest render" if status != "completed" else None)
+        when = fmt_time(cached[3]) if len(cached) > 3 and cached[3] else ""
+        # The time is shown on purpose: it is the difference between "nothing changed"
+        # and "it changed and still looks similar", which a human cannot tell apart from
+        # the picture alone.
+        caption = (f"Latest render · updated {when}" if when else "Latest render") if status != "completed" else None
+        paint_image(cached[2], (cached[0], cached[1]), caption=caption)
 
 
 def draw_state(state, check_image=True):
