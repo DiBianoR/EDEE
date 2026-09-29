@@ -147,11 +147,20 @@ const modelRegistry = {
     }
   }
 };
+// txt2img: text-to-image on the SAME models and tiers as img2img, derived rather than
+// duplicated so the two can't drift. The only difference is intent: txt2img expects no
+// input image, so Node 1 doesn't warn when none is attached. OpenAI goes straight to the
+// generations endpoint (edits requires an input image).
+modelRegistry.google.txt2img = modelRegistry.google.img2img;
+modelRegistry.openai.txt2img = Object.fromEntries(
+  Object.entries(modelRegistry.openai.img2img).map(([tier, entry]) =>
+    [tier, { ...entry, url: "https://api.openai.com/v1/images/generations" }])
+);
 
 
 // === 🌍 GLOBAL CONTEXT (prepended to every agent's system_identity) ===
-const GLOBAL_TASK_EXPLANATION_old = `\
-You are part of the [Educational Diagram Engineering Engine] EDEE. Your job is to create high quality illustrative diagrams for word problems in math textbooks.
+const EDEE_ROLE_AND_RUBRICS_old = `\
+[Educational Diagram Engineering Engine] EDEE. Your job is to create high quality illustrative diagrams for word problems in math textbooks.
 
 CORE DIRECTIVES:
 1. Precision: Diagrams must be technically correct in all respects, and not contain extraneous items, artifacts, or errors. They should have accurate dimensions & aspect ratio.
@@ -160,8 +169,10 @@ CORE DIRECTIVES:
 4. Aesthetics: diagrams must be colorful, easy to look at, and in a style suitable to the task. Stick to artistic/illustration style rather than realism.
 5. Safety/Liability: Diagrams shouldn't contain anything that will obviously be deemed unsuitable for children. No need to nitpick, but use common sense.`;
 
-const GLOBAL_TASK_EXPLANATION = `\
-You are part of the [Educational Diagram Engineering Engine] EDEE. Your job is to create high quality illustrative diagrams for word problems in math textbooks.
+// Everything after the opening "You are ..." — shared by the pipeline agents (who are
+// part of EDEE) and the control-group agent (who is all of it).
+const EDEE_ROLE_AND_RUBRICS = `\
+[Educational Diagram Engineering Engine] EDEE. Your job is to create high quality illustrative diagrams for word problems in math textbooks.
 
 CORE DIRECTIVES:
 Pass all the following rubrics
@@ -230,6 +241,8 @@ Pass all the following rubrics
     </scoring>
   </rubric_item>
 </evaluation_rubric>`;
+
+const GLOBAL_TASK_EXPLANATION = `You are part of the ${EDEE_ROLE_AND_RUBRICS}`;
 
 // === COMMON BOILERPLATE DIRECTIVES ===
 
@@ -433,10 +446,12 @@ const ERROR_AGENTS  = ["error_handler", "error_expert", "error_injector"];
 // human_gate logs the human's gate decisions. Listing both lets an agent see the
 // human's actual words (as labelled [user] turns) and what they decided.
 const HUMAN_AGENTS  = ["human_gate", "user"];
+const CONTROL_AGENTS = ["control_artist"];  // control-group baseline, own workflow
 
 const ALL_AGENTS = [
   ...STAGE1_AGENTS, ...STAGE2_AGENTS, ...STAGE3_AGENTS,
-  ...STAGE4_AGENTS, ...STAGE5_AGENTS, ...STAGE6_AGENTS, ...ERROR_AGENTS, ...HUMAN_AGENTS
+  ...STAGE4_AGENTS, ...STAGE5_AGENTS, ...STAGE6_AGENTS, ...ERROR_AGENTS, ...HUMAN_AGENTS,
+  ...CONTROL_AGENTS
 ];
 
 
@@ -777,6 +792,18 @@ Example: "Transform the provided [geometric blockout] of [subject] into the arti
 
 
 IDENTITY: You are the Artist. For each illustration you work in two steps: first you PLAN — reviewing the approved base diagram and writing the detailed image prompt — then you PAINT, transforming the base diagram into the final illustration guided by that prompt.`
+  },
+
+  // --- CONTROL GROUP ---------------------------------------------------------
+  // Baseline for evaluating the pipeline: the same image model the artist paints with
+  // (txt2img = the img2img models, same tier), handed the rubrics and the raw query in
+  // ONE call — no planning, scaffolding, or review. Run by the separate "EDEE — Control"
+  // workflow.
+  "control_artist": {
+    model_tier: "slow",
+    model_type: "txt2img",
+    history_scope: [],
+    system_identity: `You are the ${EDEE_ROLE_AND_RUBRICS}`
   },
 
   // --- STAGE 5 ---------------------------------------------------------------
@@ -2058,6 +2085,21 @@ If you can't find 'Final Illustration Requested',  or 'Detailed Image Prompt', g
     schema: {} // Schema ignored for binary output
   },
 
+  // --- CONTROL GROUP -----------------------------------------------------------
+  // The whole control pipeline: raw query in, image out. Deliberately minimal — the
+  // only context beyond the query is the style line, so control and pipeline runs of
+  // the same sheet row are judged in the same style.
+  "control_render": {
+    assigned_agent: "control_artist",
+    instruction: `\
+Original Query: \`\`\`{original_query}\`\`\`
+
+The query contains a math word problem and a description of the illustration to accompany it. Draw the specified illustration.
+
+The style you should use is best described as ${activeStyle.description}`,
+    schema: {} // Schema ignored for binary output
+  },
+
   // --- STAGE 5: Multi-Metric Review ------------------------------------------
   "review_bias": {
     assigned_agent: "image_verifier",
@@ -2370,7 +2412,7 @@ const config = {
     },
 
   // === ⚙️ PROVIDER & MODEL ROUTING ===
-  "provider_by_type": { text: "google", view_img: "google", img2img: "google" },  //  google, openai
+  "provider_by_type": { text: "google", view_img: "google", img2img: "google", txt2img: "google" },  //  google, openai
   "model_registry": modelRegistry,
 
   // Default tiers if an agent doesn't specify one

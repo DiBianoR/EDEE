@@ -8,6 +8,7 @@ const {
     PHASE_ID: currentPhaseId,
     TASK_ID: currentTaskId,
     AGENT_ID: providedAgentId,
+    MODEL_TYPE: providedModelType,  // per-call override, e.g. txt2img for render_final on DIRECT_IMAGE_GEN
     base64_img_string,  // If we have an input image
     base64_img_string_mime,
 	debug_system,
@@ -31,9 +32,11 @@ const agentBlueprint = config.agents[targetAgentId];
 if (!agentBlueprint) throw new Error(`Agent ID '${targetAgentId}' not found in config.`);
 
 // === 🎯 MODEL CAPABILITY IDENTIFICATION ===
-const modelType = taskBlueprint.model_type || agentBlueprint.model_type || "text"; // Supports "text", "view_img", "img2img"
+// Supports "text", "view_img", "img2img", "txt2img". txt2img runs on the img2img models
+// but expects no input image — text-to-image is its intended mode, not a failure.
+const modelType = providedModelType || taskBlueprint.model_type || agentBlueprint.model_type || "text";
 const isImageRead = (modelType === "view_img") || (modelType === "img2img");
-const isImageGen = (modelType === "img2img");
+const isImageGen = (modelType === "img2img") || (modelType === "txt2img");
 const outputType = isImageGen ? "image_blob" : "json";  //  constrained generation produces json, no raw text case atm
 const resolvedProvider = taskBlueprint.provider || agentBlueprint.provider ||
     config.provider_by_type[modelType] || "google";
@@ -118,16 +121,14 @@ if (isImageRead && base64_img_string && base64_img_string_mime) {
         }
     });
 } else if (isImageRead) {
-    // An image-capable task ran with no image attached. Historically this failed
-    // SILENTLY and the model confabulated detailed reviews of images it never saw. Prefix a
-    // marker so the model won't hallucinate — and so the logged prompt event makes
-    // the missing attachment obvious in the session log / debug viewer.
-    // Wording differs by type: for img2img an absent input can be a legitimate mode
-    // (DIRECT_IMAGE_GEN draws from text alone), and the artist's instruction tells
-    // it to DRAW an error message when its briefing is missing — a "warning" here
-    // could trigger that, so img2img gets a neutral note instead.
+    // A task that needs an input image (view_img reviews one, img2img transforms one)
+    // ran without it. Historically this failed SILENTLY and the model confabulated
+    // detailed reviews of images it never saw. Prefix a marker so the model won't
+    // hallucinate — and so the logged prompt event makes the missing attachment obvious
+    // in the session log / debug viewer. txt2img never reaches here: no image is its
+    // intended input, so it gets no marker.
     currentParts[0].text =
-        (isImageGen ? "[note: no input image attached — generate from the text description alone]"
+        (isImageGen ? "[warning: no input image attached to this image-editing request]"
                     : "[warning: no image attached to this vision request]")
         + "\n\n" + currentParts[0].text;
 }
@@ -252,7 +253,7 @@ const flushQueue = () => {
     queue = []; // Empty the queue for the next batch
 };
 
-const forceFlatten = (modelType === "img2img") && resolvedProvider === "openai";
+const forceFlatten = isImageGen && resolvedProvider === "openai";
 // Process events sequentially into the queue
 for (const event of eventsToProcess) {
     // GUARD: the LIVE prompt is always the user turn eliciting this response, even when
@@ -396,7 +397,7 @@ if (requestedTier === "no_model") {
     // === 🎨 OPENAI PAYLOAD OVERRIDE (img2img via /v1/images/edits) ===
     if (resolvedProvider === "openai") {
         if (!isImageGen) {
-            throw new Error(`ROUTING ERROR: OpenAI provider currently supports model_type 'img2img' only (task '${currentTaskId}' asked for '${modelType}').`);
+            throw new Error(`ROUTING ERROR: OpenAI provider currently supports model_type 'img2img' / 'txt2img' only (task '${currentTaskId}' asked for '${modelType}').`);
         }
         // QUEUE PROCESSING ran in forceFlatten mode, so requestBody.contents is exactly ONE
         // labeled user turn containing the scoped history + current prompt. Translate it:
