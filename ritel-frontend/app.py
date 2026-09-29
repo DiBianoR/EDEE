@@ -140,8 +140,20 @@ class GcpBackend:
         snap = self.db.collection("job_states").document(job_id).get()
         return snap.to_dict() if snap.exists else None
 
-    def get_blob(self, path):
+    def get_blob(self, path, version=None):
+        """Download an object — the EXACT generation when one is given.
+
+        Pinning matters for latest.png. It is overwritten on every render, yet the bucket
+        is public and GCS serves public objects with `Cache-Control: public,
+        max-age=3600`, so an unversioned read of that name may legitimately be answered
+        with a copy up to an hour old. That is how the panel came to show the FIRST
+        scaffold through every correction and even a page refresh, while the bucket
+        itself held the new one. A generation-pinned read is a different cache key and
+        can only ever return the bytes of that generation.
+        """
         try:
+            if version and str(version).isdigit():
+                return self.bucket.blob(path, generation=int(version)).download_as_bytes()
             return self.bucket.blob(path).download_as_bytes()
         except Exception:
             return None
@@ -317,7 +329,7 @@ class DemoBackend:
             d = self.docs.get(job_id)
             return json.loads(json.dumps(d)) if d else None
 
-    def get_blob(self, path):
+    def get_blob(self, path, version=None):
         job_id, _, name = path.partition("/")
         return self.images.get(job_id, {}).get(name)
 
@@ -1179,7 +1191,10 @@ def show_image(state, check=True):
             path = f"{job_id}/final_illustration.png" if status == "completed" else f"{job_id}/latest.png"
             version, updated = backend.get_blob_version(path), None
         if version and (not cached or cached[0] != path or cached[1] != version):
-            data = backend.get_blob(path)
+            # Pinned to `version`, so the bytes we cache are guaranteed to BE that version.
+            # An unpinned read here is what let a stale copy get cached under the new
+            # version number, after which nothing ever looked again.
+            data = backend.get_blob(path, version)
             if data:
                 cached = (path, version, data, updated)
                 st.session_state.img_cache = cached

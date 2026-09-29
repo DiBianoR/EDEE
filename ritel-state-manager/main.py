@@ -76,6 +76,14 @@ async def update_state(request: Request):
             else:
                 live_name = "latest.png"
                 blob = bucket.blob(f"{job_id}/{live_name}")
+                # latest.png is MUTABLE by design — every render overwrites it — but the
+                # bucket is public and GCS gives public objects `Cache-Control: public,
+                # max-age=3600` by default. That lets any cache between here and a viewer
+                # serve an hour-old picture under the current name: the frontend showed
+                # the first scaffold through every correction, and so would a link in the
+                # Test Orchestrator's sheet. Only this name needs it; final_illustration
+                # and scaffolding are written once per run and are safe to cache.
+                blob.cache_control = "no-cache, max-age=0"
                 blob.upload_from_string(image_data, content_type=mime_type)
 
             # Announce WHICH image is current and WHICH version of it, on the doc the
