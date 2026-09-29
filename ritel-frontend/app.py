@@ -598,6 +598,17 @@ def start_job_callback():
     st.session_state.trigger_job = True
 
 
+def gate_submit(sig):
+    """The review gate's one button, as a FORM submit rather than a plain button.
+
+    Inside a form, typing and clicking away do not trigger reruns at all, and the text is
+    delivered in the same message as the click, so there is no moment where the page
+    rebuilds under you mid-reply or the button fires with a stale box.
+    """
+    st.form_submit_button("Continue ▸", on_click=submit_gate, args=(f"msg_{sig}",),
+                          type="primary", **BTN_FILL)
+
+
 def submit_gate(msg_key):
     """The gate's only button. What you typed decides what happens.
 
@@ -1042,10 +1053,12 @@ def render_human_panel(state, events):
                 st.markdown("<div class='gatebox'>🙋 <b>The inspectors approved this scaffolding.</b> "
                             "Anything to change before the artist paints over it? What you say "
                             "outranks every AI in the pipeline.</div>", unsafe_allow_html=True)
-            st.text_area("Your reply to the QA manager", key=f"msg_{sig}", height=90,
-                         placeholder="e.g. The two bags should be side by side, and the labels are too small.")
-            st.caption("Describe any changes, ask a question, or say you want to stop. "
-                       "**Leave it empty to accept the scaffolding as drawn.**")
+            with st.form(key=f"form_{sig}", border=False):
+                st.text_area("Your reply to the QA manager", key=f"msg_{sig}", height=90,
+                             placeholder="e.g. The two bags should be side by side, and the labels are too small.")
+                st.caption("Describe any changes, ask a question, or say you want to stop. "
+                           "**Leave it empty to accept the scaffolding as drawn.**")
+                gate_submit(sig)
         elif stage == "conversation":
             st.markdown("<div class='gatebox'>💬 <b>Talking to the QA Inspection Manager.</b> It will ask until it is sure it "
                         "understands, then redraw the scaffolding with your corrections. Every message resets the retry budget.</div>",
@@ -1055,12 +1068,12 @@ def render_human_panel(state, events):
                 st.caption("Type what you'd like changed.")
             for who, text in turns[-6:]:
                 st.markdown(f"<div class='bubble {who}'><span class='tag'>{'You' if who == 'me' else 'QA manager'}</span>{esc(text)}</div>", unsafe_allow_html=True)
-            st.text_area("Your reply", key=f"msg_{sig}", height=90)
-            st.caption("**Leave it empty to move on** with what the manager already understood.")
+            with st.form(key=f"form_{sig}", border=False):
+                st.text_area("Your reply", key=f"msg_{sig}", height=90)
+                st.caption("**Leave it empty to move on** with what the manager already understood.")
+                gate_submit(sig)
         else:
             return
-        st.button("Continue ▸", key=f"go_{sig}", on_click=submit_gate, args=(f"msg_{sig}",),
-                  **BTN_FILL, type="primary")
 
 
 def render_countdown(state):
@@ -1314,7 +1327,19 @@ if st.session_state.job_id:
                                     "the log shows how far it got. Use 'Open an existing job' later to check again.")
                     st.session_state.is_running = False
                     break
-                time.sleep(POLL_SECONDS)
+                if state and state.get("status") == "awaiting_human":
+                    # Short slices while a human is being asked something. Streamlit only
+                    # notices a click when the script next WRITES an element, so a single
+                    # 1.5s sleep can sit on the press long enough that the button looks
+                    # dead — and the natural second press then races the first. Writing the
+                    # countdown every 0.2s gets a click acted on almost at once, and makes
+                    # the countdown tick smoothly instead of in 1.5s jumps.
+                    until = time.time() + POLL_SECONDS
+                    while time.time() < until:
+                        time.sleep(0.2)
+                        render_countdown(state)
+                else:
+                    time.sleep(POLL_SECONDS)
         else:
             state = backend.get_doc(job_id)
             if state:
