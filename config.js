@@ -409,19 +409,55 @@ const DIRECTIVE_INSPECTION_HUMAN = `\
 ${DIRECTIVE_HUMAN_PRIORITY}
 - This scaffold was re-drawn to satisfy corrections from the human. Judge it FIRST against those corrections (your own earlier human_review turns and fix_instructions are in your history), then against the inspector reports. An inspector objecting to something the human explicitly asked for is overruled.`;
 
+// --- Final-image gate: the same two directives, for the artist's loop. -------------
+// plan_finishing's {image_retry_directives} slot, when the retry came from the human.
+const DIRECTIVE_FINISHING_RETRY_HUMAN = `\
+
+
+- The human who requested this diagram reviewed the previous illustration and asked for changes. The Final Gatekeeper relayed them as fix_instructions, and the human's own words may appear in your history as [user] turns. The human's requests outrank every reviewer report and your own preferences.
+- Begin your reasoning by restating the human's corrections in your own words, then explain how your new prompt implements each one.`;
+
+// aggregate_feedback's {image_human_priority_directives} slot. A separate variable from
+// {human_priority_directives} on purpose: that one is armed by SCAFFOLD corrections and
+// speaks about a scaffold and inspectors, which would be the wrong brief for the
+// Final Gatekeeper judging a re-painted illustration.
+const DIRECTIVE_FINAL_REVIEW_HUMAN = `\
+
+
+${DIRECTIVE_HUMAN_PRIORITY}
+- This illustration was re-painted to satisfy corrections from the human. Judge it FIRST against those corrections (your own earlier final_review turns and fix_instructions are in your history), then against the reviewer reports. A reviewer objecting to something the human explicitly asked for is overruled.`;
+
 // Shared by human_review_open / human_review_reply: one conversation, one contract.
-const HUMAN_REVIEW_SCHEMA = {
+// One conversation contract, two gates. They differ only in the "acceptable as is" flag
+// and in who the corrections are for. The flag names are DELIBERATELY distinct per gate:
+// session_state is shared for the whole run, and the gate logic reads its flag across
+// several turns — a shared name would let the scaffold gate's answer leak into the
+// final-image gate's decision. Everything else is set fresh on every turn and read
+// straight afterwards, so those names are safe to share.
+const humanReviewSchema = ({ acceptableField, acceptableDescription, fixDescription }) => ({
   "type": "OBJECT",
   "properties": {
     "reasoning": { "type": "STRING", "description": "What the human is asking for, what (if anything) is still unclear, and whether you have enough to proceed." },
     "reply_to_human": { "type": "STRING", "description": "Your message to the human: plain language, second person, no pipeline jargon. Either one specific clarifying question, or a restatement of the agreed changes." },
     "understanding_confirmed": { "type": "BOOLEAN", "description": "True ONLY when you are confident you understand everything the human wants and have nothing left to ask. The pipeline stops waiting for the human as soon as this is true." },
-    "scaffold_acceptable_as_is": { "type": "BOOLEAN", "description": "True if the human is satisfied with the scaffold as drawn and no re-draw is needed." },
+    [acceptableField]: { "type": "BOOLEAN", "description": acceptableDescription },
     "user_wants_to_stop": { "type": "BOOLEAN", "description": "True ONLY if the human has clearly asked to abandon this run rather than have it fixed. This ends the run with no diagram and throws the work away, so if there is any doubt at all — frustration, a harsh critique, 'this is useless' — treat it as a correction to make and ask, rather than setting this." },
-    "fix_instructions": { "type": "STRING", "description": "The complete, current list of corrections for the coding team — what is wrong, where, and what the corrected result looks like. Rewritten in full every turn (not a diff). Empty string if scaffold_acceptable_as_is." }
+    "fix_instructions": { "type": "STRING", "description": fixDescription }
   },
-  "required": ["reasoning", "reply_to_human", "understanding_confirmed", "scaffold_acceptable_as_is", "user_wants_to_stop", "fix_instructions"]
-};
+  "required": ["reasoning", "reply_to_human", "understanding_confirmed", acceptableField, "user_wants_to_stop", "fix_instructions"]
+});
+
+const HUMAN_REVIEW_SCHEMA = humanReviewSchema({
+  acceptableField: "scaffold_acceptable_as_is",
+  acceptableDescription: "True if the human is satisfied with the scaffold as drawn and no re-draw is needed.",
+  fixDescription: "The complete, current list of corrections for the coding team — what is wrong, where, and what the corrected result looks like. Rewritten in full every turn (not a diff). Empty string if scaffold_acceptable_as_is."
+});
+
+const FINAL_REVIEW_SCHEMA = humanReviewSchema({
+  acceptableField: "image_acceptable_as_is",
+  acceptableDescription: "True if the human is satisfied with the final illustration as it is and no re-paint is needed.",
+  fixDescription: "The complete, current list of corrections for the Artist — what is wrong, where, and what the corrected illustration should look like. Rewritten in full every turn (not a diff). Empty string if image_acceptable_as_is."
+});
 
 // === 📜 HISTORY SCOPE GROUPS ===
 // history_scope is now a list of EVENT AUTHORS. An agent sees an event only if the
@@ -442,15 +478,22 @@ const STAGE4_AGENTS = ["product_scout", "product_designer", "artist"];  // produ
 const STAGE5_AGENTS = ["image_verifier", "issue_aggregator"];
 const STAGE6_AGENTS = ["final_reporter"];
 const ERROR_AGENTS  = ["error_handler", "error_expert", "error_injector"];
-// "user" is the prompt_author of the human's own messages (human_review_* tasks);
-// human_gate logs the human's gate decisions. Listing both lets an agent see the
-// human's actual words (as labelled [user] turns) and what they decided.
-const HUMAN_AGENTS  = ["human_gate", "user"];
+// The two human review gates are kept apart: an agent in one gate's loop never sees
+// the other gate's conversation or decisions.
+//   • "user" is the prompt_author of the human's messages at BOTH gates (Node 1 treats
+//     "user" as a prompt author, so a second name isn't possible without editing the
+//     Universal Agent). Prompts replay only alongside their reply, so which conversation
+//     an agent sees is decided by which MANAGER is in its scope: scaffold turns pair
+//     with inspection_manager, final-image turns with issue_aggregator.
+//   • Each gate logs its decisions under its own author: human_gate (scaffold),
+//     final_gate (final illustration).
+const SCAFFOLD_HUMAN_AGENTS = ["human_gate", "user"];
+const FINAL_HUMAN_AGENTS    = ["final_gate", "user"];
 const CONTROL_AGENTS = ["control_artist"];  // control-group baseline, own workflow
 
 const ALL_AGENTS = [
   ...STAGE1_AGENTS, ...STAGE2_AGENTS, ...STAGE3_AGENTS,
-  ...STAGE4_AGENTS, ...STAGE5_AGENTS, ...STAGE6_AGENTS, ...ERROR_AGENTS, ...HUMAN_AGENTS,
+  ...STAGE4_AGENTS, ...STAGE5_AGENTS, ...STAGE6_AGENTS, ...ERROR_AGENTS, ...SCAFFOLD_HUMAN_AGENTS, "final_gate",
   ...CONTROL_AGENTS
 ];
 
@@ -640,9 +683,9 @@ Your task is to design that first pass: the scaffolding.`
   "coder": {
     model_tier: "slow",  // coder type (write_code default; plan_logic overrides to medium)
     model_type: "text", // use more advanced agent to write code
-    // + HUMAN_AGENTS: after a human correction round the coder sees the human's own
-    //   words (labelled [user] turns) next to the manager's fix_instructions.
-    history_scope: ["scaffolding_manager", "coder", "review_manager", "inspection_manager", "error_expert", "error_injector", ...HUMAN_AGENTS],
+    // + SCAFFOLD_HUMAN_AGENTS: after a human correction round the coder sees the human's
+    //   own words (labelled [user] turns) next to the manager's fix_instructions.
+    history_scope: ["scaffolding_manager", "coder", "review_manager", "inspection_manager", "error_expert", "error_injector", ...SCAFFOLD_HUMAN_AGENTS],
     system_identity: `\
 ${GLOBAL_TASK_EXPLANATION}
 
@@ -688,7 +731,7 @@ ${EXECUTION_CONTRACT}`
     model_tier: "slow",  // manager type
     // + error agents: it directs the coding retry loop, so it should see prior
     // error_expert diagnoses and error_injector execution reports to judge progress.
-    history_scope: ["scaffolding_manager", "coder", "reviewer", "review_manager", "inspection_manager", "error_expert", "error_injector", ...HUMAN_AGENTS],
+    history_scope: ["scaffolding_manager", "coder", "reviewer", "review_manager", "inspection_manager", "error_expert", "error_injector", ...SCAFFOLD_HUMAN_AGENTS],
     system_identity: `\
 ${GLOBAL_TASK_EXPLANATION}
 
@@ -721,9 +764,9 @@ IDENTITY: You are the QA Vision Analyst. You check carefully for visual artifact
     model_type: "text",  // consolidates the inspector's text reports; flip to "view_img" if it should re-check the image itself
     // + error agents: it directs the inspection retry loop, so it should see prior
     // error_expert diagnoses to judge whether retries are making progress.
-    // + HUMAN_AGENTS: it holds the human_review_* conversation, so it must see the
-    //   human's turns (its own replies come back as model turns) and gate decisions.
-    history_scope: ["scaffolding_manager", "scaffolding_designer", "coder", "inspector", "inspection_manager", "error_expert", "error_injector", ...HUMAN_AGENTS],
+    // + SCAFFOLD_HUMAN_AGENTS: it holds the human_review_* conversation, so it must see
+    //   the human's turns (its own replies come back as model turns) and gate decisions.
+    history_scope: ["scaffolding_manager", "scaffolding_designer", "coder", "inspector", "inspection_manager", "error_expert", "error_injector", ...SCAFFOLD_HUMAN_AGENTS],
     system_identity: `\
 ${GLOBAL_TASK_EXPLANATION}
 
@@ -774,7 +817,10 @@ IDENTITY: You are the Product Designer. When an illustration calls for something
     // it paints, and retries keep a single coherent voice.
     // + issue_aggregator: the stage-5 gatekeeper's verdicts and troubleshoot diagnoses
     // are what this agent revises against when the loop rejects a render.
-    history_scope: ["artist", "issue_aggregator"],
+    // + FINAL_HUMAN_AGENTS: after a final-review correction the Artist sees the human's
+    //   own words next to the Gatekeeper's fix_instructions. Only the FINAL conversation
+    //   replays here — scaffold turns pair with inspection_manager, who is not in scope.
+    history_scope: ["artist", "issue_aggregator", ...FINAL_HUMAN_AGENTS],
     system_identity: `\
 ${GLOBAL_TASK_EXPLANATION}
 
@@ -834,7 +880,12 @@ IDENTITY: You are the Lead Visual Quality Assurance Officer. You run independent
     // invokes troubleshoot_visual AS this agent); the artist conversation it is
     // directing; and the Inspection Manager's stage-3 sign-off, whose `notes` record
     // base-diagram flaws knowingly waved through upstream.
-    history_scope: ["inspection_manager", "artist", "image_verifier", "issue_aggregator"],
+    // + final_gate: the final-image gate's decisions. "user" is deliberately NOT listed:
+    //   Node 1 already replays the human's turns of this agent's OWN conversation (a
+    //   prompt whose reply is the target agent is always kept), and listing "user" here
+    //   would also pull in the SCAFFOLD conversation, whose replies come from
+    //   inspection_manager, who is in scope for the stage-3 sign-off.
+    history_scope: ["inspection_manager", "artist", "image_verifier", "issue_aggregator", "final_gate"],
     system_identity: `\
 ${GLOBAL_TASK_EXPLANATION}
 
@@ -890,6 +941,12 @@ IDENTITY: You are the Error Diagnosis Agent. Your job is to review the complete 
   "human_gate": {
     history_scope: [],
     system_identity: "IDENTITY: System utility that records the human reviewer's decisions (accept / corrections / give up / timed out) into the project history."
+  },
+  // The final-illustration gate's twin of human_gate: a separate author so each gate's
+  // decisions reach only that gate's agents (see SCAFFOLD_ / FINAL_HUMAN_AGENTS).
+  "final_gate": {
+    history_scope: [],
+    system_identity: "IDENTITY: System utility that records the human reviewer's decisions on the final illustration (accept / corrections / give up / timed out) into the project history."
   }
 };
 
@@ -1918,10 +1975,62 @@ The human replies:
     schema: HUMAN_REVIEW_SCHEMA
   },
 
+  // --- HUMAN IN THE LOOP: final illustration review ---------------------------
+  // The same conversation as the scaffold review, held by the Final Gatekeeper
+  // (issue_aggregator): it owns the release call and writes fix_instructions for the
+  // Artist, so the human's corrections reach the artist through the channel the
+  // machine verdicts already use. The Artist has issue_aggregator in scope, so it
+  // reads these replies directly.
+  "final_review_open": {
+    assigned_agent: "issue_aggregator",
+    hoist_result_fields: ["human_message"],
+    instruction: `\
+${DIRECTIVE_HUMAN_PRIORITY}
+
+The human who requested this diagram is looking at the finished illustration on their screen and has written to you about it. This is a conversation: reply to the human directly, in plain language, in the second person. Do not address the Artist here — that is what fix_instructions is for.
+
+YOU ARE THE ONE WHO DECIDES WHAT HAPPENS NEXT. The human has a single text box and a single button; there are no "approve", "reject" or "cancel" controls. Whatever they wrote may be an approval, a correction, a question, or a request to abandon the run, and it is your job to work out which and set the output fields accordingly. Those fields, not a button, are what the pipeline acts on.
+
+Original Query: \`\`\`{original_query}\`\`\`
+
+Final Illustration Requested: {latest_description}
+
+The human says:
+"""
+{human_message}
+"""
+
+YOUR JOB:
+1. Work out exactly what the human wants changed. You are not being shown the illustration itself; you have the request, the Artist's prompt, and the reviewers' reports. The human can see it and you cannot, so take their account of what is on screen as correct even where it contradicts those.
+2. Corrections go back to the Artist, who repaints over the same approved base diagram. Anything about how the picture is painted can change — objects, colours, style, background, detail, anything the Artist added. The underlying geometry cannot change at this stage: positions, sizes, counts, dimensions, and the labels drawn into the base diagram are fixed. If the human asks for one of those, say so plainly and ask whether to go ahead with the changes that can be made.
+3. If anything is ambiguous, ask — one short, specific question at a time. Never guess at something you could simply ask.
+4. If the human is happy with the illustration as it is — including a bare "looks good", "fine", "go ahead" — say so and set image_acceptable_as_is AND understanding_confirmed, because there is nothing left to ask. Do not invent work they did not ask for, and do not make them approve it twice.
+5. If the human asks to abandon the run rather than fix it, set user_wants_to_stop. Read this narrowly: a blunt or angry critique is still a correction to make. Unless they are unmistakably telling you to stop, ask them to confirm first and leave the flag false this turn — you can always stop next turn, but a run you end is gone.
+6. Set understanding_confirmed as soon as you have nothing left to ask. That is true in all three endings, not just the middle one: the human approved as is, the human asked to stop, or you now understand every change they want. Where there are changes, restate the complete list back to them in one or two sentences first. The pipeline stops waiting for the human the moment this is true, so never set it while a question of yours is still open — and never withhold it just because the turn produced no changes to list.
+7. Keep fix_instructions complete and current on every turn: the full list of changes for the Artist (what is wrong, where, what the corrected illustration should look like), rewritten in full each time.`,
+    schema: FINAL_REVIEW_SCHEMA
+  },
+
+  "final_review_reply": {
+    assigned_agent: "issue_aggregator",
+    hoist_result_fields: ["human_message"],
+    instruction: `\
+The human replies:
+"""
+{human_message}
+"""
+
+(Same rules: ask one specific question if anything is unclear; the base diagram's geometry is fixed, so say so if they ask to change it; keep fix_instructions complete and current; set image_acceptable_as_is if the human is happy with the illustration as it is; set user_wants_to_stop only if they are unmistakably asking to abandon the run; and set understanding_confirmed as soon as you have nothing left to ask — whether that is because they approved, because they asked to stop, or because you understand every change — restating the agreed changes first where there are any.)`,
+    schema: FINAL_REVIEW_SCHEMA
+  },
+
   // Utility (no_model): records what the human decided at the gate — accepted the
   // scaffold, gave up, timed out, opened a correction round — so the coder,
   // managers, final_reporter and error_handler can all see that a human intervened.
   // {human_decision_text} is composed by the n8n gate-resolve node.
+  // Shared by both gates; the final gate's cfg node runs it with AGENT_ID final_gate
+  // (the AGENT_ID override beats assigned_agent in Node 1), so the two gates log under
+  // different authors.
   "log_human_decision": {
     assigned_agent: "human_gate",
     model_tier: "no_model",
@@ -2224,7 +2333,7 @@ SYNTHESIZE:
 - review_math's visual assessments might not be accurate enough to confirm mathematical misrepresentation though. I wouldn't reject an image purely on its say-so on the 3rd attempt; instead leave a warning message in 'notes'
 
 If rejecting, set 'final_pass' to FALSE and provide a 'warning_message' and clear 'fix_instructions' for the previous stage.
-If minor issues only, you may pass the image, and record them in notes so the final report can mention them.`,
+If minor issues only, you may pass the image, and record them in notes so the final report can mention them.{image_human_priority_directives}`,
     schema: {
       "type": "OBJECT",
       "properties": {
@@ -2458,18 +2567,29 @@ const config = {
     // retries" node: plan_logic_human replaces plan_logic's retry framing,
     // inspection_human arms {human_priority_directives} for consolidate_inspection.
     "plan_logic_human": DIRECTIVE_PLAN_RETRY_HUMAN,
-    "inspection_human": DIRECTIVE_INSPECTION_HUMAN
+    "inspection_human": DIRECTIVE_INSPECTION_HUMAN,
+    // Final-image gate: selected by n8n "Final corrections → reset retries".
+    // plan_finishing_human replaces plan_finishing's retry framing; final_review_human
+    // arms {image_human_priority_directives} for aggregate_feedback.
+    "plan_finishing_human": DIRECTIVE_FINISHING_RETRY_HUMAN,
+    "final_review_human": DIRECTIVE_FINAL_REVIEW_HUMAN
   },
 
   // === 🙋 HUMAN IN THE LOOP ===
-  // human_review_mode — "automatic" (never pause), "timeout" (pause after the machine
-  // inspection passes; proceed if the human hasn't clicked "Give corrections" within
-  // gate_seconds), "wait" (pause until the human answers). Comes from the frontend
-  // sidebar via the webhook field human_review_mode (Set Job must forward it). Read by
-  // the n8n "Human review?" and "Human available?" IF nodes.
-  // On the max-retries path a non-automatic mode ALWAYS asks the human (accept as is,
-  // give corrections, or give up) instead of failing; absent_minutes bounds every wait
-  // that isn't the gate_seconds window, so a human who walks away never stalls a run.
+  // human_review_mode — "automatic" (never pause), "timeout" (pause after a machine
+  // review passes; proceed after gate_seconds of no activity), "wait" (pause until the
+  // human answers). Comes from the frontend sidebar via the webhook field
+  // human_review_mode (Set Job must forward it).
+  // ONE setting for the whole run, read by BOTH gates — the scaffold review ("Human
+  // review?" / "Human available?") and the final-illustration review ("Final review?"
+  // / "Final available?"). It is fixed at launch and never changes mid-run, which is
+  // what lets the second gate ask after the first one has already passed.
+  // The fallback below stays "automatic" even though the frontend now defaults to
+  // "timeout": this default is what callers with NO human get — the Test Orchestrator
+  // and manual n8n runs — and they must never sit waiting on a gate nobody will answer.
+  // On a max-retries path a non-automatic mode ALWAYS asks the human instead of
+  // failing; absent_minutes bounds every wait that isn't the gate_seconds window, so a
+  // human who walks away never stalls a run.
   "human_review_mode": ["automatic", "timeout", "wait"].includes(items[0].json.human_review_mode)
     ? items[0].json.human_review_mode : "automatic",
   // Both are measured from the last sign of life, not from when the gate opened: the
@@ -2515,7 +2635,10 @@ return [{
       // Templated into consolidate_inspection; "" until the n8n human-review reset node
       // arms it with config.retry_directive_library.inspection_human. Seeded so the
       // template never throws on an unattended run.
-      human_priority_directives: ""
+      human_priority_directives: "",
+      // Same idea for the final-image gate: "" until "Final corrections → reset retries"
+      // arms it, templated into aggregate_feedback.
+      image_human_priority_directives: ""
       // NOTE: retry counters (coding/inspection/image_gen_retry_count) are NOT seeded
       // here and are NOT templated into any prompt — they exist only for n8n's
       // max-retry branching. Managers infer the attempt number from their own prior

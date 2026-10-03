@@ -56,10 +56,14 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 
 STYLE_OPTIONS = ["casual_mobile", "storybook", "cel_shaded_anime", "claymation_diorama", "mid_century_modern"]
 REVIEW_MODES = {
-    "automatic": ("Automatic", "Never pause. The pipeline paints over the scaffolding as soon as the inspectors approve it."),
-    "timeout": ("Ask me, 30 s to react", "Pauses on the approved scaffolding and moves on after 30 seconds of **no activity**. Start typing and it waits for you instead, as if you'd picked *Wait for me*."),
-    "wait": ("Wait for me", "Pauses on the approved scaffolding until you answer. It only gives up after 10 minutes with no typing or clicking, so you can take as long as you need."),
+    "automatic": ("Automatic", "Never pause. The pipeline carries on as soon as its own reviewers approve each stage."),
+    "timeout": ("Ask me, 30 s to react", "Pauses at each review and moves on after 30 seconds of **no activity**. Start typing and it waits for you instead, as if you'd picked *Wait for me*."),
+    "wait": ("Wait for me", "Pauses at each review until you answer. It only gives up after 10 minutes with no typing or clicking, so you can take as long as you need."),
 }
+# The UI default. The PIPELINE's own fallback stays "automatic" (config.js): that one is
+# what callers with no human get — the Test Orchestrator, manual n8n runs — and they must
+# never sit waiting on a gate nobody will answer.
+DEFAULT_REVIEW_MODE = "timeout"
 
 # --- AGENT PRESENTATION -------------------------------------------------------
 # (emoji, accent colour, stage). Colours are grouped by role: managers purple,
@@ -85,10 +89,51 @@ AGENTS = {
     "error_handler":        ("🚑", "#dc2626", 0), "error_expert": ("🩺", "#b91c1c", 0),
     "error_injector":       ("⚠️", "#991b1b", 0), "n8n_engine": ("⚙️", "#6b7280", 0),
     "user":                 ("🙋", "#ca8a04", 3), "human_gate": ("🙋", "#a16207", 3),
+    "final_gate":           ("🙋", "#a16207", 5),
     "system":               ("🤖", "#6b7280", 0),
 }
 STAGE_NAMES = {1: "Validate & plan", 2: "Refine description", 3: "Scaffolding", 4: "Illustration", 5: "Review", 6: "Report"}
-HUMAN_TASKS = ("human_review_open", "human_review_reply")
+# The two human review gates. Everything the UI says or filters differently between
+# them lives here. The doc's `human_review.gate` picks the entry; an absent field means
+# "scaffold", which is what the scaffold gate's announce node has always sent — so the
+# deployed scaffold nodes keep working without being touched.
+GATES = {
+    "scaffold": {
+        "tasks": ("human_review_open", "human_review_reply"),
+        "manager": "inspection_manager",
+        "logger": "human_gate",
+        "manager_name": "QA manager",
+        "manager_title": "QA Inspection Manager",
+        "approved": "The inspectors approved this scaffolding.",
+        "ask": "Anything to change before the artist paints over it? What you say outranks every AI in the pipeline.",
+        "rejected": "The inspectors rejected this scaffolding three times.",
+        "empty_hint": "Leave it empty to accept the scaffolding as drawn.",
+        "redo": "redraw the scaffolding",
+        "placeholder": "e.g. The two bags should be side by side, and the labels are too small.",
+    },
+    "final": {
+        "tasks": ("final_review_open", "final_review_reply"),
+        "manager": "issue_aggregator",
+        "logger": "final_gate",
+        "manager_name": "Final Gatekeeper",
+        "manager_title": "Final Gatekeeper",
+        "approved": "The reviewers approved the finished illustration.",
+        "ask": "Anything to change before it's released? The artist repaints over the same base diagram, so its geometry and labels stay fixed; everything painted on top can change.",
+        "rejected": "The reviewers rejected this illustration three times.",
+        "empty_hint": "Leave it empty to release the illustration as it is.",
+        "redo": "repaint the illustration",
+        "placeholder": "e.g. Make the trees a lighter green, and add a couple more.",
+    },
+}
+HUMAN_TASKS = tuple(t for g in GATES.values() for t in g["tasks"])
+
+
+def gate_of(hr):
+    return GATES.get((hr or {}).get("gate") or "scaffold", GATES["scaffold"])
+
+
+def manager_for_task(task):
+    return next((g["manager"] for g in GATES.values() if task in g["tasks"]), "inspection_manager")
 FALLBACK_COLOURS = ["#2563eb", "#7c3aed", "#059669", "#d97706", "#db2777", "#0891b2"]
 
 
@@ -289,19 +334,19 @@ class DemoBackend:
             self.docs[job_id]["live_image"] = {"name": name, "version": f"{len(data)}:{hash(data)}",
                                                "updated": _now_iso()}
 
-    def _redrawn(self, n):
-        """A visibly different scaffold, standing in for the coder's corrected render."""
+    def _marked(self, base, label, colour):
+        """A visibly different copy of `base`, standing in for a corrected render."""
         try:
             from PIL import Image, ImageDraw
-            im = Image.open(io.BytesIO(self.scaffold)).convert("RGB")
+            im = Image.open(io.BytesIO(base)).convert("RGB")
             d = ImageDraw.Draw(im)
-            d.rectangle([6, 6, im.size[0] - 7, im.size[1] - 7], outline=(200, 30, 30), width=5)
-            d.text((18, 16), f"REDRAWN #{n} — corrections applied", fill=(200, 30, 30))
+            d.rectangle([6, 6, im.size[0] - 7, im.size[1] - 7], outline=colour, width=5)
+            d.text((18, 16), f"{label} — corrections applied", fill=colour)
             buf = io.BytesIO()
             im.save(buf, "PNG")
             return buf.getvalue()
         except Exception:  # noqa: BLE001
-            return self.scaffold
+            return base
 
     @staticmethod
     def _make_final(scaffold_png):
@@ -385,7 +430,7 @@ class DemoBackend:
             d["timestamp"] = ev["timestamp"]
 
     def _wait_for_human(self, job_id, reason, mode, stage="gate", round_=0, last_reply=None,
-                        confirmed=False, opened_at=None):
+                        confirmed=False, opened_at=None, gate_key="scaffold"):
         grace = 600
         wait = 30 if (mode == "timeout" and reason == "review" and stage == "gate") else grace
         deadline = datetime.now(timezone.utc) + timedelta(seconds=wait)
@@ -393,7 +438,7 @@ class DemoBackend:
         gate["event"].clear()
         gate["decision"] = None
         self._update(job_id, status="awaiting_human", human_review={
-            "stage": stage, "reason": reason, "mode": mode, "resume_url": "demo://resume",
+            "gate": gate_key, "stage": stage, "reason": reason, "mode": mode, "resume_url": "demo://resume",
             "deadline": deadline.isoformat(), "wait_seconds": wait, "active_grace_seconds": grace,
             "last_activity": None, "round": round_, "last_reply": last_reply,
             "understanding_confirmed": confirmed, "opened_at": opened_at or _now_iso()})
@@ -410,22 +455,65 @@ class DemoBackend:
         self._update(job_id, status="running", human_review={"stage": "closed", "reason": reason, "last_action": decision[0]})
         return decision
 
-    def _note(self, job_id, text):
+    def _note(self, job_id, text, gate_key):
         self._push(job_id, {"author": "system", "task": "log_human_decision", "status": "ok", "parts": [{"text": "Record the human reviewer's decision into history."}]})
-        self._push(job_id, {"author": "human_gate", "task": "log_human_decision", "status": "ok", "parts": [{"text": text}], "model": "none", "cost": 0})
+        self._push(job_id, {"author": GATES[gate_key]["logger"], "task": "log_human_decision", "status": "ok", "parts": [{"text": text}], "model": "none", "cost": 0})
 
-    def _converse(self, job_id, reason, mode, first_message):
+    def _run_gate(self, job_id, gate_key, reason, mode):
+        """One review gate end to end, for either gate. Returns False if the run ended.
+
+        Corrections send us round again: rework, then REOPEN the gate to ask whether the
+        change is right. That reopened gate is where a stale image does real damage — the
+        human is being asked to approve a change while looking at the picture from before
+        it — so the rework always lands a visibly different image first.
+        """
+        thing = "final illustration" if gate_key == "final" else "scaffolding"
+        notes = {"continue": f"The human reviewer accepted the {thing} as it is.",
+                 "timeout": "The human reviewer did not respond in time; proceeding automatically.",
+                 "accept": f"The human reviewer confirmed the {thing} is fine as it is.",
+                 "rework": f"The human reviewer gave corrections; retries reset, reworking the {thing}."}
+        for n in range(1, 4):
+            action, message = self._wait_for_human(job_id, reason, mode, gate_key=gate_key)
+            outcome = action
+            if action in ("corrections", "message"):
+                outcome = self._converse(job_id, reason, mode, message, gate_key=gate_key)
+            if outcome == "abort":
+                self._note(job_id, f"The human reviewer chose to stop the run at the {thing} review.", gate_key)
+                self._update(job_id, status="failed", error_message=f"You stopped the run at the {thing} review.")
+                return False
+            if outcome == "timeout" and reason == "max_retries":
+                self._update(job_id, status="failed", error_message=f"The {thing} failed review three times and nobody answered the review prompt.")
+                return False
+            self._note(job_id, notes.get(outcome, outcome), gate_key)
+            if outcome != "rework":
+                return True
+            time.sleep(max(self.DELAY * 4, 1.5))
+            if gate_key == "final":
+                self._set_live(job_id, "latest.png", self._marked(self.final, f"REPAINTED #{n}", (30, 110, 200)))
+                self._push(job_id, {"author": "artist", "task": "render_final", "status": "ok", "model": "gpt-image-2", "cost": 0.053,
+                                    "parts": [{"text": f"Repainted the illustration with the human's corrections (pass {n})."}]})
+            else:
+                self._set_live(job_id, "latest.png", self._marked(self.scaffold, f"REDRAWN #{n}", (200, 30, 30)))
+                self._push(job_id, {"author": "scaffolding_generator", "task": "render", "status": "ok", "model": "none", "cost": 0,
+                                    "parts": [{"text": f"Re-rendered the scaffolding with the human's corrections (pass {n})."}]})
+            reason = "review"
+        return True
+
+    def _converse(self, job_id, reason, mode, first_message, gate_key="scaffold"):
         """Fake the multi-turn manager conversation. Returns 'rework' | 'accept' | 'abort' | 'timeout'."""
+        g = GATES[gate_key]
+        acceptable_flag = "image_acceptable_as_is" if gate_key == "final" else "scaffold_acceptable_as_is"
+        open_task, reply_task = g["tasks"]
         message, round_ = first_message, 0
         while True:
             if message:
                 round_ += 1
-                task = "human_review_open" if round_ == 1 else "human_review_reply"
+                task = open_task if round_ == 1 else reply_task
                 # Text only: the real pipeline attaches no image to the human's turn
                 # (the human is the one looking at the render, in this very UI).
                 self._push(job_id, {"author": "user", "task": task, "status": "ok",
                                     "parts": [{"text": message}]},
-                           agent_hint="inspection_manager")
+                           agent_hint=g["manager"])
                 time.sleep(max(self.DELAY * 3, 1.0))
                 # Crude stand-in for what the real manager infers from the text. The
                 # point of the demo is the WIRING — one box and one button feeding three
@@ -437,22 +525,24 @@ class DemoBackend:
                 reply = {
                     "reasoning": "Demo manager: deciding whether that was an approval, a correction, or a request to stop.",
                     "reply_to_human": ("Understood — stopping here. Nothing further will be generated." if stop else
-                                       "Understood — the scaffold stays as it is. Handing it to the artist now." if happy else
+                                       ("Understood — the illustration is released as it is." if gate_key == "final" else
+                                        "Understood — the scaffold stays as it is. Handing it to the artist now.") if happy else
                                        f"Got it. To be sure I understand: you want {message.strip().rstrip('.')}. "
                                        + ("Should the labels move with the shapes, or stay where they are?" if round_ == 1 else
-                                          "I'll have the coding team redraw it with exactly those changes.")),
+                                          f"I'll have it {'repainted' if gate_key == 'final' else 'redrawn'} with exactly those changes.")),
                     "understanding_confirmed": confirmed,
-                    "scaffold_acceptable_as_is": happy,
+                    acceptable_flag: happy,
                     "user_wants_to_stop": stop,
                     "fix_instructions": "" if (happy or stop) else f"Human corrections (round {round_}): {message.strip()}",
                 }
-                self._push(job_id, {"author": "inspection_manager", "task": task, "status": "ok",
+                self._push(job_id, {"author": g["manager"], "task": task, "status": "ok",
                                     "parts": [{"text": json.dumps(reply)}], "model": "gemini-3.1-pro-preview", "cost": 0.0131})
                 if confirmed:
                     return "abort" if stop else ("accept" if happy else "rework")
-                action, message = self._wait_for_human(job_id, reason, mode, "conversation", round_, reply["reply_to_human"])
+                action, message = self._wait_for_human(job_id, reason, mode, "conversation", round_, reply["reply_to_human"],
+                                                        gate_key=gate_key)
             else:
-                action, message = self._wait_for_human(job_id, reason, mode, "conversation", round_)
+                action, message = self._wait_for_human(job_id, reason, mode, "conversation", round_, gate_key=gate_key)
             if action == "abort":
                 return "abort"
             if action in ("continue", "timeout"):
@@ -463,7 +553,7 @@ class DemoBackend:
         mode = payload.get("human_review_mode", "automatic")
         q = payload.get("query", "").upper()
         want_max_retries, want_fail = "MAXRETRY" in q, "FAIL" in q
-        gate_done = False
+        scaffold_done = final_done = False
         for i, ev in enumerate(self.events):
             time.sleep(self.DELAY)
             if ev["task"] == "verify_adherence" and ev["author"] == "system":
@@ -479,48 +569,26 @@ class DemoBackend:
                 return
             nxt = self.events[i + 1] if i + 1 < len(self.events) else None
             self._push(job_id, ev, agent_hint=nxt["author"] if (ev["author"] == "system" and nxt) else None)
-            if ev["author"] == "inspection_manager" and ev["task"] == "consolidate_inspection" and not gate_done and mode != "automatic":
+            if ev["author"] == "inspection_manager" and ev["task"] == "consolidate_inspection" and not scaffold_done and mode != "automatic":
                 verdict = json.loads(ev["parts"][0]["text"])
-                reason = None
-                if want_max_retries and not verdict.get("passed_inspection"):
-                    reason = "max_retries"
-                elif verdict.get("passed_inspection"):
-                    reason = "review"
+                reason = ("max_retries" if (want_max_retries and not verdict.get("passed_inspection"))
+                          else "review" if verdict.get("passed_inspection") else None)
                 if reason:
-                    gate_done = True
+                    scaffold_done = True
                     self.images[job_id]["scaffolding.png"] = self.scaffold
-                    notes = {"continue": "The human reviewer accepted the scaffolding as drawn.",
-                             "timeout": "The human reviewer did not respond in time; proceeding automatically.",
-                             "accept": "The human reviewer confirmed the scaffolding is fine as drawn.",
-                             "rework": "The human reviewer gave corrections; retries reset, redrawing the scaffolding."}
-                    # Corrections send us round again: redraw, then REOPEN the gate to ask
-                    # whether the change is right. That second gate is the case where a
-                    # stale image does real damage — the human is being asked to approve a
-                    # change while looking at the picture from before it.
-                    for redraw in range(3):
-                        action, message = self._wait_for_human(job_id, reason, mode)
-                        outcome = action
-                        if action in ("corrections", "message"):
-                            outcome = self._converse(job_id, reason, mode, message)
-                        if outcome == "abort":
-                            self._note(job_id, "The human reviewer chose to stop the run at the scaffolding review.")
-                            self._update(job_id, status="failed", error_message="You stopped the run at the scaffolding review.")
-                            return
-                        if outcome == "timeout" and reason == "max_retries":
-                            self._update(job_id, status="failed", error_message="The scaffolding failed inspection three times and nobody answered the review prompt.")
-                            return
-                        self._note(job_id, notes.get(outcome, outcome))
-                        if outcome != "rework":
-                            break
-                        time.sleep(max(self.DELAY * 4, 1.5))
-                        self._set_live(job_id, "latest.png", self._redrawn(redraw + 1))
-                        self._push(job_id, {"author": "scaffolding_generator", "task": "render", "status": "ok",
-                                            "parts": [{"text": f"Re-rendered the scaffolding with the human's corrections (pass {redraw + 1})."}],
-                                            "model": "none", "cost": 0})
-                        reason = "review"
+                    if not self._run_gate(job_id, "scaffold", reason, mode):
+                        return
             if ev["author"] == "artist" and ev["task"] == "render_final":
                 self._set_live(job_id, "latest.png", self.final)
-        self._set_live(job_id, "final_illustration.png", self.final)
+            # The second review: the Final Gatekeeper's verdict on the finished picture.
+            # The recorded transcript rejects its first render and passes the second, so
+            # this opens after a realistic retry, exactly where the real gate sits.
+            if ev["author"] == "issue_aggregator" and ev["task"] == "aggregate_feedback" and not final_done and mode != "automatic":
+                if json.loads(ev["parts"][0]["text"]).get("final_pass"):
+                    final_done = True
+                    if not self._run_gate(job_id, "final", "review", mode):
+                        return
+        self._set_live(job_id, "final_illustration.png", self.images[job_id].get("latest.png", self.final))
         self.images[job_id]["scaffolding.png"] = self.scaffold
         self.images[job_id].pop("latest.png", None)
         doc = self.get_doc(job_id)
@@ -679,13 +747,13 @@ with st.sidebar:
         st.info("**Demo mode** — replaying a recorded run, no GCP. Put `MAXRETRY` or `FAIL` in the problem text to see those paths.", icon="🧪")
     env_choice = st.selectbox("Environment", ["Production", "Development (Test)"])
     style_choice = st.selectbox("Style", STYLE_OPTIONS)
-    review_mode = st.radio("Human review of the scaffolding", list(REVIEW_MODES), index=0,
+    review_mode = st.radio("Human review", list(REVIEW_MODES), index=list(REVIEW_MODES).index(DEFAULT_REVIEW_MODE),
                            format_func=lambda k: REVIEW_MODES[k][0],
-                           help="The scaffolding is the mathematically exact base diagram. After the AI inspectors approve it you can look it over and talk to the QA manager before the artist paints over it. Both waiting modes watch for typing and clicks, so you are never cut off mid-sentence. If the inspectors give up on the scaffolding, any mode other than Automatic asks you instead of failing.")
+                           help="You get two chances to steer the result. First the scaffolding, the mathematically exact base diagram, once the AI inspectors approve it and before the artist paints over it. Then the finished illustration, once the AI reviewers approve it and before it's released. This one setting covers both, for the whole run. Both waiting modes watch for typing and clicks, so you are never cut off mid-sentence. If the AI gives up on either stage, any mode other than Automatic asks you instead of failing.")
     st.caption(REVIEW_MODES[review_mode][1])
     chime_on = st.checkbox("Chime when it needs you", value=True,
                            disabled=review_mode == "automatic",
-                           help="Plays a short two-tone chime when the scaffolding review opens and each time the QA manager replies, so you can work in another tab.")
+                           help="Plays a short two-tone chime when a review opens and each time the reviewer replies, so you can work in another tab.")
     with st.expander("Speed / cost caps"):
         max_text_tier = st.selectbox("Max text model tier", ["slow", "medium", "fast"], help="Caps the strongest text model any agent may use.")
         max_image_tier = st.selectbox("Max image model tier", ["slow", "medium", "fast"])
@@ -868,7 +936,7 @@ def build_log_html(events, running_agent=None):
                 cards.append(render_card(reply["author"], task, render_response_body(reply), human=True, extra_chips=chips(reply)))
                 i += 2
             else:
-                cards.append(render_card("inspection_manager", task, "<div class='field thinking'>reading your message</div>", pending=True))
+                cards.append(render_card(manager_for_task(task), task, "<div class='field thinking'>reading your message</div>", pending=True))
                 i += 1
             continue
         if is_prompt and reply:
@@ -925,10 +993,12 @@ def status_line(state, events):
     return "<div style='display:flex;gap:14px;align-items:center;flex-wrap:wrap'>" + "".join(bits) + "</div>"
 
 
-def conversation_from_events(events):
+def conversation_from_events(events, tasks=HUMAN_TASKS):
+    # Filtered to one gate's tasks: at the final review, the scaffold conversation from
+    # earlier in the run is history, not part of what you are answering now.
     turns = []
     for ev in events:
-        if ev.get("task") not in HUMAN_TASKS:
+        if ev.get("task") not in tasks:
             continue
         if ev.get("author") == "user":
             turns.append(("me", "\n".join(event_texts(ev))))
@@ -1071,30 +1141,30 @@ def render_human_panel(state, events):
         # an approval, a correction, or a request to stop. It already has the flags for
         # all three, and a button that claims to mean "continue" while you have typed
         # corrections into the box above it can only ever be a lie about one of them.
+        g = gate_of(hr)
         if stage == "gate":
             if reason == "max_retries":
-                st.markdown("<div class='gatebox'>🛑 <b>The inspectors rejected this scaffolding three times.</b> "
-                            "Tell the QA manager what to fix, or leave the box empty to accept it as it is.</div>",
+                st.markdown(f"<div class='gatebox'>🛑 <b>{esc(g['rejected'])}</b> "
+                            f"Tell the {esc(g['manager_name'])} what to fix, or leave the box empty to accept it as it is.</div>",
                             unsafe_allow_html=True)
             else:
-                st.markdown("<div class='gatebox'>🙋 <b>The inspectors approved this scaffolding.</b> "
-                            "Anything to change before the artist paints over it? What you say "
-                            "outranks every AI in the pipeline.</div>", unsafe_allow_html=True)
+                st.markdown(f"<div class='gatebox'>🙋 <b>{esc(g['approved'])}</b> {esc(g['ask'])}</div>",
+                            unsafe_allow_html=True)
             with st.form(key=f"form_{sig}", border=False):
-                st.text_area("Your reply to the QA manager", key=f"msg_{sig}", height=90,
-                             placeholder="e.g. The two bags should be side by side, and the labels are too small.")
+                st.text_area(f"Your reply to the {g['manager_name']}", key=f"msg_{sig}", height=90,
+                             placeholder=g["placeholder"])
                 st.caption("Describe any changes, ask a question, or say you want to stop. "
-                           "**Leave it empty to accept the scaffolding as drawn.**")
+                           f"**{g['empty_hint']}**")
                 gate_submit(sig)
         elif stage == "conversation":
-            st.markdown("<div class='gatebox'>💬 <b>Talking to the QA Inspection Manager.</b> It will ask until it is sure it "
-                        "understands, then redraw the scaffolding with your corrections. Every message resets the retry budget.</div>",
+            st.markdown(f"<div class='gatebox'>💬 <b>Talking to the {esc(g['manager_title'])}.</b> It will ask until it is sure it "
+                        f"understands, then {esc(g['redo'])} with your corrections. Every message resets the retry budget.</div>",
                         unsafe_allow_html=True)
-            turns = conversation_from_events(events)
+            turns = conversation_from_events(events, g["tasks"])
             if not turns and not hr.get("last_reply"):
                 st.caption("Type what you'd like changed.")
             for who, text in turns[-6:]:
-                st.markdown(f"<div class='bubble {who}'><span class='tag'>{'You' if who == 'me' else 'QA manager'}</span>{esc(text)}</div>", unsafe_allow_html=True)
+                st.markdown(f"<div class='bubble {who}'><span class='tag'>{'You' if who == 'me' else esc(g['manager_name'])}</span>{esc(text)}</div>", unsafe_allow_html=True)
             with st.form(key=f"form_{sig}", border=False):
                 st.text_area("Your reply", key=f"msg_{sig}", height=90)
                 st.caption("**Leave it empty to move on** with what the manager already understood.")

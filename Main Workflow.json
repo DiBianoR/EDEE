@@ -2327,6 +2327,12 @@
               "name": "image_retry_directives",
               "value": "={{ $json.config.retry_directive_library.plan_finishing }}",
               "type": "string"
+            },
+            {
+              "id": "b0c30ec1-d90b-4daa-ae2e-f676938e11b8",
+              "name": "MODEL_TYPE",
+              "value": "={{ $json.session_state.selected_workflow === 'DIRECT_IMAGE_GEN' ? 'txt2img' : '' }}",
+              "type": "string"
             }
           ]
         },
@@ -7086,8 +7092,8 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.3,
       "position": [
-        2672,
-        480
+        1184,
+        368
       ],
       "id": "102968a0-b204-4d7e-9b47-a72929745cd8",
       "name": "Human review?"
@@ -7099,8 +7105,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        2816,
-        464
+        1328,
+        352
       ],
       "id": "5814b067-9cc4-4a7c-8e22-21455c66fb9f",
       "name": "Human Gate: Announce"
@@ -7133,8 +7139,8 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.3,
       "position": [
-        2672,
-        704
+        1184,
+        592
       ],
       "id": "2efc59d5-f412-46c4-8a01-81779eb94032",
       "name": "Human available?"
@@ -7151,8 +7157,8 @@
       "type": "n8n-nodes-base.wait",
       "typeVersion": 1.1,
       "position": [
-        2992,
-        464
+        1504,
+        352
       ],
       "id": "4c9fbbb0-77fd-4cfe-ad37-053d15aa6865",
       "name": "Human Gate: Wait",
@@ -7165,8 +7171,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        3152,
-        464
+        1664,
+        352
       ],
       "id": "ec243865-2cea-4133-abaf-8e757d06ebd7",
       "name": "Human Gate: Resolve"
@@ -7331,8 +7337,8 @@
       "type": "n8n-nodes-base.switch",
       "typeVersion": 3.4,
       "position": [
-        3296,
-        400
+        1808,
+        288
       ],
       "id": "a6ba228d-fa7f-4973-b1d2-b585968bcba6",
       "name": "Human decision"
@@ -7344,8 +7350,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        3488,
-        544
+        2000,
+        432
       ],
       "id": "2d4ae605-be99-43d3-ae59-ee26bd949654",
       "name": "Human outcome"
@@ -7392,8 +7398,8 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.5,
       "position": [
-        3520,
-        192
+        2032,
+        80
       ],
       "id": "8bab86ac-eb2b-435a-9f72-0d0e8c06a429",
       "name": "cfg human review"
@@ -7420,8 +7426,8 @@
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1.3,
       "position": [
-        3680,
-        192
+        2192,
+        80
       ],
       "id": "01015b6a-9bd6-45f3-ae49-95df9c42b075",
       "name": "inspection_manager - human_review"
@@ -7454,8 +7460,8 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.3,
       "position": [
-        3872,
-        192
+        2384,
+        80
       ],
       "id": "d8f99cc0-7c15-4c85-bf15-d43ae477ce61",
       "name": "Manager understood?"
@@ -7490,8 +7496,8 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.5,
       "position": [
-        3648,
-        544
+        2160,
+        432
       ],
       "id": "238fe4c4-82bd-4d41-ba20-8753f9e76d05",
       "name": "cfg log human decision"
@@ -7518,8 +7524,8 @@
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1.3,
       "position": [
-        3824,
-        544
+        2336,
+        432
       ],
       "id": "738ab427-1fe6-45d4-b7e9-40db592b889c",
       "name": "human_gate - log_human_decision"
@@ -7634,8 +7640,8 @@
       "type": "n8n-nodes-base.switch",
       "typeVersion": 3.4,
       "position": [
-        4000,
-        512
+        2512,
+        400
       ],
       "id": "8fbcb58a-8baa-40f6-9f18-60188050811b",
       "name": "After human log"
@@ -7682,8 +7688,8 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.5,
       "position": [
-        4208,
-        400
+        2720,
+        288
       ],
       "id": "f8608cbb-717b-4d8d-bfa7-7a03066314e0",
       "name": "Human corrections → reset retries"
@@ -7724,8 +7730,8 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.5,
       "position": [
-        4176,
-        592
+        2688,
+        480
       ],
       "id": "b64ed7f4-c3f1-44ae-b72b-f60b9c2f9821",
       "name": "cfg human abort"
@@ -7752,11 +7758,699 @@
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1.3,
       "position": [
-        4336,
-        592
+        2848,
+        480
       ],
       "id": "3748274d-9996-44bf-a679-b2eb48e010f1",
       "name": "error_handler - report_error7"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "UReLQDgBIPpb9P4f",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/UReLQDgBIPpb9P4f",
+          "cachedResultName": "EDEE — Universal Agent Sub-Workflow"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        5520,
+        848
+      ],
+      "id": "961fbd4e-b353-4509-a5ab-fc46052e2d06",
+      "name": "error_handler - report_error8"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "d3f3583b-94f4-47be-a766-9b8a4f64c2fc",
+              "leftValue": "={{ $json.config.human_review_mode !== 'automatic' }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        3856,
+        736
+      ],
+      "id": "ba043d92-f93a-4c27-b53f-0c302872dad9",
+      "name": "Final review?"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "d3f3583b-94f4-47be-a766-9b8a4f64c2fc",
+              "leftValue": "={{ $json.config.human_review_mode !== 'automatic' }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        3856,
+        960
+      ],
+      "id": "730463fb-11f0-4415-af7b-a18694bc9fd6",
+      "name": "Final available?"
+    },
+    {
+      "parameters": {
+        "jsCode": "// =============================================================================\n// 🙋 FINAL GATE: ANNOUNCE  (Code node, \"Run Once for All Items\")\n//\n// The final-illustration twin of \"Human Gate: Announce\". Publishes the review gate to\n// the job doc (status \"awaiting_human\" + a `human_review` block the frontend renders)\n// and hands \"Final Gate: Wait\" its time limit. Three edges feed it:\n//   • \"Final review?\" / \"Final available?\"  — fresh gate after the Gatekeeper's verdict\n//   • \"Final decision\" [corrections]         — kept for parity; the one-button UI never\n//                                              sends it, so this edge never fires\n//   • \"Final understood?\" [false]            — the Gatekeeper asked a question; wait\n//                                              for the human's answer\n//\n// No image rides along: node 3 of \"artist - render_final\" already broadcast this very\n// illustration, so {job_id}/latest.png is current and the frontend is showing it.\n//\n// ⚠️ EVERY name and flag this gate depends on is in GATE below. The scaffold version\n//    hard-codes \"Human Gate: Announce\", \"inspection_manager\" and \"human_review\" — a\n//    pasted copy left unedited would reach back into the SCAFFOLD gate and read its data\n//    without any error to warn you. Node names here must match your canvas exactly.\n// ⚠️ NEVER reach back by name with a bare .first()/.last()/.all() — see the\n//    latestRun() note in \"Archive Scaffolding\". Same helper, same reason.\n// =============================================================================\n\nconst GATE = {\n    gate: \"final\",                          // tells the frontend which wording to show\n    announceNode: \"Final Gate: Announce\",   // THIS node's own name, for the reach-back\n    manager: \"issue_aggregator\",            // who holds the conversation\n    taskPrefix: \"final_review\",             // final_review_open / final_review_reply\n    passedFlag: \"final_pass\",               // the Gatekeeper's verdict: review vs max_retries\n    phase: \"5\",\n};\n\nconst latestRun = (nodeName) => {\n    let latest = null;\n    for (let run = 0; run < 50; run++) {\n        let data;\n        try { data = $(nodeName).all(0, run); }\n        catch (e) { break; }\n        if (data && data.length) latest = data[data.length - 1].json;\n    }\n    return latest;\n};\n\nconst input = items[0].json;\nconst { config, session_state, session_events } = input;\nif (!config || !session_state || !session_events) {\n    throw new Error(`${GATE.announceNode} — missing config / session_state / session_events on the incoming item`);\n}\n\nconst mode = config.human_review_mode || \"automatic\";\nconst timeouts = config.human_review_timeouts || { gate_seconds: 30, absent_minutes: 10 };\n\nconst isGateTurn = e => e.author === GATE.manager && String(e.task || \"\").startsWith(GATE.taskPrefix);\n\n// Rounds so far = this gate's manager replies (no counter state).\nconst round = session_events.filter(isGateTurn).length;\n\n// Stage: explicit from \"Final Gate: Resolve\", else inferred — straight after one of\n// this gate's replies we are mid-conversation; otherwise it's a fresh gate.\nconst lastEvent = session_events[session_events.length - 1] || {};\nconst midConversation = isGateTurn(lastEvent);\nconst stage = input.human_stage || (midConversation ? \"conversation\" : \"gate\");\n\n// Reason: on a fresh gate the verdict decides; inside a conversation keep whatever the\n// gate was opened with.\nconst reason = input.human_reason\n    || (stage === \"gate\" ? (session_state[GATE.passedFlag] === true ? \"review\" : \"max_retries\")\n                         : ((latestRun(GATE.announceNode) || {}).human_reason || \"review\"));\n\nconst graceSeconds = (Number(timeouts.absent_minutes) || 10) * 60;\n\n// SLICE, not the whole budget — see \"Human Gate: Announce\". The opening window in\n// \"timeout\" mode is gate_seconds OF SILENCE; typing extends it via /human-activity.\nlet waitSeconds = (stage === \"gate\" && reason === \"review\" && mode === \"timeout\")\n    ? Number(timeouts.gate_seconds) || 30\n    : graceSeconds;\n\nif (input.human_extend_seconds) {\n    waitSeconds = Math.max(15, Math.min(graceSeconds, Math.round(Number(input.human_extend_seconds))));\n}\n\nconst now = new Date();\n// opened_at survives extensions: the frontend keys its gate widgets on it.\nconst openedAt = input.human_opened_at || now.toISOString();\nconst humanReview = {\n    gate: GATE.gate,\n    stage,\n    reason,\n    mode,\n    resume_url: $execution.resumeUrl,          // fresh every slice; the listener reads it live\n    deadline: new Date(now.getTime() + waitSeconds * 1000).toISOString(),\n    wait_seconds: waitSeconds,\n    active_grace_seconds: graceSeconds,        // /human-activity extends to now + this\n    last_activity: input.human_last_activity ?? null,\n    round,\n    // Only mid-conversation. reply_to_human is shared state, and on a fresh gate it\n    // still holds the SCAFFOLD manager's last words.\n    last_reply: midConversation ? (session_state.reply_to_human ?? null) : null,\n    understanding_confirmed: midConversation && session_state.understanding_confirmed === true,\n    opened_at: openedAt\n};\n\nif (config.enable_gui_logging === true && config.gui_webhook_url) {\n    try {\n        await this.helpers.httpRequest({\n            method: \"POST\",\n            url: config.gui_webhook_url,\n            headers: { \"Content-Type\": \"application/json\" },\n            body: {\n                job_id: config.job_id,\n                status: \"awaiting_human\",\n                timestamp: now.toISOString(),\n                phase_id: GATE.phase,\n                agent_id: GATE.manager,\n                task_id: stage === \"gate\" ? `${GATE.taskPrefix}_gate` : `${GATE.taskPrefix}_conversation`,\n                human_review: humanReview\n            },\n            json: true,\n            timeout: 15000\n        });\n    } catch (e) {\n        console.error(`${GATE.announceNode}: gate could not be announced — skipping the wait:`, e.message);\n        waitSeconds = 1;\n    }\n}\n\nreturn [{ json: {\n    config, session_state, session_events,\n    human_stage: stage,\n    human_reason: reason,\n    human_round: round,\n    human_wait_seconds: waitSeconds,   // ← \"Final Gate: Wait\" reads this: {{ $json.human_wait_seconds }}\n    human_deadline: humanReview.deadline,\n    human_opened_at: openedAt\n} }];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4000,
+        720
+      ],
+      "id": "a08c7980-b09a-470e-a4b3-575ffae98409",
+      "name": "Final Gate: Announce"
+    },
+    {
+      "parameters": {
+        "resume": "webhook",
+        "httpMethod": "POST",
+        "limitWaitTime": true,
+        "resumeAmount": "={{ $json.human_wait_seconds }}",
+        "resumeUnit": "seconds",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        4176,
+        720
+      ],
+      "id": "f7687371-814b-483d-ae71-055a7122fe05",
+      "name": "Final Gate: Wait",
+      "webhookId": "3e9ce26a-5361-4479-952d-bd605c68f5c4"
+    },
+    {
+      "parameters": {
+        "jsCode": "// =============================================================================\n// 🙋 FINAL GATE: RESOLVE  (Code node, \"Run Once for All Items\")\n//\n// The final-illustration twin of \"Human Gate: Resolve\". Runs right after \"Final Gate:\n// Wait\" and turns the two ways a Wait node can resume — a webhook call, or its time\n// limit — into ONE item for the \"Final decision\" Switch.\n//\n// Output: human_action ∈ continue | message | extend | rework | fail | abort, plus\n// human_message, human_decision_text and the echoed stage / reason / round.\n//\n//   gate         continue            → continue   (release as painted; max_retries: accept anyway)\n//   gate/conv    message             → message\n//   gate review  timeout             → continue   (the \"30 s then automatic\" mode, or absent human)\n//   gate max_r.  timeout             → fail       (nobody rescued it — same outcome as no human)\n//   conv         continue / timeout  → rework if the Gatekeeper already holds corrections,\n//                                      else continue / fail exactly as the gate would\n//   any          lapsed but active   → extend     (see STILL THERE?)\n//\n// ⚠️ Every name and flag is in GATE. An unedited copy of the scaffold version would\n//    read \"Human Gate: Announce\" and scaffold_acceptable_as_is — the SCAFFOLD gate's\n//    data — and nothing would fail loudly.\n// =============================================================================\n\nconst GATE = {\n    announceNode: \"Final Gate: Announce\",   // must match the canvas name exactly\n    acceptableFlag: \"image_acceptable_as_is\",\n    subject: \"final illustration\",\n};\n\nconst latestRun = (nodeName) => {\n    let latest = null;\n    for (let run = 0; run < 50; run++) {\n        let data;\n        try { data = $(nodeName).all(0, run); }\n        catch (e) { break; }\n        if (data && data.length) latest = data[data.length - 1].json;\n    }\n    return latest;\n};\n\nconst announced = latestRun(GATE.announceNode);\nif (!announced) throw new Error(`Final Gate: Resolve — no output from '${GATE.announceNode}' found`);\nconst { config, session_state, session_events, human_stage: stage, human_reason: reason,\n        human_round: round, human_wait_seconds: waitSeconds, human_opened_at: openedAt } = announced;\n\nconst incoming = items[0].json || {};\nconst body = incoming.body && typeof incoming.body === \"object\" ? incoming.body : null;\nlet action = body && body.action ? String(body.action).toLowerCase() : \"timeout\";\nconst message = body && body.message ? String(body.message).trim() : \"\";\nif (action === \"corrections\" && message) action = \"message\";\nconst timedOut = action === \"timeout\";\n\n// === ⏱️ STILL THERE? ===\n// The slice lapsed. If /human-activity has pushed the deadline into the future, the\n// human is mid-thought: open another slice rather than deciding for them.\nlet extendSeconds = 0;\nlet lastActivity = null;\nif (timedOut && (config.human_review_mode || \"automatic\") !== \"automatic\") {\n    try {\n        const summary = await this.helpers.httpRequest({\n            method: \"GET\",\n            url: `${config.gui_webhook_url.replace(/\\/update-state$/, \"\")}/summary/${config.job_id}`,\n            json: true,\n            timeout: 10000\n        });\n        const gate = summary?.human_review || {};\n        lastActivity = gate.last_activity ?? null;\n        const remaining = (new Date(gate.deadline).getTime() - Date.now()) / 1000;\n        if (gate.last_activity && Number.isFinite(remaining) && remaining > 5) {\n            extendSeconds = remaining;\n        }\n    } catch (e) {\n        console.error(\"Activity check failed, treating the wait as expired:\", e.message);\n    }\n}\n\nif (extendSeconds) {\n    return [{ json: {\n        config, session_state, session_events,\n        human_action: \"extend\",\n        human_stage: stage,\n        human_reason: reason,\n        human_round: round,\n        human_opened_at: openedAt,\n        human_last_activity: lastActivity,\n        human_extend_seconds: extendSeconds\n    } }];\n}\n\nconst heldCorrections = round > 0 && session_state[GATE.acceptableFlag] !== true;\nconst minutes = Math.round((waitSeconds || 0) / 60);\n\nlet outcome, note = \"\";\nswitch (action) {\n    case \"message\":\n    case \"corrections\":\n        outcome = action;                       // no history note: the conversation IS the record\n        break;\n    case \"abort\":\n        outcome = \"abort\";\n        note = `The human reviewer chose to stop the run at the ${GATE.subject} review.`;\n        break;\n    default: {                                  // continue | timeout\n        if (stage === \"conversation\" && heldCorrections) {\n            outcome = \"rework\";\n            note = timedOut\n                ? `The human reviewer gave corrections to the ${GATE.subject} but stopped answering (${minutes} min); proceeding with the corrections gathered so far. Retry counters reset.`\n                : `The human reviewer gave corrections to the ${GATE.subject} and asked us to proceed. The Final Gatekeeper's fix_instructions carry them. Retry counters reset.`;\n        } else if (reason === \"max_retries\" && timedOut) {\n            outcome = \"fail\";\n            note = `The ${GATE.subject} failed review repeatedly and the human reviewer did not respond within ${minutes} min.`;\n        } else if (reason === \"max_retries\") {\n            outcome = \"continue\";\n            note = `The ${GATE.subject} failed review repeatedly; the human reviewer chose to accept it as it is and release it.`;\n        } else if (timedOut) {\n            outcome = \"continue\";\n            note = `The human reviewer was offered a review of the approved ${GATE.subject} and did not respond within ${waitSeconds}s; releasing it automatically.`;\n        } else {\n            outcome = \"continue\";\n            note = `The human reviewer looked at the approved ${GATE.subject} and accepted it as painted.`;\n        }\n    }\n}\n\nreturn [{ json: {\n    config, session_state, session_events,\n    human_action: outcome,\n    human_message: message,\n    human_stage: outcome === \"corrections\" ? \"conversation\" : stage,\n    human_reason: reason,\n    human_round: round,\n    human_opened_at: outcome === \"corrections\" ? openedAt : null,\n    human_decision_text: note\n} }];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4336,
+        720
+      ],
+      "id": "03f9f6c4-0371-44d5-a31d-acd199d294bc",
+      "name": "Final Gate: Resolve"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.human_action }}",
+                    "rightValue": "message",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "31c5222b-a4ca-4e59-b27c-2717b4d95255"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "message"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "7a60e6e8-deff-4981-919c-33a568b35926",
+                    "leftValue": "={{ $json.human_action }}",
+                    "rightValue": "corrections",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "corrections"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "bf04c1a6-6b13-46c3-9798-3554295b2b19",
+                    "leftValue": "={{ $json.human_action }}",
+                    "rightValue": "continue",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "continue"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "772d2a3b-defa-4e7e-aa62-c55c10f679af",
+                    "leftValue": "={{ $json.human_action }}",
+                    "rightValue": "rework",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "rework"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "55b0a84a-becd-42e0-8926-fa6d849f3ef2",
+                    "leftValue": "={{ $json.human_action }}",
+                    "rightValue": "fail",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "fail"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "41f563a6-d6ac-45eb-88f8-6c6a26d0a3f0",
+                    "leftValue": "={{ $json.human_action }}",
+                    "rightValue": "abort",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "abort"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        4480,
+        656
+      ],
+      "id": "768971f0-4e54-4326-a075-29d942469d86",
+      "name": "Final decision"
+    },
+    {
+      "parameters": {
+        "jsCode": "// =============================================================================\n// 🙋 FINAL OUTCOME  (Code node, \"Run Once for All Items\")\n//\n// The final-illustration twin of \"Human outcome\": the funnel for every way the final\n// review can END. Two kinds of item arrive:\n//   • from \"Final decision\" (continue | rework | fail | abort): the Resolve item, which\n//     already carries human_action + human_decision_text — passed through.\n//   • from \"Final understood?\" [true]: the Universal Agent's output after a\n//     final_review_* turn. The Gatekeeper's verdict decides:\n//         user_wants_to_stop      → abort\n//         image_acceptable_as_is  → continue      else → rework\n//\n// Then: → cfg log final decision (AGENT_ID final_gate) → final_gate - log_final_decision →\n// \"After final log\", which switches on $('Final outcome').item.json.human_action —\n// THIS node's name. The Universal Agent call in between returns only\n// { config, session_state, session_events } and drops top-level fields.\n//\n// ⚠️ Rename this node to exactly \"Final outcome\", and point \"After final log\" at it.\n//    Left as a copy of \"Human outcome\", it would switch on the SCAFFOLD gate's result.\n// =============================================================================\n\nconst GATE = {\n    manager: \"issue_aggregator\",\n    taskPrefix: \"final_review\",\n    acceptableFlag: \"image_acceptable_as_is\",\n    subject: \"final illustration\",\n};\n\nconst input = items[0].json;\nconst { config, session_state, session_events } = input;\nif (!config || !session_state || !session_events) {\n    throw new Error(\"Final outcome — missing config / session_state / session_events on the incoming item\");\n}\n\nlet action = input.human_action;\nlet note = input.human_decision_text || \"\";\n\nif (!action) {\n    const round = session_events.filter(e => e.author === GATE.manager && String(e.task || \"\").startsWith(GATE.taskPrefix)).length;\n    // Stopping first: a human who asked to stop has overridden every other reading.\n    if (session_state.user_wants_to_stop === true) {\n        action = \"abort\";\n        note = `The human reviewer asked to stop the run at the ${GATE.subject} review, after ${round} exchange(s). The Final Gatekeeper read that as a request to abandon rather than to correct.`;\n    } else if (session_state[GATE.acceptableFlag] === true) {\n        action = \"continue\";\n        note = `After ${round} exchange(s) the human reviewer confirmed the ${GATE.subject} is fine as painted.`;\n    } else {\n        action = \"rework\";\n        note = `The human reviewer gave corrections to the ${GATE.subject} (${round} exchange(s)); the Final Gatekeeper confirmed it understands them and relayed them as fix_instructions. Retry counters reset; repainting.`;\n    }\n}\n\nreturn [{ json: {\n    config, session_state, session_events,\n    human_action: action,                 // continue | rework | fail | abort\n    human_decision_text: note,            // templated by log_human_decision ({human_decision_text})\n    human_round: input.human_round ?? null\n} }];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4672,
+        800
+      ],
+      "id": "64dd3c04-ba40-487d-9528-e16876ff830c",
+      "name": "Final outcome"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "03ad2143-530c-4ca7-b8d9-c389eb51a105",
+              "name": "PHASE_ID",
+              "value": "5",
+              "type": "string"
+            },
+            {
+              "id": "dfb3159d-4310-4809-a9b2-088a67de01eb",
+              "name": "AGENT_ID",
+              "value": "issue_aggregator",
+              "type": "string"
+            },
+            {
+              "id": "9c25f69a-c39f-44d3-865d-049af8055228",
+              "name": "TASK_ID",
+              "value": "={{ $json.session_events.filter(e => e.author === 'issue_aggregator' && String(e.task).startsWith('final_review')).length > 0 ? 'final_review_reply' : 'final_review_open' }}",
+              "type": "string"
+            },
+            {
+              "id": "49774691-2c14-4dd1-be44-43c47a0524eb",
+              "name": "prompt_author",
+              "value": "user",
+              "type": "string"
+            },
+            {
+              "id": "c1313704-de37-4313-b723-741d4c7d2025",
+              "name": "human_message",
+              "value": "={{ $json.human_message }}",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        4704,
+        448
+      ],
+      "id": "fb3f9d15-6660-4226-b737-199ca884e006",
+      "name": "cfg final review"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "UReLQDgBIPpb9P4f",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/UReLQDgBIPpb9P4f",
+          "cachedResultName": "EDEE — Universal Agent Sub-Workflow"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        4864,
+        448
+      ],
+      "id": "5e2bd1d2-b7d7-4783-8835-a212d4fb1b8c",
+      "name": "issue_aggregator - final_review"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "50d47f3e-f87c-4800-843b-130e66e0f6e2",
+              "leftValue": "={{ $json.session_state.understanding_confirmed === true }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        5056,
+        448
+      ],
+      "id": "a1b4dc41-5b3f-4d43-8dde-193e94b66aa1",
+      "name": "Final understood?"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "b6f67093-af22-441f-8cc4-614ef666b3d4",
+              "name": "PHASE_ID",
+              "value": "5",
+              "type": "string"
+            },
+            {
+              "id": "63d91186-fde9-419f-90eb-2925807a4b09",
+              "name": "AGENT_ID",
+              "value": "final_gate",
+              "type": "string"
+            },
+            {
+              "id": "d185b6a8-ed52-4e91-b0e8-8eaddf685e56",
+              "name": "TASK_ID",
+              "value": "log_human_decision",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        4832,
+        800
+      ],
+      "id": "75e3b9c0-5e4e-40a5-863b-5a2509df1fa3",
+      "name": "cfg log final decision"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "UReLQDgBIPpb9P4f",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/UReLQDgBIPpb9P4f",
+          "cachedResultName": "EDEE — Universal Agent Sub-Workflow"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        5008,
+        800
+      ],
+      "id": "078d34ba-2e50-4d8c-bee9-18a879f9f448",
+      "name": "final_gate - log_final_decision"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $('Final outcome').item.json.human_action }}",
+                    "rightValue": "continue",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "11b4aeb4-20d5-4ca2-a353-6bdfe3c9aa8f"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "continue"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "53ed9a14-40f2-43c4-8912-222eeb8c2d56",
+                    "leftValue": "={{ $('Final outcome').item.json.human_action }}",
+                    "rightValue": "rework",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "rework"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "ad52b21f-87e7-412d-b688-b15a28acc2b6",
+                    "leftValue": "={{ $('Final outcome').item.json.human_action }}",
+                    "rightValue": "fail",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "fail"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "554d3e18-e153-414a-b09d-58df68009900",
+                    "leftValue": "={{ $('Final outcome').item.json.human_action }}",
+                    "rightValue": "abort",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "abort"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        5184,
+        768
+      ],
+      "id": "f16320d0-6c7b-4faf-8c72-b976e18d8976",
+      "name": "After final log"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "50b2b2b7-9eb1-42e2-beb8-33f52afadeb3",
+              "name": "image_gen_retry_count",
+              "value": 0,
+              "type": "number"
+            },
+            {
+              "id": "48f0dac4-f4ff-4beb-a027-19f3759cb3f8",
+              "name": "image_retry_directives",
+              "value": "={{ $json.config.retry_directive_library.plan_finishing_human }}",
+              "type": "string"
+            },
+            {
+              "id": "f703e3b9-90e3-4f04-9c30-32a4154580dd",
+              "name": "image_human_priority_directives",
+              "value": "={{ $json.config.retry_directive_library.final_review_human }}",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        5392,
+        656
+      ],
+      "id": "e2fc3c1c-2425-4ee2-8392-77ffff4bfbed",
+      "name": "Final corrections → reset retries"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "748fb80f-23e2-4aaa-89d2-7c90b40fdfc9",
+              "name": "PHASE_ID",
+              "value": "-",
+              "type": "string"
+            },
+            {
+              "id": "93b67161-3571-4b70-8e84-6ea4aa17bef0",
+              "name": "AGENT_ID",
+              "value": "error_handler",
+              "type": "string"
+            },
+            {
+              "id": "d748da49-d92e-4cf1-a8b1-74baa24728eb",
+              "name": "TASK_ID",
+              "value": "report_error",
+              "type": "string"
+            },
+            {
+              "id": "3a505c9e-e32d-43f7-804f-1daa4714fc80",
+              "name": "error",
+              "value": "UserAborted",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        5360,
+        848
+      ],
+      "id": "481d31d2-16b8-4d56-884c-862da073fe24",
+      "name": "cfg final abort"
     }
   ],
   "connections": {
@@ -9497,14 +10191,14 @@
       "main": [
         [
           {
-            "node": "Phase 5 - Output",
+            "node": "Final review?",
             "type": "main",
             "index": 0
           }
         ],
         [
           {
-            "node": "cfg61",
+            "node": "Final available?",
             "type": "main",
             "index": 0
           }
@@ -10065,6 +10759,248 @@
         [
           {
             "node": "error_handler - report_error7",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Final review?": {
+      "main": [
+        [
+          {
+            "node": "Final Gate: Announce",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Phase 5 - Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Final available?": {
+      "main": [
+        [
+          {
+            "node": "Final Gate: Announce",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "cfg61",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Final Gate: Announce": {
+      "main": [
+        [
+          {
+            "node": "Final Gate: Wait",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Final Gate: Wait": {
+      "main": [
+        [
+          {
+            "node": "Final Gate: Resolve",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Final Gate: Resolve": {
+      "main": [
+        [
+          {
+            "node": "Final decision",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Final decision": {
+      "main": [
+        [
+          {
+            "node": "cfg final review",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Final Gate: Announce",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Final outcome",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Final outcome",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Final outcome",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Final outcome",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Final outcome": {
+      "main": [
+        [
+          {
+            "node": "cfg log final decision",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "cfg final review": {
+      "main": [
+        [
+          {
+            "node": "issue_aggregator - final_review",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "issue_aggregator - final_review": {
+      "main": [
+        [
+          {
+            "node": "Final understood?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Final understood?": {
+      "main": [
+        [
+          {
+            "node": "Final outcome",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Final Gate: Announce",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "cfg log final decision": {
+      "main": [
+        [
+          {
+            "node": "final_gate - log_final_decision",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "final_gate - log_final_decision": {
+      "main": [
+        [
+          {
+            "node": "After final log",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "After final log": {
+      "main": [
+        [
+          {
+            "node": "Phase 5 - Output",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Final corrections → reset retries",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "cfg61",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "cfg final abort",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Final corrections → reset retries": {
+      "main": [
+        [
+          {
+            "node": "cfg25",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "cfg final abort": {
+      "main": [
+        [
+          {
+            "node": "error_handler - report_error8",
             "type": "main",
             "index": 0
           }

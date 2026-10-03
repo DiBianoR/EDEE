@@ -340,6 +340,12 @@
               "name": "time_started",
               "value": "={{ new Date().toISOString() }}",
               "type": "string"
+            },
+            {
+              "id": "69903ad0-c5bd-4c60-a542-acd42f0a45bc",
+              "name": "control_group",
+              "value": false,
+              "type": "boolean"
             }
           ]
         },
@@ -352,16 +358,17 @@
         304
       ],
       "id": "d18a1d72-d304-4e65-8932-6b473d69041c",
-      "name": "Edit Fields"
+      "name": "Edit Fields",
+      "notesInFlow": true,
+      "notes": "toggle control_group here"
     },
     {
       "parameters": {
         "workflowId": {
           "__rl": true,
-          "value": "HtwI6u1ae2xwKw1f",
-          "mode": "list",
-          "cachedResultUrl": "/workflow/HtwI6u1ae2xwKw1f",
-          "cachedResultName": "EDEE — EDEE-main"
+          "value": "={{ $json.control_group ? 'o7uM375uJZDnly9t' : 'HtwI6u1ae2xwKw1f' }}",
+          "mode": "id",
+          "cachedResultUrl": "/workflow/=%7B%7B%20$json.control_group%20%3F%20'o7uM375uJZDnly9t'%20:%20'HtwI6u1ae2xwKw1f'%20%7D%7D"
         },
         "workflowInputs": {
           "mappingMode": "defineBelow",

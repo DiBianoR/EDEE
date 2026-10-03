@@ -1,0 +1,288 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -80,
+        -48
+      ],
+      "id": "17c520d1-a9d1-4b29-9c17-99d2ad994097",
+      "name": "When Executed by Another Workflow",
+      "notesInFlow": true,
+      "notes": "Entry: EDEE - Control"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "4086eabe-e504-4d6c-904e-3e48a6dafb88",
+              "name": "google_api_key",
+              "value": "<GEMINI_API_KEY_REDACTED>",
+              "type": "string"
+            },
+            {
+              "id": "dd6b9951-50b3-4f15-8a5d-e33b68c8cf42",
+              "name": "openai_api_key",
+              "value": "<OPENAI_API_KEY_REDACTED>",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        176,
+        -48
+      ],
+      "id": "e739b8e2-9d9e-46fa-acf6-e70baa3995fc",
+      "name": "Set API Key"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "bea21e98-7f83-44a4-8bcd-aa12ec4fcc5e",
+              "name": "job_id",
+              "value": "={{ $json.body?.job_id || $json?.job_id }}",
+              "type": "string"
+            },
+            {
+              "id": "7a5c1766-5cdb-4dde-a6c0-1d411c69b89a",
+              "name": "original_query",
+              "value": "={{ $json.body?.query || $json?.original_query }}",
+              "type": "string"
+            },
+            {
+              "id": "4437e75a-aff9-4964-8acb-e18f981f4939",
+              "name": "style_preference",
+              "value": "={{ $json.body?.style_preference || $json?.style_preference }}",
+              "type": "string"
+            },
+            {
+              "id": "ad9141e4-80ad-435a-8783-1c90a68eaf3c",
+              "name": "is_test_mode",
+              "value": "={{ $json.body?.is_test_mode || $json?.is_test_mode || false }}",
+              "type": "boolean"
+            },
+            {
+              "id": "543745c7-f4ce-4a14-b4ee-4f35875183fa",
+              "name": "max_text_tier",
+              "value": "={{ $json.body?.max_text_tier || $json?.max_text_tier }}",
+              "type": "string"
+            },
+            {
+              "id": "88bfc4d1-4f06-4933-9908-cd6d4dcff893",
+              "name": "max_image_tier",
+              "value": "={{ $json.body?.max_image_tier || $json?.max_image_tier }}",
+              "type": "string"
+            },
+            {
+              "id": "6116e099-2cd5-475b-acd2-e2117f0e777c",
+              "name": "human_review_mode",
+              "value": "={{ $json.body?.human_review_mode || $json?.human_review_mode || \"automatic\" }}",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        48,
+        -48
+      ],
+      "id": "f76a55a3-bac0-44b7-beac-8a70b72ed7a1",
+      "name": "Set Job"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "59k24tT721u3gsni",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/59k24tT721u3gsni",
+          "cachedResultName": "EDEE — Load Config Sub-workflow"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        320,
+        -48
+      ],
+      "id": "fa3f783f-6974-40b2-b40b-9539ddf79481",
+      "name": "Load Phase 1 Config"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "b9c862f9-17c0-4923-968c-f57c35859a6e",
+              "name": "PHASE_ID",
+              "value": "4",
+              "type": "string"
+            },
+            {
+              "id": "385b162f-1005-4d8e-b94a-6be27224b7d3",
+              "name": "AGENT_ID",
+              "value": "control_artist",
+              "type": "string"
+            },
+            {
+              "id": "16b09845-a443-436c-bde4-b8bf509bc238",
+              "name": "TASK_ID",
+              "value": "control_render",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        464,
+        -48
+      ],
+      "id": "05e1dda3-2ef6-407e-ad8f-03e88e1bd281",
+      "name": "cfg control"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "UReLQDgBIPpb9P4f",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/UReLQDgBIPpb9P4f",
+          "cachedResultName": "EDEE — Universal Agent Sub-Workflow"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        592,
+        -48
+      ],
+      "id": "821fbb97-130f-44b4-ad47-196bc1b0b6b3",
+      "name": "control_artist - control_render",
+      "retryOnFail": true,
+      "maxTries": 2
+    },
+    {
+      "parameters": {
+        "jsCode": "// =============================================================================\n// 📦 CONTROL FINAL BROADCAST — terminal payload for the control-group workflow.\n// Stripped-down \"Send Final Broadcast\" from the Main Workflow: same listener, same\n// field names, so /summary, the Test Orchestrator's Fetch Job Summary, and the\n// frontend read a control run exactly like a pipeline run.\n//\n// Input: the Universal Agent's output for control_render — { config, session_state,\n// session_events } plus base64_img_string at top level when an image came back.\n//\n// No image → status \"failed\" (a clean terminal status: the listener still\n// materializes session_events.json), so the sheet row says Failed, not Completed.\n// ⚠️ NEVER include `config` (contains api_keys) in the payload.\n// =============================================================================\n\nconst {\n    config = {},\n    session_state: ss = {},\n    session_events: events = [],\n    base64_img_string: img = null,\n    base64_img_string_mime: mime = \"image/png\"\n} = items[0].json;\n\nconst totalCost = Number(events.reduce((sum, ev) => sum + (ev.cost || 0), 0).toFixed(6));\nconst ok = !!img;\nconst userMessage = ok\n    ? \"Control run: single-call illustration generated from the raw query.\"\n    : \"Control run: the image model returned no image.\";\n\nconst finalPayload = {\n    job_id: config.job_id,\n    status: ok ? \"completed\" : \"failed\",\n    timestamp: new Date().toISOString(),\n    phase_id: \"-\",\n    agent_id: \"-\",\n    task_id: \"-\",\n    total_cost: totalCost,\n    base64_img_string: img,\n    base64_img_string_mime: mime,\n    session_events: events,\n    user_message: userMessage,\n    ...(ok ? {} : { error_message: userMessage }),\n    archival_report: null,\n    generation_successful: ok,\n    latest_description: null,\n    original_query: ss.original_query ?? null\n};\n\nif (config.enable_gui_logging === true && config.gui_webhook_url) {\n    try {\n        await this.helpers.httpRequest({\n            method: 'POST',\n            url: config.gui_webhook_url,\n            headers: { 'Content-Type': 'application/json' },\n            body: finalPayload,\n            json: true,\n            timeout: 30000\n        });\n    } catch (e) {\n        throw new Error(`Final broadcast failed — completion NOT persisted: ${e.message}`);\n    }\n}\n\nreturn [{ json: {\n    status: \"Workflow Complete\",\n    job_id: config.job_id,\n    generation_successful: ok,\n    user_message: userMessage,\n    total_cost: totalCost,\n    session_events: events\n} }];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        768,
+        -48
+      ],
+      "id": "00e57406-b63e-479a-b815-716372b26f6c",
+      "name": "Control Final Broadcast"
+    }
+  ],
+  "connections": {
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "Set Job",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set API Key": {
+      "main": [
+        [
+          {
+            "node": "Load Phase 1 Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Job": {
+      "main": [
+        [
+          {
+            "node": "Set API Key",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Load Phase 1 Config": {
+      "main": [
+        [
+          {
+            "node": "cfg control",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "cfg control": {
+      "main": [
+        [
+          {
+            "node": "control_artist - control_render",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "control_artist - control_render": {
+      "main": [
+        [
+          {
+            "node": "Control Final Broadcast",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "instanceId": "050d7f5d3593566ffe36464e2179832d9e4aa282cb8a519a27bd68446dae16b9"
+  }
+}

@@ -403,3 +403,141 @@ n8n Resolve → (agents run, node 1/3 broadcast as usual; prompt author "user") 
 The human's messages live in the transcript as ordinary events (`author: "user"`,
 task `human_review_*`), so `session_events.json`, the ZIP, `final_reporter` and
 `error_handler` all see them; `human_gate` events record every gate decision.
+
+## 8. Second gate: final-illustration review
+
+The same gate again, on the finished picture, held by the Final Gatekeeper
+(`issue_aggregator`) instead of the QA Inspection Manager. Build it by copy-pasting the
+16 scaffold-gate nodes and editing them as below. **One setting drives both gates**: the
+sidebar's "Human review" mode is fixed at launch and read by every gate, so the second
+gate asks even though the first has already passed.
+
+Prerequisite: re-paste `config.js` into Load Config. It adds the `final_review_open` /
+`final_review_reply` tasks, the `plan_finishing_human` and `final_review_human` retry
+directives, the `{image_human_priority_directives}` slot on `aggregate_feedback`, and a
+`final_gate` agent. Redeploy the frontend for the gate-specific wording; the state
+manager needs nothing new.
+
+**The two gates don't share history.** The final gate logs its decisions as
+`final_gate` (not `human_gate`), and the history scopes are split into
+`SCAFFOLD_HUMAN_AGENTS` / `FINAL_HUMAN_AGENTS`. The human's messages are `user` at both
+gates (Node 1 hard-codes `user` as a prompt author), but a prompt only replays with its
+reply, so the artist sees only the final conversation (its reply author,
+`issue_aggregator`, is in scope; `inspection_manager` isn't). The Gatekeeper has no
+`user` in scope at all: Node 1 always keeps its *own* conversation's prompts, and adding
+`user` would drag in the scaffold conversation through `inspection_manager`.
+
+### 8.1 ⚠️ The trap: names that silently point at the scaffold gate
+
+Three of the pasted nodes reach back to other nodes **by name**, and a paste keeps those
+names. Left unedited they read the *scaffold* gate's data, and nothing errors:
+
+| Pasted node | Hard-coded reference | Symptom if missed |
+|---|---|---|
+| `Human Gate: Announce` | `latestRun("Human Gate: Announce")`, `inspection_manager`, `human_review`, `passed_inspection` | wrong round count and reason; the conversation is never detected |
+| `Human Gate: Resolve` | `latestRun("Human Gate: Announce")`, `scaffold_acceptable_as_is` | decides from the scaffold gate's announce; corrections slip through as "continue" |
+| `After human log` | `$('Human outcome')` | routes on the scaffold gate's outcome |
+
+So all three Code nodes are **replaced wholesale** below, each with every name and flag
+in one `GATE` block at the top. Rename every node **exactly** as listed: the code refers
+to `Final Gate: Announce` and `Final outcome` by those names.
+
+### 8.2 Node by node
+
+"No change" means the pasted parameters are already right; only rename it.
+
+| # | Pasted as | Rename to | Edit |
+|---|---|---|---|
+| 1 | `Human review?` | `Final review?` | no change |
+| 2 | `Human available?` | `Final available?` | no change |
+| 3 | `Human Gate: Announce` | `Final Gate: Announce` | **replace code** with [`final_gate_announce.js`](final_gate_announce.js) |
+| 4 | `Human Gate: Wait` | `Final Gate: Wait` | no change; the webhook suffix stays empty, since only one Wait is ever active and they can share the execution's resume URL |
+| 5 | `Human Gate: Resolve` | `Final Gate: Resolve` | **replace code** with [`final_gate_resolve.js`](final_gate_resolve.js) |
+| 6 | `Human decision` | `Final decision` | no change |
+| 7 | `Human outcome` | `Final outcome` | **replace code** with [`final_outcome.js`](final_outcome.js) |
+| 8 | `cfg human review` | `cfg final review` | see 8.3 |
+| 9 | `inspection_manager - human_review` | `issue_aggregator - final_review` | no change |
+| 10 | `Manager understood?` | `Final understood?` | no change |
+| 11 | `cfg log human decision` | `cfg log final decision` | `PHASE_ID` → `5`, **`AGENT_ID` → `final_gate`** (`TASK_ID` stays `log_human_decision`) |
+| 12 | `human_gate - log_human_decision` | `final_gate - log_final_decision` | no change |
+| 13 | `After human log` | `After final log` | all four rules: `$('Human outcome')` → `$('Final outcome')` |
+| 14 | `Human corrections → reset retries` | `Final corrections → reset retries` | see 8.4 |
+| 15 | `cfg human abort` | `cfg final abort` | no change |
+| 16 | `error_handler - report_error7` | `error_handler - report_error8` | no change |
+
+### 8.3 `cfg final review`
+
+| Field | Value |
+|---|---|
+| `PHASE_ID` | `5` |
+| `AGENT_ID` | `issue_aggregator` |
+| `TASK_ID` | `={{ $json.session_events.filter(e => e.author === 'issue_aggregator' && String(e.task).startsWith('final_review')).length > 0 ? 'final_review_reply' : 'final_review_open' }}` |
+| `prompt_author` | `user` (unchanged) |
+| `human_message` | `={{ $json.human_message }}` (unchanged) |
+
+The `TASK_ID` edit is not cosmetic. The pasted expression counts `inspection_manager`
+`human_review` turns, so after a scaffold conversation the final gate's FIRST message
+would be sent as a `_reply`, skipping the task that carries the full brief.
+
+### 8.4 `Final corrections → reset retries`
+
+Delete the five pasted assignments and add these three. The Phase 5 loop has one counter
+rather than three, and different directive slots:
+
+| Field | Type | Value |
+|---|---|---|
+| `image_gen_retry_count` | number | `0` |
+| `image_retry_directives` | string | `={{ $json.config.retry_directive_library.plan_finishing_human }}` |
+| `image_human_priority_directives` | string | `={{ $json.config.retry_directive_library.final_review_human }}` |
+
+`cfg25` already does `image_gen_retry_count + 1` and reads `image_retry_directives` from
+the item, and `if final_pass` measures max-retries off `$('cfg25')`, so a human correction
+gives the artist a full fresh retry budget. Don't arm `human_priority_directives` here:
+that slot belongs to the scaffold gate and speaks about a scaffold and inspectors.
+
+### 8.5 Wiring
+
+The paste keeps every connection *between* the pasted nodes. What follows are the exits
+that pointed outside the selection (they arrive as empty outputs) plus the two entries.
+
+Remove:
+```
+if final_pass [True]               → Phase 5 - Output
+if final_pass [MaxRetriesExceeded] → cfg61
+```
+Add:
+```
+if final_pass [True]               → Final review?
+if final_pass [MaxRetriesExceeded] → Final available?
+Final review?     [false]          → Phase 5 - Output
+Final available?  [false]          → cfg61
+After final log   [continue]       → Phase 5 - Output
+After final log   [rework]         → Final corrections → reset retries → cfg25
+After final log   [fail]           → cfg61
+After final log   [abort]          → cfg final abort → error_handler - report_error8
+```
+`if final_pass [False]`, the machine retry through `cfg62` / `troubleshoot_visual`, is
+untouched. A human correction deliberately skips `troubleshoot_visual`: the human's
+corrections are the diagnosis.
+
+### 8.6 What corrections can and cannot change
+
+Rework goes back to the artist, who repaints over the same approved scaffold. Anything
+painted can change; the geometry, counts, dimensions and scaffold labels cannot. The
+Gatekeeper is told to say so and ask, rather than promise it. Changing geometry after
+the scaffold is approved would mean looping back into Phase 3, which this gate does not do.
+
+### 8.7 Verification
+
+* [ ] Scaffold gate: approve with an empty box → the run continues to Phase 4 as before.
+* [ ] After the Gatekeeper passes the illustration, the gate opens again reading "The
+      reviewers approved the finished illustration", addressed to the Final Gatekeeper.
+* [ ] Give a correction → the conversation is logged as `issue_aggregator` /
+      `final_review_open`, then `final_review_reply` → the artist repaints → the new image
+      appears on the reopened gate → an empty box releases it, and the completed run's
+      carousel shows the repainted image.
+* [ ] Ask for a geometry change ("make the park wider") → the Gatekeeper says the geometry
+      is fixed at this stage and asks whether to go ahead with what can change.
+* [ ] Have a scaffold conversation FIRST, then correct the final image → the final gate's
+      first message goes out as `final_review_open` (8.3), and the conversation panel
+      shows only the final exchange.
