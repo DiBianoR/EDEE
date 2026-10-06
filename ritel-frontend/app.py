@@ -895,6 +895,8 @@ def render_instruction(ev):
 def chips(ev):
     model = ev.get("model")
     parts = []
+    if ev.get("status") == "error":
+        parts.append(f"<span class='chip' style='background:rgba(220,38,38,.18);color:#dc2626'>failed: {esc(ev.get('error') or 'error')}</span>")
     if model:
         parts.append(f"<span class='chip model'>{esc(model)}</span>" if model != "none" else "<span class='chip none'>canned</span>")
     cost = ev.get("cost")
@@ -942,9 +944,14 @@ def build_log_html(events, running_agent=None):
         if is_prompt and reply:
             cards.append(render_card(reply["author"], task, render_instruction(ev) + render_response_body(reply), extra_chips=chips(reply)))
             i += 2
-        elif is_prompt:
-            who = running_agent if (i == len(events) - 1 and running_agent and running_agent != "-") else "system"
+        elif is_prompt and i == len(events) - 1:
+            who = running_agent if (running_agent and running_agent != "-") else "system"
             cards.append(render_card(who, task, render_instruction(ev) + "<div class='field thinking'>thinking</div>", pending=True))
+            i += 1
+        elif is_prompt:
+            # an unanswered prompt with later events after it: that attempt died (crash, or
+            # n8n retried the node) — it is not still thinking
+            cards.append(render_card("system", task, render_instruction(ev) + "<div class='field'><i>no reply — this attempt failed or was retried</i></div>"))
             i += 1
         else:
             cards.append(render_card(author, task, render_response_body(ev), extra_chips=chips(ev)))

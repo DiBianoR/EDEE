@@ -1,5 +1,18 @@
 🔜=priority  🛠=WIP  🌗=partway  ✔=Done
 
+edit problem illustration
+simpler scaffolding
+automatic feedback
+jev
+When I'm reviewing the final image, I want to be able to use carousel to compare against scaffolding
+
+✔gemini+rubrics
+✔55 raw gemini
+2nd human review
+swap models in frontend
+enforce scale of objects
+plain diagrams simpler
+
 🔜- paper draft
 🔜- user feedback mechanism
 🔜- look into multi-agent systems -> skills

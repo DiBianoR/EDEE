@@ -68,17 +68,25 @@ const trunc = (s) => (s && s.length > 500 ? s.substring(0, 500) + "..." : s);
 // sanitized), merge any parsed JSON fields into sessionState, and pull the image out to
 // the top-level return only.
 //
-// ERROR POLICY: any malformed response (missing image, missing text, broken JSON) THROWS.
-// A model that failed to respond properly can't be recovered by the pipeline anyway — the
-// retry loops handle SEMANTIC failures (failed QA, bad code), which arrive as perfectly
-// well-formed responses. Throwing drops us into the catch sub-workflow, which owns all
-// failure reporting to the UI (via log_error → report_unknown_error). Node 3 itself never
-// broadcasts a failure. Throw messages carry agent/task, finishReason where available, and
-// a truncated raw dump — once we throw, that string is the only diagnostic that survives.
+// ERROR POLICY:
+//   - Missing IMAGE (Gemini or OpenAI) → SOFT FAILURE. Image models routinely answer with
+//     text alone (a refusal, a question, an echo of a history marker) and still finish
+//     STOP. That's recoverable — re-roll the render — so we don't throw. The turn is
+//     recorded as a status:"error" event whose text says what went wrong (readable by
+//     later agents, e.g. error_handler), with the full sanitized response kept in
+//     `raw_response` for debugging (not replayed to models). The envelope returns with no
+//     image and a top-level `agent_error`, which the parent workflow branches on
+//     (retry / abort). Cost is still computed — the call was billed.
+//   - Missing TEXT / broken JSON → still THROWS. A missing field would only resurface as
+//     a TEMPLATE ERROR in a later Node 1; those need their own recovery design. Throwing
+//     drops us into the catch sub-workflow (log_error → report_unknown_error). Throw
+//     messages carry agent/task, finishReason, and a truncated raw dump.
 let parsedResult = null;       // merged into sessionState; null on the image path
 let eventParts = null;         // becomes this turn's turnEvent.parts
 let finalImageBase64 = null;   // top-level return only - not sessionState/turnEvent
 let finalImageBase64_mimeType = null;
+let agentError = null;         // soft-failure code ("no_image"); null on success
+let rawResponseForLog = null;  // sanitized full response, stored on the error event only
 
 if (skipApi) {
     // --- PATH A: no_model. Synthesize a Gemini-shaped part, as if constrained generation sent it. ---
@@ -110,31 +118,45 @@ if (skipApi) {
     if (!b64) {
         // OpenAI errors arrive as { error: { message, type, ... } } rather than a data array.
         const apiMessage = geminiResponse?.error?.message || "no error message";
-        throw new Error(`[${agent_id} / ${task_id}] No image in OpenAI response (${apiMessage}) — raw: ${trunc(JSON.stringify(geminiResponse))}`);
+        agentError = "no_image";
+        rawResponseForLog = JSON.parse(JSON.stringify(geminiResponse ?? null, sanitize));
+        eventParts = [{ text: `⚠️ ${task_id} FAILED: no image was returned (OpenAI: ${apiMessage}).` }];
+    } else {
+        finalImageBase64 = b64;
+        finalImageBase64_mimeType = "image/" + (geminiResponse.output_format || "png");
+        // Synthesize a Gemini-shaped parts array so the event log stays uniform across providers
+        // (Node 1's replay/resolveLogPart logic only ever sees one shape).
+        eventParts = [{ inlineData: { mimeType: finalImageBase64_mimeType, data: "<IMAGE_BLOB(OpenAI)>" } }];
     }
-
-    finalImageBase64 = b64;
-    finalImageBase64_mimeType = "image/" + (geminiResponse.output_format || "png");
-    // Synthesize a Gemini-shaped parts array so the event log stays uniform across providers
-    // (Node 1's replay/resolveLogPart logic only ever sees one shape).
-    eventParts = [{ inlineData: { mimeType: finalImageBase64_mimeType, data: "<IMAGE_BLOB(OpenAI)>" } }];
 
 } else if (outputType === "image_blob") {
     // --- PATH B: Gemini image generation. Keep Gemini's own parts array, sanitized. ---
+    // The image is not necessarily parts[0]: the model may lead with a text part, and
+    // thinking image models can emit interim `thought: true` images. Take the LAST
+    // non-thought image part — the final render.
     const rawParts = geminiResponse?.candidates?.[0]?.content?.parts || [];
-    const inlineData = (rawParts[0]?.inlineData || rawParts[0]?.inline_data);
+    const imagePart = rawParts.filter(p => !p.thought)
+        .reverse()
+        .find(p => (p.inlineData || p.inline_data)?.data);
+    const inlineData = imagePart && (imagePart.inlineData || imagePart.inline_data);
 
     if (!inlineData?.data) {
-        // Gemini returns HTTP 200 with no image when it blocks on safety or truncates —
-        // finishReason (or promptFeedback.blockReason) distinguishes "model declined" from a bug.
+        // Gemini returns HTTP 200 with no image when it blocks on safety, truncates, or just
+        // answers in text — finishReason (or promptFeedback.blockReason) tells them apart.
         const finishReason = geminiResponse?.candidates?.[0]?.finishReason
             || geminiResponse?.promptFeedback?.blockReason || "none";
-        throw new Error(`[${agent_id} / ${task_id}] No image in Gemini response (finishReason: ${finishReason}) — raw: ${trunc(rawParts[0]?.text || JSON.stringify(geminiResponse))}`);
+        const replyText = rawParts.filter(p => !p.thought && p.text !== undefined).map(p => p.text).join("\n").trim();
+        agentError = "no_image";
+        rawResponseForLog = JSON.parse(JSON.stringify(geminiResponse ?? null, sanitize));
+        eventParts = [{
+            text: `⚠️ ${task_id} FAILED: no image was returned (finishReason: ${finishReason}).`
+                + (replyText ? ` The model replied with text instead: "${trunc(replyText)}"` : " The response contained no text either.")
+        }];
+    } else {
+        finalImageBase64 = inlineData.data;
+        finalImageBase64_mimeType = inlineData.mimeType || inlineData.mime_type;
+        eventParts = JSON.parse(JSON.stringify(rawParts, sanitize));  // sanitize() swaps the long `data` string for <IMAGE_BLOB(Gemini)>
     }
-
-    finalImageBase64 = inlineData.data;
-    finalImageBase64_mimeType = inlineData.mimeType || inlineData.mime_type;
-    eventParts = JSON.parse(JSON.stringify(rawParts, sanitize));  // sanitize() swaps the long `data` string for <IMAGE_BLOB(Gemini)>
 
 } else {
     // --- PATH C: standard JSON text response. Keep the real parts array, sanitized; parse the text. ---
@@ -187,12 +209,15 @@ const modelName = skipApi
 // built + sanitized in the parse section above (no_model → JSON text; image → provider
 // parts with the blob swapped for <IMAGE_BLOB>; JSON text → the real sanitized parts).
 // The raw image is deliberately NOT in here — it rides along top-level only, like a
-// temp:/artifact. status is always "ok": error turns throw before reaching this point,
-// so every recorded event is by definition a good one (mirrors Node 1's prompt events).
+// temp:/artifact. status is "ok" unless this was a soft failure (see ERROR POLICY), in
+// which case it's "error", `error` names the failure, and `raw_response` keeps the full
+// sanitized response. Node 1 never replays raw_response; it drops an agent's own error
+// events from that agent's history, and other agents see the readable text part.
 const turnEvent = {
     author: agent_id,
     task: task_id,
-    status: "ok",
+    status: agentError ? "error" : "ok",
+    ...(agentError ? { error: agentError, raw_response: rawResponseForLog } : {}),
     parts: eventParts,
     // actions - turnEvent.actions = { state_delta: parsedResult }  //  not using for now
     // partial: false,  //  to detect incomplete content chunks during real-time streaming - not used atm
@@ -270,6 +295,11 @@ const outputData = {
 
     // Hoisted heavy fields (e.g. python_code): top-level, single-hop, never in state.
     ...hoistedFields,
+
+    // Soft-failure flag for the parent workflow to branch on (retry / abort). Top-level
+    // and single-hop like the image: Node 1 destructures it out so it never enters
+    // session_state. Absent on success.
+    ...(agentError ? { agent_error: agentError } : {}),
 
     // Debug I/O record: plain-text views of EXACTLY what the model saw this turn.
     //   debug_system   — final templated systemInstruction text (null if agent has none)

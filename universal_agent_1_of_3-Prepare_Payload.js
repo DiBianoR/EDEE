@@ -14,6 +14,7 @@ const {
 	debug_system,
 	debug_prompt,
 	debug_response,
+    agent_error,  // previous turn's soft-failure flag (Node 3) — routing only, kept out of state
     ...externalVars
 } = inputData;
 Object.assign(sessionState, externalVars);  // Other variables into sessionState. If same name exists, overwritten.
@@ -83,6 +84,12 @@ if (outputType === "json" && taskBlueprint.schema) {  // constrained generation 
         response_schema: taskBlueprint.schema
     };
 }
+if (isImageGen) {
+    // Image models default to ["TEXT","IMAGE"] and may answer with text alone (finishReason
+    // STOP, no image). Image-only output removes that option. (Gemini field; the OpenAI
+    // branch below rebuilds requestBody from scratch, so it never sees this.)
+    requestBody.generationConfig = { responseModalities: ["IMAGE"] };
+}
 
 // === 📜 HISTORY SCOPE RESOLUTION & CONSTRUCTION ===
 const rawHistoryScope = taskBlueprint.history_scope || agentBlueprint.history_scope || [];  // A list of agent IDs
@@ -100,15 +107,27 @@ const historyScope = Array.isArray(rawHistoryScope) ? rawHistoryScope : [rawHist
 //      replaying other conversations' prompts).
 // Prompts whose turn crashed (successor missing or itself a prompt) are excluded.
 // Scoped-out prompts leave adjacent same-role replies, which flushQueue already squashes.
+//
+// OWN ATTEMPTS DROPPED: the current agent's own image replies and own failed (status
+// "error") replies are removed, together with the prompts that elicited them. An image
+// reply can only replay as a text placeholder in the MODEL role, and a failure as a
+// failure message — either way the model sees "this is what I answer to this
+// instruction" and may copy it verbatim (seen live: render_final answering with the
+// literal "[image generated here - omitted from history]"). Other agents still see these
+// events, labeled, so reviewers/error_handler can tell what happened.
 const PROMPT_AUTHORS = ["user", "system"];
+const isOwnDroppedReply = (ev) => !!ev && ev.author === targetAgentId && (
+    ev.status === "error" ||
+    (ev.parts || []).some(p => (p.inlineData || p.inline_data)?.data?.startsWith?.("<IMAGE_BLOB"))
+);
 const filteredEvents = sessionEvents.filter((event, i) => {
     if (PROMPT_AUTHORS.includes(event.author)) {
         const next = sessionEvents[i + 1];
         const replyInScope = !!next && historyScope.includes(next.author) && !PROMPT_AUTHORS.includes(next.author);
-        if (!replyInScope) return false;
+        if (!replyInScope || isOwnDroppedReply(next)) return false;
         return next.author === targetAgentId || historyScope.includes(event.author);
     }
-    return historyScope.includes(event.author);
+    return historyScope.includes(event.author) && !isOwnDroppedReply(event);
 });
 
 // === 🖼️️️ FINISH CONSTRUCTING CURRENT PROMPT ===
