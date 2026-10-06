@@ -1547,19 +1547,21 @@ CONSTRAINTS:
 - Given-vs-derived rule: draw only quantities given in the problem statement. Never pre-partition into solution fractions/segments, or show derived equivalencies. Demarcating a stated boundary is fine; showing something that does part of the solver's work for them is not.
 - No structural dividers (lines, fences, boxes, panels) between groups unless the problem asks for them; visual distinction by color/position suffices.
 
-STANDALONE RULE: The scaffolding will normally be painted over, but it must stand on its own — a complete, legible diagram with accurate geometry and readable labels, good enough to ship as the final illustration if the artistic pass added nothing. Plain is fine; incomplete or cryptic is not. The artist adds beauty, never correctness.{situational_directives}`
+STANDALONE RULE: The scaffolding will normally be painted over, but it must stand on its own — a complete, legible diagram with accurate geometry and readable labels, good enough to ship as the final illustration if the artistic pass added nothing. Plain is fine; incomplete or cryptic is not. The artist adds beauty, never correctness.
+
+MINIMUM VIABLE DIAGRAM: The scaffolding is the minimum usable final diagram: only the objects, quantities, and labels that are directly part of the problem. Test every element: if the diagram would still fully and accurately represent the problem without it, leave it out. Everything else belongs to the artist — background, scenery, props, decoration, surface detail, texture, and cosmetic shading. This applies to the problem's own objects too: draw the object, but any text or marking on it is limited to the shortest form a student needs to identify it or read a value from it. Whatever is drawn here is locked in for the artist to preserve, so when in doubt, leave it out.{situational_directives}`
     }
   },
 
   "design_scaffolding": {
     assigned_agent: "scaffolding_designer",
     instruction: `\
-Analyze the 'Diagram Request'. Strip away all the artistic flair, textures, and complex subjects, and describe ONLY the geometric shapes, lines, labels, and spatial boundaries that Python needs to plot. Keep things simple.
+Analyze the 'Diagram Request'. Strip away all the artistic flair, textures, and complex subjects, and describe ONLY the geometric shapes, lines, labels, and spatial boundaries that Python needs to plot. Keep things simple. Don't add artistic flourishes or decorative objects you weren't asked to, only what's mathematically relevant to the problem.
 
 DIRECTIVES:
 1. Identify the Math: What counts, shapes, graphs, grids, lines, or angles are part of the problem and must be perfectly accurate? These must be plotted.
 2. Check for Situational Directives: If you have [SITUATIONAL DIRECTIVES], you MUST follow them implicitly when designing this scaffolding. If present, they supersede these general directives in case of conflict.
-3. Abstract Complex Objects: If the request asks for a "farmer standing next to a tractor", you do not plot a farmer. If their precise positions/sizes etc. are part of the word problem, you should have situational directives to follow. If their positions do not need to be pixel perfect, you can leave them off, the artist will add them later. You generally do not need to draw objects that are not part of the math problem, the artist can handle them. Decorative scenery is artist-only.
+3. Abstract Complex Objects: If the request asks for a "farmer standing next to a tractor", you do not plot a farmer. If their precise positions/sizes etc. are part of the word problem, you should have situational directives to follow. If their positions do not need to be pixel perfect, you can leave them off, the artist will add them later. You generally do not need to draw objects that are not part of the math problem, the artist can handle them. Decorative scenery is ARTIST-ONLY.
 4. Output Format: Provide a clear, structured blueprint of exactly what shapes to draw, where to place them relative to each other, and what colors/labels to use for the underlying Python plot. Do NOT write code.
 5. Keep it simple and elegant -> Precision, Clarity, Utility. The artist is very skilled and can add details later. You only need to show
   - Shapes, angles, distances and object counts mentioned in the problem, without you the artist will estimate.
@@ -1585,7 +1587,7 @@ DIRECTIVES:
     instruction: `\
 Scaffolding Image Request: {scaffolding_blueprint}
 
-Analyze the 'Scaffolding Image Request'. Plan the Python workflow to draw the requested scaffolding image.
+Analyze the 'Scaffolding Image Request'. Plan the Python workflow to draw the requested scaffolding image. Don't draw other, mathematically irrelevant objects from Diagram Request. Don't add artistic flourishes or decorative objects you don't need to, only what's mathematically relevant to the problem.
 
 1. Select Libraries (matplotlib, mplot3d).
 2. Primitives: If complex objects (e.g., 'a cat') are needed, plan simplified placeholders built from shapes (the artist replaces them later).
@@ -1611,7 +1613,7 @@ Analyze the 'Scaffolding Image Request'. Plan the Python workflow to draw the re
     // Hoisting keeps it out of THIS turn's state envelope.
     hoist_result_fields: ["python_code"],
     instruction: `\
-Write the Python code based on the execution plan.
+Write the Python code based on the execution plan. Don't add artistic flourishes or decorative objects you weren't asked to, only what's mathematically relevant to the problem.
 
 ${EXECUTION_CONTRACT}
 
