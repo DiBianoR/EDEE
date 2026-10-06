@@ -1275,6 +1275,39 @@ def show_image(state, check=True):
             if data:
                 cached = (path, version, data, updated)
                 st.session_state.img_cache = cached
+    # FINAL REVIEW COMPARISON: while the final-image gate is open, the carousel flips
+    # between the scaffolding (idx 0) and the latest render (idx 1) — the same indices the
+    # completion carousel uses, so the choice carries over when the run finishes.
+    # scaffolding.png is archived at the end of Phase 3, so it is in the bucket by now;
+    # if it isn't, there is nothing to compare and the panel behaves as before.
+    if status == "awaiting_human" and (state.get("human_review") or {}).get("gate") == "final":
+        scaff = st.session_state.get("scaff_cache")
+        if check and (not scaff or scaff[0] != job_id):
+            data = backend.get_blob(f"{job_id}/scaffolding.png")
+            if data:
+                scaff = (job_id, data)
+                st.session_state.scaff_cache = scaff
+        if scaff and scaff[0] == job_id:
+            st.session_state.carousel_idx = max(0, min(st.session_state.carousel_idx, 1))
+            if not _painted.get("carousel"):
+                # Once per script run: the poll loop calls this every tick, and redrawing
+                # the buttons would duplicate their widget keys. A click reruns the script,
+                # which resets _painted, so they come straight back.
+                _painted["carousel"] = True
+                with carousel_ui.container():
+                    c1, c2, c3, c4 = st.columns([3, 1, 1, 3])
+                    c2.button("❮", key="gate_prev", on_click=prev_image,
+                              disabled=st.session_state.carousel_idx == 0, **BTN_FILL)
+                    c3.button("❯", key="gate_next", on_click=next_image,
+                              disabled=st.session_state.carousel_idx == 1, **BTN_FILL)
+            if st.session_state.carousel_idx == 0:
+                paint_image(scaff[1], (f"{job_id}/scaffolding.png", "carousel"),
+                            caption="Scaffolding blueprint (Phase 3) — compare with the final render ❯")
+                return
+    elif _painted.get("carousel"):
+        _painted["carousel"] = False
+        carousel_ui.empty()
+
     # A missing object (latest.png is deleted on completion) leaves the last good image
     # up rather than blanking the panel.
     if cached:
