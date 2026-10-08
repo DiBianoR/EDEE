@@ -1355,15 +1355,19 @@ def show_image(state, check=True):
         if scaff and scaff[0] == job_id:
             st.session_state.carousel_idx = max(0, min(st.session_state.carousel_idx, 1))
             if not _painted.get("carousel"):
-                # Once per script run: the poll loop calls this every tick, and redrawing
+                # Once per gate opening: the poll loop calls this every tick, and redrawing
                 # the buttons would duplicate their widget keys. A click reruns the script,
                 # which resets _painted, so they come straight back.
                 _painted["carousel"] = True
+                # The gate can close and REOPEN within one script run (corrections → repaint
+                # → review again, with no click in between). Streamlit keeps every key used
+                # in a run even after the element is emptied, so each opening needs fresh keys.
+                n = _painted["carousel_draws"] = _painted.get("carousel_draws", 0) + 1
                 with carousel_ui.container():
                     c1, c2, c3, c4 = st.columns([3, 1, 1, 3])
-                    c2.button("❮", key="gate_prev", on_click=prev_image,
+                    c2.button("❮", key=f"gate_prev_{n}", on_click=prev_image,
                               disabled=st.session_state.carousel_idx == 0, **BTN_FILL)
-                    c3.button("❯", key="gate_next", on_click=next_image,
+                    c3.button("❯", key=f"gate_next_{n}", on_click=next_image,
                               disabled=st.session_state.carousel_idx == 1, **BTN_FILL)
             if st.session_state.carousel_idx == 0:
                 paint_image(scaff[1], (f"{job_id}/scaffolding.png", "carousel"),
