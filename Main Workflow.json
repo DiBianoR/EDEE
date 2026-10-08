@@ -2375,7 +2375,7 @@
       ],
       "id": "250f53b3-86b0-4370-b0dc-718a73d29852",
       "name": "artist - render_final",
-      "retryOnFail": true,
+      "retryOnFail": false,
       "maxTries": 2
     },
     {
@@ -8451,6 +8451,168 @@
       ],
       "id": "481d31d2-16b8-4d56-884c-862da073fe24",
       "name": "cfg final abort"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ !$json.agent_error }}",
+                    "rightValue": "",
+                    "operator": {
+                      "type": "boolean",
+                      "operation": "true",
+                      "singleValue": true
+                    },
+                    "id": "cc878c39-9bc2-44f5-8b85-e4fa354b1910"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "OK"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "e95af3e8-62aa-4bd8-8cdd-c94b215bc7ca",
+                    "leftValue": "={{ !!$json.agent_error && (() => { const r = $json.session_events.filter(e => e.author === 'artist' && e.task === 'render_final').reverse(); const i = r.findIndex(e => e.status !== 'error'); return i === -1 ? r.length : i; })() < 3 }}",
+                    "rightValue": 4,
+                    "operator": {
+                      "type": "boolean",
+                      "operation": "true",
+                      "singleValue": true
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Retry"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "8aefa716-1e2c-47a0-97b2-800eabf449cd",
+                    "leftValue": "={{ !!$json.agent_error && (() => { const r = $json.session_events.filter(e => e.author === 'artist' && e.task === 'render_final').reverse(); const i = r.findIndex(e => e.status !== 'error'); return i === -1 ? r.length : i; })() >= 3 }}",
+                    "rightValue": "",
+                    "operator": {
+                      "type": "boolean",
+                      "operation": "true",
+                      "singleValue": true
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "GiveUp"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        3728,
+        1776
+      ],
+      "id": "6a276acf-976f-4c94-afb5-de4774ca36db",
+      "name": "Render OK?"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "UReLQDgBIPpb9P4f",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/UReLQDgBIPpb9P4f",
+          "cachedResultName": "EDEE — Universal Agent Sub-Workflow"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        4064,
+        2160
+      ],
+      "id": "f06e048b-da49-4f6a-aba4-ae5413ca2a02",
+      "name": "error_handler - report_error9"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "748fb80f-23e2-4aaa-89d2-7c90b40fdfc9",
+              "name": "PHASE_ID",
+              "value": "-",
+              "type": "string"
+            },
+            {
+              "id": "93b67161-3571-4b70-8e84-6ea4aa17bef0",
+              "name": "AGENT_ID",
+              "value": "error_handler",
+              "type": "string"
+            },
+            {
+              "id": "d748da49-d92e-4cf1-a8b1-74baa24728eb",
+              "name": "TASK_ID",
+              "value": "report_error",
+              "type": "string"
+            },
+            {
+              "id": "3a505c9e-e32d-43f7-804f-1daa4714fc80",
+              "name": "error",
+              "value": "RenderFailed",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        3904,
+        2160
+      ],
+      "id": "65d31d85-27ed-4a70-8ff2-935c301b712d",
+      "name": "cfg render abort"
     }
   ],
   "connections": {
@@ -9150,7 +9312,7 @@
       "main": [
         [
           {
-            "node": "Phase 4 - Output",
+            "node": "Render OK?",
             "type": "main",
             "index": 0
           }
@@ -11001,6 +11163,42 @@
         [
           {
             "node": "error_handler - report_error8",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Render OK?": {
+      "main": [
+        [
+          {
+            "node": "Phase 4 - Output",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "cfg26",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "cfg render abort",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "cfg render abort": {
+      "main": [
+        [
+          {
+            "node": "error_handler - report_error9",
             "type": "main",
             "index": 0
           }

@@ -240,3 +240,36 @@ Before answering, confirm:
 - Length fits the mode.
 - If a reference/moodboard/LoRA is in play, the prompt is not restyling against it.
 - The visible answer is the prompt, not the reasoning.
+
+
+
+---------------------------------
+## Krea 2 Prompting Guide
+
+Describe what is in the picture as if you can already see it. Prefer short clauses over comma soup. Do not use keyword lists, weighting syntax, or quality tags('masterpiece'). State exclusions as visible facts (“exactly one person,” “full title inside the frame”) rather than negative prompts.
+Cover, when they matter:
+- color
+- shape and silhouette
+- size and scale relationships
+- texture and material response to light
+- quantity and counts
+- visible text, exactly quoted in double quotes
+- spatial relationships: left/right, foreground/midground/background, occlusion, dominance, negative space
+
+Successful official Krea 2 prompts do one of two things:
+A. A compact visual stack, medium first, then subject attributes, then light, background, and composition.
+B. One or two prose paragraphs that read like a caption under a finished picture.
+
+Both are valid.
+
+PROMPT ARCHITECTURE
+Use only the fields that change the picture. Do not pad.
+
+Default order for Controlled prompts:
+
+[medium / production method] + [primary subject and identity] + [appearance, pose, action, expression] + [secondary subjects bound to their own attributes] + [environment and spatial layout] + [lighting and color system] + [materials and micro-detail] + [composition, camera, crop] + [mood only if it names a visible look] + [quoted on-image text and its placement] + [positive constraints]
+
+LENGTH
+- Tight control: 30–80 words.
+- Complex scene, poster, or recreation: 80–160 words.
+- Stop before 300 words. Past that, signal drops and contradictions rise.

@@ -16,6 +16,7 @@ import html
 import io
 import json
 import os
+import re
 import sys
 import threading
 import time
@@ -34,6 +35,14 @@ STATE_MANAGER_URL = os.environ.get("STATE_MANAGER_URL", "https://ritel-state-man
 GCP_PROJECT = os.environ.get("GCP_PROJECT", "gen-lang-client-0925957935")
 FIRESTORE_DB = os.environ.get("FIRESTORE_DB", "dee-data")
 BUCKET_NAME = os.environ.get("EDEE_BUCKET", "edee-job-archives-0925957935")
+# Stock images for a carousel slot the run never produced. Private bucket, read with the
+# same credentials as the job bucket.
+ASSET_BUCKET = os.environ.get("EDEE_ASSET_BUCKET", "edee-permanent-assets-0925957935")
+DECLINED_IMG = "declined_by_ai.jpg"      # the image model refused to draw the final illustration
+RENDER_FAILED_IMG = "render_failure.jpg" # any other reason there is no final illustration, or unknown
+# finishReasons that mean the image model declined, rather than errored. IMAGE_OTHER is
+# Gemini's "Unable to show the generated image ... Try rephrasing the prompt" refusal.
+DECLINED_REASONS = {"IMAGE_OTHER"}
 
 DEMO = "--demo" in sys.argv or os.environ.get("EDEE_DEMO", "").lower() in ("1", "true", "yes")
 
@@ -57,13 +66,15 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 STYLE_OPTIONS = ["casual_mobile", "storybook", "cel_shaded_anime", "claymation_diorama", "mid_century_modern"]
 REVIEW_MODES = {
     "automatic": ("Automatic", "Never pause. The pipeline carries on as soon as its own reviewers approve each stage."),
-    "timeout": ("Ask me, 30 s to react", "Pauses at each review and moves on after 30 seconds of **no activity**. Start typing and it waits for you instead, as if you'd picked *Wait for me*."),
+    # Disabled for now: the 30 s window doesn't work in practice. The pipeline still accepts
+    # "timeout", so restoring this line brings the option back.
+    # "timeout": ("Ask me, 30 s to react", "Pauses at each review and moves on after 30 seconds of **no activity**. Start typing and it waits for you instead, as if you'd picked *Wait for me*."),
     "wait": ("Wait for me", "Pauses at each review until you answer. It only gives up after 10 minutes with no typing or clicking, so you can take as long as you need."),
 }
 # The UI default. The PIPELINE's own fallback stays "automatic" (config.js): that one is
 # what callers with no human get — the Test Orchestrator, manual n8n runs — and they must
 # never sit waiting on a gate nobody will answer.
-DEFAULT_REVIEW_MODE = "timeout"
+DEFAULT_REVIEW_MODE = "wait"
 
 # --- AGENT PRESENTATION -------------------------------------------------------
 # (emoji, accent colour, stage). Colours are grouped by role: managers purple,
@@ -179,6 +190,8 @@ class GcpBackend:
             self.db = firestore.Client(project=GCP_PROJECT, database=FIRESTORE_DB)
             client = storage.Client(project=GCP_PROJECT)
         self.bucket = client.bucket(BUCKET_NAME)
+        self.assets = client.bucket(ASSET_BUCKET)
+        self._asset_cache = {}
         self.activity_url = f"{STATE_MANAGER_URL}/human-activity"
 
     def get_doc(self, job_id):
@@ -215,6 +228,24 @@ class GcpBackend:
         except Exception:
             return None
 
+    def get_blob_updated(self, path):
+        """When the object was last written, or None if it isn't there."""
+        try:
+            blob = self.bucket.get_blob(path)
+            return blob.updated if blob else None
+        except Exception:
+            return None
+
+    def get_asset(self, name):
+        """A stock image from the asset bucket. Cached for the life of the process —
+        these never change, and a failed read is retried next time rather than cached."""
+        if name not in self._asset_cache:
+            try:
+                self._asset_cache[name] = self.assets.blob(name).download_as_bytes()
+            except Exception:
+                return None
+        return self._asset_cache[name]
+
     def start_job(self, payload, env_choice):
         # 7-day TTL stub, written before the pipeline's first broadcast
         try:
@@ -247,7 +278,7 @@ class DemoBackend:
     scaffolding PNG as every image. Same interface as GcpBackend.
 
     Prompt tricks: put MAXRETRY in the query to see the max-retries rescue gate,
-    FAIL to see a failed run."""
+    FAIL to see a failed run, DECLINE to see the image model refuse the final render."""
 
     DELAY = float(os.environ.get("EDEE_DEMO_DELAY", "0.35"))
 
@@ -257,7 +288,7 @@ class DemoBackend:
         with open(os.path.join(HERE, "demo", "sample_scaffolding.png"), "rb") as f:
             self.scaffold = f.read()
         self.final = self._make_final(self.scaffold)
-        self.docs, self.images, self.gates = {}, {}, {}
+        self.docs, self.images, self.gates, self.written = {}, {}, {}, {}
         self.lock = threading.Lock()
         self.activity_url = self._serve_activity()
 
@@ -329,10 +360,14 @@ class DemoBackend:
         own — with no doc change to ride along on — is the stricter test, and the one
         that matches a render landing between two turns.
         """
-        self.images[job_id][name] = data
+        self._put(job_id, name, data)
         with self.lock:
             self.docs[job_id]["live_image"] = {"name": name, "version": f"{len(data)}:{hash(data)}",
                                                "updated": _now_iso()}
+
+    def _put(self, job_id, name, data):
+        self.images[job_id][name] = data
+        self.written.setdefault(job_id, {})[name] = datetime.now(timezone.utc)
 
     def _marked(self, base, label, colour):
         """A visibly different copy of `base`, standing in for a corrected render."""
@@ -381,6 +416,22 @@ class DemoBackend:
     def get_blob_version(self, path):
         data = self.get_blob(path)
         return str(len(data)) + ":" + str(hash(data)) if data else None
+
+    def get_blob_updated(self, path):
+        job_id, _, name = path.partition("/")
+        return self.written.get(job_id, {}).get(name) if self.get_blob(path) else None
+
+    def get_asset(self, name):
+        """A labelled grey card standing in for the real stock image in the asset bucket."""
+        try:
+            from PIL import Image, ImageDraw
+            im = Image.new("RGB", (640, 480), (225, 225, 230))
+            ImageDraw.Draw(im).text((24, 24), f"DEMO — stock image {name}", fill=(60, 60, 70))
+            buf = io.BytesIO()
+            im.save(buf, "PNG")
+            return buf.getvalue()
+        except Exception:  # noqa: BLE001
+            return None
 
     def start_job(self, payload, env_choice):
         job_id = payload["job_id"]
@@ -552,7 +603,7 @@ class DemoBackend:
     def _simulate(self, job_id, payload):
         mode = payload.get("human_review_mode", "automatic")
         q = payload.get("query", "").upper()
-        want_max_retries, want_fail = "MAXRETRY" in q, "FAIL" in q
+        want_max_retries, want_fail, want_decline = "MAXRETRY" in q, "FAIL" in q, "DECLINE" in q
         scaffold_done = final_done = False
         for i, ev in enumerate(self.events):
             time.sleep(self.DELAY)
@@ -567,15 +618,27 @@ class DemoBackend:
                                     "parts": [{"text": json.dumps({"reasoning": "Demo failure.", "error_message": "We couldn't quite figure out the geometry for this problem after several tries. Try simplifying the illustration request."})}]})
                 self._update(job_id, status="failed", error_message="We couldn't quite figure out the geometry for this problem after several tries. Try simplifying the illustration request.")
                 return
+            if want_decline and ev["author"] == "artist" and ev["task"] == "render_final":
+                # Node 3's soft failure, shaped as it ships: status "error", error "no_image",
+                # and the sanitized response in raw_response.
+                self._push(job_id, {"author": "artist", "task": "render_final", "status": "error", "error": "no_image",
+                                    "raw_response": {"candidates": [{"content": {}, "finishReason": "IMAGE_OTHER", "index": 0,
+                                                                     "finishMessage": "Unable to show the generated image. Try rephrasing the prompt."}]},
+                                    "parts": [{"text": "⚠️ render_final FAILED: no image was returned (finishReason: IMAGE_OTHER). The response contained no text either."}],
+                                    "model": "gemini-3-pro-image-preview", "cost": 0})
+                self._update(job_id, status="failed", error_message="The image model declined to paint this illustration. Try rephrasing the request.")
+                return
             nxt = self.events[i + 1] if i + 1 < len(self.events) else None
             self._push(job_id, ev, agent_hint=nxt["author"] if (ev["author"] == "system" and nxt) else None)
-            if ev["author"] == "inspection_manager" and ev["task"] == "consolidate_inspection" and not scaffold_done and mode != "automatic":
+            if ev["author"] == "inspection_manager" and ev["task"] == "consolidate_inspection" and not scaffold_done:
                 verdict = json.loads(ev["parts"][0]["text"])
+                if verdict.get("passed_inspection"):
+                    self._put(job_id, "scaffolding.png", self.scaffold)   # Archive Scaffolding, end of Phase 3
                 reason = ("max_retries" if (want_max_retries and not verdict.get("passed_inspection"))
                           else "review" if verdict.get("passed_inspection") else None)
-                if reason:
+                if reason and mode != "automatic":
                     scaffold_done = True
-                    self.images[job_id]["scaffolding.png"] = self.scaffold
+                    self._put(job_id, "scaffolding.png", self.scaffold)
                     if not self._run_gate(job_id, "scaffold", reason, mode):
                         return
             if ev["author"] == "artist" and ev["task"] == "render_final":
@@ -589,7 +652,7 @@ class DemoBackend:
                     if not self._run_gate(job_id, "final", "review", mode):
                         return
         self._set_live(job_id, "final_illustration.png", self.images[job_id].get("latest.png", self.final))
-        self.images[job_id]["scaffolding.png"] = self.scaffold
+        self._put(job_id, "scaffolding.png", self.scaffold)
         self.images[job_id].pop("latest.png", None)
         doc = self.get_doc(job_id)
         ss = {}
@@ -738,13 +801,14 @@ def open_job_callback():
         st.session_state.job_started_at = time.time()
         st.session_state.carousel_idx = 1
         st.session_state.img_cache = None
+        st.session_state.stalled_job = None
 
 
 # --- SIDEBAR -------------------------------------------------------------------------
 with st.sidebar:
     st.header("Settings")
     if DEMO:
-        st.info("**Demo mode** — replaying a recorded run, no GCP. Put `MAXRETRY` or `FAIL` in the problem text to see those paths.", icon="🧪")
+        st.info("**Demo mode** — replaying a recorded run, no GCP. Put `MAXRETRY`, `FAIL` or `DECLINE` in the problem text to see those paths.", icon="🧪")
     env_choice = st.selectbox("Environment", ["Production", "Development (Test)"])
     style_choice = st.selectbox("Style", STYLE_OPTIONS)
     review_mode = st.radio("Human review", list(REVIEW_MODES), index=list(REVIEW_MODES).index(DEFAULT_REVIEW_MODE),
@@ -1228,9 +1292,10 @@ def paint_image(data, tag, caption=None):
     if _painted.get("image") == tag:
         return
     b64 = base64.b64encode(data).decode("ascii")
+    mime = "image/jpeg" if data[:3] == b"\xff\xd8\xff" else "image/png"   # the stock images are JPEGs
     cap = f"<div class='meta' style='text-align:center;margin-top:4px'>{esc(caption)}</div>" if caption else ""
     image_ui.markdown(
-        f"<img src='data:image/png;base64,{b64}' style='width:100%;border-radius:8px;display:block'>{cap}",
+        f"<img src='data:{mime};base64,{b64}' style='width:100%;border-radius:8px;display:block'>{cap}",
         unsafe_allow_html=True)
     _painted["image"] = tag
 
@@ -1319,6 +1384,81 @@ def show_image(state, check=True):
         paint_image(cached[2], (cached[0], cached[1]), caption=caption)
 
 
+def render_carousel(slots):
+    """Scaffolding ❮ ❯ final, for a run that has ended. `slots` is [(tag, fetch, caption)];
+    only the slot on screen is fetched."""
+    st.session_state.carousel_idx = max(0, min(st.session_state.carousel_idx, len(slots) - 1))
+    tag, fetch, caption = slots[st.session_state.carousel_idx]
+    data = fetch()
+    if data:
+        paint_image(data, (tag, "carousel"), caption=caption)
+    else:
+        image_ui.error(f"Image not found in storage. ({caption})")
+        _painted["image"] = None
+    with carousel_ui.container():
+        c1, c2, c3, c4 = st.columns([3, 1, 1, 3])
+        c2.button("❮", on_click=prev_image, disabled=st.session_state.carousel_idx == 0, **BTN_FILL)
+        c3.button("❯", on_click=next_image, disabled=st.session_state.carousel_idx == len(slots) - 1, **BTN_FILL)
+
+
+def image_declined(events):
+    """True when the LAST image the pipeline asked for was refused by the image model.
+
+    Node 3 records a missing image as a soft failure: an event with status "error",
+    error "no_image", and the sanitized response in raw_response. The finishReason there
+    separates a refusal (IMAGE_OTHER) from anything else; the readable text part carries
+    the same code, which covers a raw_response that didn't survive.
+    """
+    for ev in reversed(events):
+        if ev.get("status") == "error" and ev.get("error") == "no_image":
+            raw = ev.get("raw_response") or {}
+            cand = (raw.get("candidates") or [{}])[0] or {}
+            reason = cand.get("finishReason") or (raw.get("promptFeedback") or {}).get("blockReason")
+            if not reason:
+                m = re.search(r"finishReason: (\w+)", " ".join(event_texts(ev)))
+                reason = m.group(1) if m else None
+            return reason in DECLINED_REASONS
+    return False
+
+
+def unfinished_slots(state, events):
+    """Carousel slots for a run that ended without finishing, best image first.
+
+    latest.png is whichever render came last, so its slot depends on timing: written
+    before scaffolding.png was pinned (end of Phase 3), it is a scaffold attempt; after,
+    it is an artist attempt. A stock image fills a slot only when no render of its kind
+    exists, and every caption says whether its picture is finished.
+    """
+    job_id = state.get("job_id") or st.session_state.job_id
+    scaff, latest = f"{job_id}/scaffolding.png", f"{job_id}/latest.png"
+    final = f"{job_id}/final_illustration.png"
+    scaff_t, latest_t = backend.get_blob_updated(scaff), backend.get_blob_updated(latest)
+
+    if scaff_t:
+        first = (scaff, lambda: backend.get_blob(scaff), "Scaffolding blueprint (Phase 3)")
+    elif latest_t:
+        first = (latest, lambda: backend.get_blob(latest), "Scaffolding — UNFINISHED: last attempt before the run stopped")
+    else:
+        first = (RENDER_FAILED_IMG, lambda: backend.get_asset(RENDER_FAILED_IMG), "No scaffolding was drawn before the run stopped")
+
+    if backend.get_blob_updated(final):
+        second = (final, lambda: backend.get_blob(final), "Final illustration (Phase 4–5)")
+    elif scaff_t and latest_t and latest_t > scaff_t:
+        second = (latest, lambda: backend.get_blob(latest), "Final illustration — UNFINISHED: last attempt before the run stopped")
+    elif image_declined(events):
+        second = (DECLINED_IMG, lambda: backend.get_asset(DECLINED_IMG), "No final illustration — the image model declined to draw it")
+    else:
+        second = (RENDER_FAILED_IMG, lambda: backend.get_asset(RENDER_FAILED_IMG), "No final illustration — the run stopped before one was painted")
+    return [first, second]
+
+
+def ended_unfinished(state):
+    """Failed, or went silent long enough that the watchdog gave up on it."""
+    job_id = state.get("job_id") or st.session_state.job_id
+    return state.get("status") == "failed" or (
+        state.get("status") not in TERMINAL and st.session_state.get("stalled_job") == job_id)
+
+
 def draw_state(state, check_image=True):
     events = sorted_events(state)
     status_ui.markdown(status_line(state, events), unsafe_allow_html=True)
@@ -1350,8 +1490,8 @@ def draw_state(state, check_image=True):
             with beacon_ui.container():
                 stop_activity_beacon()
         countdown_ui.empty()
-    if status != "completed":
-        show_image(state, check=check_image)  # latest render; the carousel takes over on completion
+    if status != "completed" and not ended_unfinished(state):
+        show_image(state, check=check_image)  # latest render; the carousel takes over once the run ends
     # Only repaint the log when it actually changed. It is one large HTML blob, and
     # re-sending an identical one on every poll is a visible reflow for no reason.
     log_html = build_log_html(events, state.get("agent_id"))
@@ -1479,10 +1619,12 @@ if st.session_state.job_id:
                     if dl:
                         limit = max(limit, (dl - datetime.now(timezone.utc)).total_seconds() + HUMAN_GRACE_SECONDS)
                 if now - last_update > limit:
-                    result_ui.error(f"⌛ No update from the pipeline for {int(now - last_update)} s. It may have crashed — "
-                                    "the log shows how far it got. Use 'Open an existing job' later to check again.")
+                    # Treated as a failure from here on (so its carousel shows what was made),
+                    # until 'Open an existing job' asks again.
+                    st.session_state.stalled_job = job_id
+                    st.session_state.stalled_for = int(now - last_update)
                     st.session_state.is_running = False
-                    break
+                    st.rerun()
                 if state and state.get("status") == "awaiting_human":
                     # Short slices while a human is being asked something. Streamlit only
                     # notices a click when the script next WRITES an element, so a single
@@ -1507,32 +1649,27 @@ if st.session_state.job_id:
                 status = state.get("status")
                 if status == "completed":
                     result_ui.success("✅ Generation complete!")
-                    images = [(f"{job_id}/scaffolding.png", "Scaffolding blueprint (Phase 3)"),
-                              (f"{job_id}/final_illustration.png", "Final illustration (Phase 4–5)")]
-                    st.session_state.carousel_idx = max(0, min(st.session_state.carousel_idx, len(images) - 1))
-                    path, label = images[st.session_state.carousel_idx]
-                    data = backend.get_blob(path)
-                    if data:
-                        paint_image(data, (path, "carousel"), caption=label)
-                    else:
-                        image_ui.error("Image not found in storage.")
-                    with carousel_ui.container():
-                        c1, c2, c3, c4 = st.columns([3, 1, 1, 3])
-                        c2.button("❮", on_click=prev_image, disabled=st.session_state.carousel_idx == 0, **BTN_FILL)
-                        c3.button("❯", on_click=next_image, disabled=st.session_state.carousel_idx == len(images) - 1, **BTN_FILL)
+                    render_carousel([(path, lambda p=path: backend.get_blob(p), label) for path, label in (
+                        (f"{job_id}/scaffolding.png", "Scaffolding blueprint (Phase 3)"),
+                        (f"{job_id}/final_illustration.png", "Final illustration (Phase 4–5)"))])
                     if state.get("user_message"):
                         with notes_ui.container():
                             st.markdown("**📝 Notes from the pipeline**")
                             st.info(state["user_message"])
-                elif status == "failed":
-                    result_ui.error(f"❌ Failed: {state.get('error_message') or 'no explanation was recorded'}")
-                    show_image(state)
+                elif ended_unfinished(state):
+                    if status == "failed":
+                        result_ui.error(f"❌ Failed: {state.get('error_message') or 'no explanation was recorded'}")
+                    else:
+                        result_ui.error(f"⌛ No update from the pipeline for {st.session_state.get('stalled_for', IDLE_TIMEOUT)} s. "
+                                        "It may have crashed — the log shows how far it got. "
+                                        "Use 'Open an existing job' later to check again.")
+                    render_carousel(unfinished_slots(state, events))
                 else:
                     result_ui.info("This job is still running elsewhere — reconnecting…")
                     show_image(state)
                     st.session_state.is_running = True
                     st.rerun()
-                if status in TERMINAL:
+                if status in TERMINAL or ended_unfinished(state):
                     download_ui.download_button("📦 Download results (ZIP)", generate_zip_bundle(state),
                                                 file_name=f"EDEE_{job_id}.zip", mime="application/zip", **BTN_FILL)
     except Exception as e:  # noqa: BLE001
