@@ -168,8 +168,27 @@
   - cost calculator handles 3.7's promotional pricing and switches itself to standard rates at the
     2027 rollover without a redeploy
 - tested gpt-image-2 generation in a full run
-- drafted professional prompt-generator system prompts for 4 image models (Krea 2, ChatGPT
-    Images 2.5 txt2img and img2img, SD 1.5) as source material for the artist agent(or future skills)
+- drafted professional prompt-generator system prompts for 5 image models (Krea 2, ChatGPT
+    Images 2.5 txt2img and img2img, Gemini 3 Pro Image (Nano Banana Pro) txt2img and img2img, SD 1.5) as source material for the artist agent(or future skills)
+- Human-in-the-loop scaffolding review
+  - the person who launched the run can review the scaffolding after the AI inspectors
+    approve it, before the artist paints over it
+  - corrections open a multi-turn conversation with the manager until it confirms it
+    understands, then the coding loop re-runs with all retry counters reset and a
+    "human in the loop" directive that puts the human's requests above every inspector
+    report, subordinate suggestion, and the manager's own directives
+- Frontend upgraded
+  - live chain of thought as one card per turn: instruction collapsed, response fields
+    rendered, model/cost/time chips, phase dividers, stage stepper
+  - review gate UI with countdown and a browser-synthesized chime so you can work in
+    another tab (toggleable)
+  - reopen any past job by ID; model tier caps (text & image) moved into the sidebar
+  - demo mode replays a recorded transcript offline, gate included, with no credentials -
+    makes UI work possible without burning a run
+  - upgraded to Python 3.12 / Streamlit 1.50
+- Fixed stale images in the UI
+- Render service hardened
+- 'Control group' for evaluation; workflow with a single LLM request instead of our agents.
 
 *October
 - 

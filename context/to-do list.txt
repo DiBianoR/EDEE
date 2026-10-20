@@ -159,3 +159,16 @@ Experiment with coteach
 artist creativity step
 grids
 ✔fix misrouted as artistic image
+
+Automate Firestore expiry (not urgent - nothing is expiring right now)
+  - TTL is currently OFF; bucket lifetime extended to 360 days, and the Google Sheet
+    tracks failed runs, so no data is at risk today
+  - TTL needs a real Firestore Timestamp field. Our `timestamp` is an ISO *string*
+    (state manager writes datetime.now(timezone.utc).isoformat()), so a TTL policy on it
+    would silently delete nothing. Would need a new `expire_at` written as a datetime
+    object, not .isoformat()
+  - A TTL policy does apply to existing docs, but only ones that already carry the field,
+    so anything already written would need a one-off backfill
+  - Alternative to raw TTL: scheduled archive-then-delete sweep (Cloud Scheduler -> Cloud
+    Run, reusing POST /archive-incremental/{job_id}), so nothing gets deleted that wasn't
+    archived first. TTL is a blind deleter; a sweep can enforce the ordering
