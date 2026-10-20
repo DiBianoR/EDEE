@@ -223,3 +223,8 @@ service_account.json
 *-credentials.json
 # GCP's default key filename is <project-id>-<key-id>.json
 gen-lang-client-*.json
+notes/paper/(2025)From EduVisBench to EduVisAgent- A Benchmark and Multi-Agent Framework for Reasoning-Driven Pedagogical Visualization.pdf
+notes/paper/(2026) When Should Teachers Control AI Generation for Mathematics Visuals.pdf
+notes/paper/(2026)ManipulativeAgent- A Collaborative Multi-Agent Framework for Interactive Mathematical Content Generation.pdf
+notes/paper/Image Generation Tech Paper3-25-26.docx
+notes/paper/paper-plan.md.bak
