@@ -13,12 +13,16 @@
 // images and job-doc setup happen in "Resume: Rebuild State", after Load Config, because
 // the replay needs config.tasks (hoisted fields, textResult keys).
 //
-// WHY THE STYLE IS INFERRED: Load Config bakes the chosen style into the instruction
-// strings and does not keep the style key, so nothing stores it. The artist's logged
-// prompts (plan_finishing / render_final) quote the style description word for word, so
-// matching a distinctive phrase of each description recovers it. Keep STYLE_SIGNATURES in
-// step with styleLibrary in config.js; an unmatched job falls back to the frontend's
-// style_preference.
+// THE STYLE: Load Config bakes the chosen style into the instruction strings, so the
+// style key has to be recovered.
+//   1. Recorded: since 2026-11-04 every completed run ends with a "run_settings" event
+//      (Send Final Broadcast, Resume: Restore Completed) holding config.style_preference.
+//      The last one wins. Exact, and covers every style added later.
+//   2. Inferred, for jobs that finished before that: the artist's logged prompts
+//      (plan_finishing / render_final) quote the style description word for word, so a
+//      distinctive phrase of each description identifies it. Those jobs can only have used
+//      the five styles below, so STYLE_SIGNATURES never needs new entries.
+//   3. Otherwise the frontend's style_preference.
 //
 // Refuses (throws, and the webhook answers with the error) when the source has no
 // finished result to review, or when the source or target job is busy.
@@ -75,16 +79,26 @@ const transcript = (await get(`/transcript/${sourceId}`))
     .slice()
     .sort((a, b) => String(a.timestamp || "").localeCompare(String(b.timestamp || "")));
 
-// Style: count each signature across the artist's logged prompts; the most frequent wins.
+// Style, 1: the last run_settings record.
+let recordedStyle = null;
+const settingsEvent = [...transcript].reverse().find(e => e.author === "run_settings");
+if (settingsEvent) {
+    try { recordedStyle = JSON.parse(settingsEvent.parts[0].text).style_preference || null; }
+    catch (e) { /* malformed record: fall through to inference */ }
+}
+
+// Style, 2: count each signature across the artist's logged prompts; the most frequent wins.
 const artistPrompts = transcript
     .filter(e => e.author === "system" && ["plan_finishing", "render_final"].includes(e.task))
     .map(e => JSON.stringify(e.parts || []))
     .join(" ");
-let style = null, best = 0;
+let inferredStyle = null, best = 0;
 for (const [key, phrase] of Object.entries(STYLE_SIGNATURES)) {
     const hits = artistPrompts.split(phrase).length - 1;
-    if (hits > best) { best = hits; style = key; }
+    if (hits > best) { best = hits; inferredStyle = key; }
 }
+const style = recordedStyle || inferredStyle || body.style_preference || "casual_mobile";
+const styleSource = recordedStyle ? "recorded" : inferredStyle ? "inferred" : body.style_preference ? "frontend" : "default";
 
 // Items reaching Load Config: these top-level fields are exactly what it reads to build a
 // config, plus session_events (passed through). `resume` and anything else is dropped by
@@ -92,7 +106,7 @@ for (const [key, phrase] of Object.entries(STYLE_SIGNATURES)) {
 return [{ json: {
     job_id: targetId,
     original_query: summary.original_query ?? null,
-    style_preference: style || body.style_preference || "casual_mobile",
+    style_preference: style,
     max_text_tier: body.max_text_tier || "slow",
     max_image_tier: body.max_image_tier || "slow",
     human_review_mode: "wait",          // a resumed gate always waits for the human
@@ -101,7 +115,7 @@ return [{ json: {
         source_job_id: sourceId,
         target_job_id: targetId,
         mode,
-        style_inferred: !!style,
+        style_source: styleSource,      // recorded | inferred | frontend | default
         // Restored as-is if the human keeps the previous result (Resume: Restore Completed).
         previous: {
             user_message: summary.user_message ?? null,

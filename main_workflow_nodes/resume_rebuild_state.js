@@ -27,7 +27,7 @@
 
 const BUCKET = "https://storage.googleapis.com/edee-job-archives-0925957935";
 const load = $("Resume: Load Job").first().json;
-const { source_job_id: sourceId, target_job_id: targetId, mode, style_inferred } = load.resume;
+const { source_job_id: sourceId, target_job_id: targetId, mode, style_source } = load.resume;
 const { config, session_state: seeded, session_events: events } = items[0].json;
 if (!config || !seeded || !Array.isArray(events)) {
     throw new Error("Resume: Rebuild State — missing config / session_state / session_events from Load Resume Config");
@@ -38,7 +38,8 @@ const stateManager = config.gui_webhook_url.replace(/\/update-state$/, "");
 const state = { ...seeded };
 let applied = 0;
 for (const ev of events) {
-    if (ev.author === "system" || ev.author === "user" || ev.status === "error") continue;
+    // run_settings records launch choices for Load Job, not an agent's output.
+    if (["system", "user", "run_settings"].includes(ev.author) || ev.status === "error") continue;
     const task = config.tasks[ev.task] || {};
     const text = (ev.parts || []).filter(p => typeof p.text === "string" && !p.thought).map(p => p.text).join("");
     if (!text) continue;
@@ -132,5 +133,5 @@ return [{ json: {
     resume_scaffold_mime: scaffold.mime,
     resume_final_b64: finalImage.b64,
     resume_final_mime: finalImage.mime,
-    resume_note: `${applied} turns replayed; style ${style_inferred ? "inferred from the transcript" : "from the frontend (no match in the transcript)"}`,
+    resume_note: `${applied} turns replayed; style ${load.style_preference} (${style_source})`,
 } }];

@@ -47,7 +47,22 @@ const note = {
     model: "none",
     cost: 0,
 };
-const transcript = [...events, note];
+// Same run_settings record Send Final Broadcast writes, so a resume of THIS job finds
+// the style without inferring it (see "Resume: Load Job").
+const settings = {
+    author: "run_settings",
+    task: "run_settings",
+    status: "ok",
+    parts: [{ text: JSON.stringify({
+        style_preference: config.style_preference ?? null,
+        max_text_tier: config.maximum_text_tier ?? null,
+        max_image_tier: config.maximum_image_tier ?? null,
+    }) }],
+    timestamp: now,
+    model: "none",
+    cost: 0,
+};
+const transcript = [...events, note, settings];
 const totalCost = Number(transcript.reduce((sum, ev) => sum + (ev.cost || 0), 0).toFixed(6));
 
 // ⚠️ NEVER include `config` (contains api_keys): the listener merges this payload into
@@ -68,7 +83,7 @@ await this.helpers.httpRequest({
         total_cost: totalCost,
         base64_img_string: rebuilt.resume_final_b64,
         base64_img_string_mime: rebuilt.resume_final_mime || "image/png",
-        events: [note],
+        events: [note, settings],
         session_events: transcript,
         user_message: previous.user_message,
         archival_report: previous.archival_report,

@@ -69,7 +69,7 @@ def build_new_nodes(nodes):
          "parameters": {"jsCode": code("resume_load_job.js")}},
         {"name": "Resume: Respond OK", "type": "n8n-nodes-base.respondToWebhook", "typeVersion": 1.5, "position": [3424, 384],
          "parameters": {"respondWith": "json",
-                        "responseBody": "={{ JSON.stringify({ ok: true, job_id: $json.job_id, style_preference: $json.style_preference, style_inferred: $json.resume.style_inferred }) }}",
+                        "responseBody": "={{ JSON.stringify({ ok: true, job_id: $json.job_id, style_preference: $json.style_preference, style_source: $json.resume.style_source }) }}",
                         "options": {}}},
         {"name": "Set API Key (resume)", "type": keys["type"], "typeVersion": keys["typeVersion"], "position": [3584, 384],
          "parameters": copy.deepcopy(keys["parameters"])},
@@ -98,6 +98,51 @@ def unlink(conns, src, out, dst):
     branches = conns.get(src, {}).get("main", [])
     if out < len(branches):
         branches[out] = [t for t in branches[out] if t["node"] != dst]
+
+
+# Send Final Broadcast: append a run_settings event to the finished transcript, recording
+# the style (and tiers) that Load Config baked in, so "Resume: Load Job" can read it back
+# instead of inferring it. Exact-text replacements on the live code; skipped once applied.
+BROADCAST_EDITS = [
+    ("const { config = {}, session_state: ss = {}, session_events: events = [] } =\n"
+     "    latestRun('Phase 6 - Output') || {};\n",
+     "const { config = {}, session_state: ss = {}, session_events: rawEvents = [] } =\n"
+     "    latestRun('Phase 6 - Output') || {};\n"
+     "\n"
+     "// === 🏷️ RUN SETTINGS — launch choices baked into the config and otherwise lost ===\n"
+     "// \"Resume final review\" (Resume: Load Job) reads the LAST run_settings event to rebuild\n"
+     "// the config with the same style. Author \"run_settings\" is in no agent's history_scope,\n"
+     "// so no agent ever sees it.\n"
+     "const runSettingsEvent = {\n"
+     "    author: \"run_settings\",\n"
+     "    task: \"run_settings\",\n"
+     "    status: \"ok\",\n"
+     "    parts: [{ text: JSON.stringify({\n"
+     "        style_preference: config.style_preference ?? null,\n"
+     "        max_text_tier: config.maximum_text_tier ?? null,\n"
+     "        max_image_tier: config.maximum_image_tier ?? null\n"
+     "    }) }],\n"
+     "    timestamp: new Date().toISOString(),\n"
+     "    model: \"none\",\n"
+     "    cost: 0\n"
+     "};\n"
+     "const events = [...rawEvents, runSettingsEvent];\n"),
+    ("    session_events: events,\n    user_message: ss.user_message ?? null,",
+     "    session_events: events,\n    events: [runSettingsEvent],       // into the doc's working transcript too\n"
+     "    user_message: ss.user_message ?? null,"),
+]
+
+
+def patch_broadcast(node):
+    code = node["parameters"]["jsCode"]
+    if "runSettingsEvent" in code:
+        return False
+    for old, new in BROADCAST_EDITS:
+        if code.count(old) != 1:
+            raise SystemExit(f"Send Final Broadcast: expected exactly one occurrence of:\n{old}")
+        code = code.replace(old, new)
+    node["parameters"]["jsCode"] = code
+    return True
 
 
 def set_assignment(node, field, value):
@@ -132,6 +177,7 @@ def main():
         set_assignment(by[name], "base64_img_string", SCAFFOLD % ("base64_img_string", "resume_scaffold_b64"))
         set_assignment(by[name], "base64_img_string_mime", SCAFFOLD % ("base64_img_string_mime", "resume_scaffold_mime"))
     set_assignment(by["cfg final review"], "TASK_ID", FINAL_REVIEW_TASK)
+    patch_broadcast(by["Send Final Broadcast"])
 
     chain = ["Resume Trigger", "Resume: Load Job", "Resume: Respond OK", "Set API Key (resume)",
              "Load Resume Config", "Resume: Rebuild State", "Final Gate: Announce"]
@@ -161,7 +207,8 @@ def main():
     after = api("GET", f"/workflows/{WORKFLOW_ID}")
 
     # Verify: every pre-existing node is unchanged except the three we edited.
-    expected = {"cfg25", "cfg26", "cfg final review"} | {n["name"] for n in build_new_nodes(before["nodes"])}
+    expected = ({"cfg25", "cfg26", "cfg final review", "Send Final Broadcast"}
+                | {n["name"] for n in build_new_nodes(before["nodes"])})
     old = {n["id"]: n for n in before["nodes"]}
     changed = [n["name"] for n in after["nodes"] if n["id"] in old
                and json.dumps(n.get("parameters"), sort_keys=True) != json.dumps(old[n["id"]].get("parameters"), sort_keys=True)]

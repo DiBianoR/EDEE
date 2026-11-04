@@ -202,17 +202,17 @@ CONTEXT = {
     "Phase 5 - Output": "Phase 5 exit; strips the item to the envelope.",
     # resume
     "Resume Trigger": "Frontend's 'Resume final review' webhook (resume-final-gate); answers via Resume: Respond OK. Source: main_workflow_nodes/resume_*.js.",
-    "Resume: Load Job": "Checks the source job is finished and not busy, loads its transcript, infers the style from the artist's prompts. Source: resume_load_job.js.",
+    "Resume: Load Job": "Checks the source job is finished and not busy, loads its transcript, takes the style from the last run_settings event (older jobs: inferred from the artist's prompts). Source: resume_load_job.js.",
     "Resume: Respond OK": "Answers the frontend once the job is accepted; a throw before this answers with the error.",
     "Set API Key (resume)": "Copy of Set API Key for the resume entry.",
     "Load Resume Config": "Builds a fresh config (inferred style, current tiers, human_review_mode wait); passes the transcript through.",
     "Resume: Rebuild State": "Replays the transcript into session_state, backs up (overwrite) or copies (new) the job, posts the resume marker, opens the final gate. cfg25/cfg26/Restore reach back here BY NAME. Source: resume_rebuild_state.js.",
     "Resume: keep previous? (continue)": "Resumed and the artist never ran → keep the previous result, no Phase 6. Otherwise the normal Phase 5 exit.",
     "Resume: keep previous? (abort)": "Resumed → a stop keeps the previous result; otherwise the normal abort.",
-    "Resume: Restore Completed": "Marks the job completed with its previous image, message and report (no model calls). Source: resume_restore_completed.js.",
+    "Resume: Restore Completed": "Marks the job completed with its previous image, message and report, plus a run_settings event (no model calls). Source: resume_restore_completed.js.",
     # P6
     "Load Phase 6 Config": "Pass-through config reload (phase boundary).",
-    "Send Final Broadcast": "Completion payload to the state manager: final image from $('artist - render_final'), user message, transcript. A failure here stops the run.",
+    "Send Final Broadcast": "Completion payload to the state manager: final image from $('artist - render_final'), user message, transcript + a run_settings event (style/tiers, read by Resume). A failure here stops the run.",
     # templates
     "cfg": "Fill PHASE/AGENT/TASK.",
     "if bool_var1": "Branches on session_state.bool_var, which the agent's schema must output.",

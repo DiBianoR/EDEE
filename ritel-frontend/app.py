@@ -1500,8 +1500,12 @@ def ended_unfinished(state):
         state.get("status") not in TERMINAL and st.session_state.get("stalled_job") == job_id)
 
 
+HIDDEN_AUTHORS = ("run_settings",)   # bookkeeping events (launch settings for resume), not agent turns
+
+
 def draw_state(state, check_image=True):
-    events = sorted_events(state)
+    # The ZIP keeps every event (sorted_events); the page only shows agent turns.
+    events = [e for e in sorted_events(state) if e.get("author") not in HIDDEN_AUTHORS]
     status_ui.markdown(status_line(state, events), unsafe_allow_html=True)
     stepper_ui.markdown(render_stepper(state, events), unsafe_allow_html=True)
     status = state.get("status")

@@ -2537,6 +2537,11 @@ const config = {
   //  === JOB ID ===
   "job_id": items[0].json.job_id,
 
+  // The style key actually baked into the instructions above (after the fallback). Nothing
+  // else keeps it: Send Final Broadcast records it in the transcript as a run_settings
+  // event, which is how "Resume final review" rebuilds the config with the same style.
+  "style_preference": styleLibrary[selectedStyle] ? selectedStyle : "casual_mobile",
+
   // === 📡 GUI BROADCAST SETTINGS ===
   "enable_gui_logging": true,
   "gui_webhook_url": "https://ritel-state-manager-194521282716.us-south1.run.app/update-state",
