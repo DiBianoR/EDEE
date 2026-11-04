@@ -1,6 +1,10 @@
 🔜=priority  🛠=WIP  🌗=partway  ✔=Done
 
-🔜- n8n "Connect AI assistants to build and run workflows" (instance MCP: let Claude Code / Cursor build, run and iterate on workflows directly). We definitely want this. Check cost first: the instance shows "gateway credits $2 left", so find out whether MCP use draws on those credits. Until then keep using the repo exports + paste-ready node code.
+✔- n8n "Connect AI assistants to build and run workflows" (instance MCP). Connected 2026-11-04; costs no gateway credits.
+
+🔜- Blind image review: at least one image-viewing agent should look at each render WITHOUT any description and write what it actually sees; a separate step then compares that against the intended description (latest_description / the human's corrections). General rule: keep image descriptions away from image-viewing agents. Let them view blind, then check against the description afterwards; where that isn't possible, think it through case by case.
+  Current state (2026-11-04): review_bias, review_aesthetics, review_safety and check_overlaps already see no description (image_verifier and inspector have empty history scopes). detect_artifacts sees scaffolding_blueprint. verify_adherence, verify_perspective and review_math are given latest_description up front, and nobody writes a blind description to compare against.
+  Why it matters: in the resume repaint test, the user asked for "only the counter colour"; the artist redrew the whole composition, and final_reporter still told the user "every other element was kept exactly as before". A blind description would have caught that.
 
 scaffold stop trying to intelligently draw objects
 large text size? Web accessibility guidelines in terms of font size. 12 pt+

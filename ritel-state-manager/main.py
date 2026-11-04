@@ -343,6 +343,31 @@ def archive_incremental(job_id: str):
             "url": f"https://storage.googleapis.com/{BUCKET_NAME}/{path}"}
 
 
+ROUND_FILES = ("final_illustration.png", "scaffolding.png", "session_events.json", "total_cost.json")
+
+
+@app.post("/backup-round/{job_id}")
+def backup_round(job_id: str):
+    """Copy a finished job's result into {job_id}/previous/<UTC timestamp>/ before a
+    "Resume final review" round overwrites it (n8n "Resume: Rebuild State", overwrite
+    mode). Server-side copies: the bytes never leave the bucket.
+
+    One folder per round, so a second resume can't erase the first one's backup. The
+    workflow refuses to overwrite a job when this call fails, so it 404s rather than
+    "succeeding" with nothing to back up.
+    """
+    if not bucket.blob(f"{job_id}/final_illustration.png").exists():
+        raise HTTPException(status_code=404, detail=f"Job {job_id} has no final_illustration.png to back up")
+    folder = f"{job_id}/previous/{datetime.now(timezone.utc).strftime('%Y-%m-%dT%H-%M-%SZ')}"
+    copied = []
+    for name in ROUND_FILES:
+        src = bucket.blob(f"{job_id}/{name}")
+        if src.exists():
+            bucket.copy_blob(src, bucket, f"{folder}/{name}")
+            copied.append(name)
+    return {"job_id": job_id, "folder": folder, "copied": copied}
+
+
 HUMAN_ACTIONS = ("continue", "corrections", "message", "abort")
 
 # A human who is demonstrably still working never gets cut off mid-sentence, but a

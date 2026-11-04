@@ -102,6 +102,8 @@ def strip_notes(workflow):
 def backup(label):
     result = subprocess.run([sys.executable, os.path.join(HERE, "n8n_backup.py"), label], cwd=HERE)
     if result.returncode != 0:
+        if label.startswith("after"):
+            sys.exit(f"Backup '{label}' failed. The n8n change WAS saved; re-run n8n_backup.py to record it.")
         sys.exit(f"Backup '{label}' failed; nothing was written to n8n.")
 
 

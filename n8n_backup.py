@@ -25,6 +25,7 @@ import json
 import os
 import re
 import sys
+import time
 from datetime import datetime
 
 import requests
@@ -65,7 +66,12 @@ class Mcp:
         self._post({"jsonrpc": "2.0", "method": "notifications/initialized"})
 
     def _post(self, body):
-        r = requests.post(self.url, headers=self.headers, json=body, timeout=120)
+        # The MCP endpoint rate-limits bursts (HTTP 429); a backup is a dozen calls in a row.
+        for attempt in range(6):
+            r = requests.post(self.url, headers=self.headers, json=body, timeout=120)
+            if r.status_code != 429:
+                break
+            time.sleep(float(r.headers.get("Retry-After") or 5 * (attempt + 1)))
         r.raise_for_status()
         # text/event-stream carries no charset, and requests then assumes Latin-1 for
         # text/*, which garbles every curly quote and emoji in the workflow.

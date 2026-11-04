@@ -260,6 +260,32 @@ class GcpBackend:
         if r.status_code != 200:
             raise RuntimeError(f"n8n returned HTTP {r.status_code}: {r.text[:200]}")
 
+    def resume_job(self, source_job_id, mode, target_job_id, payload, env_choice):
+        """Reopen a finished job at the final illustration review (n8n "Resume Trigger").
+
+        The target is stamped "starting" BEFORE the call, as start_job does, so the poll
+        loop doesn't stop on the old "completed" status in the second or two before the
+        workflow writes "running". If n8n refuses (job busy, nothing to review…), the
+        stamp is rolled back so an overwrite target still reads as completed.
+        """
+        ref = self.db.collection("job_states").document(target_job_id)
+        before = (ref.get().to_dict() or {}).get("status")
+        ref.set({"ttl_expiry": datetime.now(timezone.utc) + timedelta(days=7), "status": "starting"}, merge=True)
+        url = N8N_START_URL.replace("generate-diagram", "resume-final-gate")
+        url = url.replace("/webhook/", "/webhook-test/") if env_choice.startswith("Dev") else url.replace("/webhook-test/", "/webhook/")
+        try:
+            r = requests.post(url, headers={"x-api-key": API_KEY}, timeout=60, json={
+                **payload, "source_job_id": source_job_id, "mode": mode, "target_job_id": target_job_id})
+            if r.status_code != 200:
+                raise RuntimeError(f"n8n returned HTTP {r.status_code}: {r.text[:300]}")
+        except Exception:
+            if before:
+                ref.set({"status": before}, merge=True)
+            else:
+                ref.delete()
+            raise
+        return r.json() if r.text else {}
+
     def human_decision(self, job_id, action, message=""):
         r = requests.post(f"{STATE_MANAGER_URL}/human-decision/{job_id}",
                           json={"action": action, "message": message}, timeout=30)
@@ -679,7 +705,8 @@ def get_backend():
 st.set_page_config(page_title="EDEE Gen", layout="wide", page_icon="📐", initial_sidebar_state="auto")
 
 for key, default in [("job_id", None), ("is_running", False), ("trigger_job", False), ("carousel_idx", 1),
-                     ("pending_action", None), ("img_cache", None), ("job_started_at", None), ("notice", None)]:
+                     ("pending_action", None), ("img_cache", None), ("job_started_at", None), ("notice", None),
+                     ("resume_request", None)]:
     st.session_state.setdefault(key, default)
 
 # --- SURVIVING A LOST SESSION ---------------------------------------------------------
@@ -784,6 +811,11 @@ def submit_gate(msg_key):
     st.session_state.pending_action = ("message" if msg else "continue", msg, msg_key[4:])
 
 
+def request_resume(source_job_id):
+    """The 'Resume final review' button. Queued like a gate reply; acted on below."""
+    st.session_state.resume_request = (source_job_id, st.session_state.get("resume_mode", "overwrite"))
+
+
 def prev_image():
     st.session_state.carousel_idx -= 1
 
@@ -852,6 +884,7 @@ with col1:
     image_ui = st.empty()
     carousel_ui = st.empty()
     notes_ui = st.empty()
+    resume_ui = st.empty()
     download_ui = st.empty()
 with col2:
     st.markdown("**Agent thought log**")
@@ -1066,7 +1099,11 @@ def status_line(state, events):
 
 def conversation_from_events(events, tasks=HUMAN_TASKS):
     # Filtered to one gate's tasks: at the final review, the scaffold conversation from
-    # earlier in the run is history, not part of what you are answering now.
+    # earlier in the run is history, not part of what you are answering now. Likewise a
+    # resumed job ("Resume final review") starts the conversation over at its marker.
+    marks = [i for i, ev in enumerate(events) if ev.get("task") == "resume_final_gate"]
+    if marks:
+        events = events[marks[-1] + 1:]
     turns = []
     for ev in events:
         if ev.get("task") not in tasks:
@@ -1589,6 +1626,26 @@ if st.session_state.trigger_job:
         st.session_state.job_id = None
         st.stop()
 
+# --- RESUME A FINISHED JOB ------------------------------------------------------------------
+if st.session_state.resume_request:
+    source_id, mode = st.session_state.resume_request
+    st.session_state.resume_request = None
+    target_id = source_id if mode == "overwrite" else str(uuid.uuid4())
+    try:
+        with st.spinner("Reopening the final review…"):
+            backend.resume_job(source_id, mode, target_id, {"max_text_tier": max_text_tier,
+                               "max_image_tier": max_image_tier, "style_preference": style_choice}, env_choice)
+    except Exception as e:  # noqa: BLE001
+        st.error(f"Could not resume the job: {e}")
+    else:
+        st.session_state.job_id = target_id
+        st.query_params["job"] = target_id
+        st.session_state.is_running = True
+        st.session_state.job_started_at = time.time()
+        st.session_state.carousel_idx = 1
+        st.session_state.img_cache = None
+        st.session_state.stalled_job = None
+
 # --- POLL / RENDER ---------------------------------------------------------------------------
 if st.session_state.job_id:
     job_id = st.session_state.job_id
@@ -1660,6 +1717,16 @@ if st.session_state.job_id:
                         with notes_ui.container():
                             st.markdown("**📝 Notes from the pipeline**")
                             st.info(state["user_message"])
+                    if not DEMO:
+                        with resume_ui.expander("🔁 Resume final review"):
+                            st.caption("Reopens this job at the final-illustration review so you can ask the "
+                                       "Final Gatekeeper for another round of changes. The review waits for you "
+                                       "(no 30-second mode). If you change nothing, or stop, the job keeps its "
+                                       "current illustration and report, and no extra model calls are made.")
+                            st.radio("Save the result", ["overwrite", "new"], key="resume_mode", horizontal=True,
+                                     format_func={"overwrite": "Overwrite this job (current result is backed up)",
+                                                  "new": "As a new job"}.get)
+                            st.button("Resume review", on_click=request_resume, args=(job_id,), **BTN_FILL)
                 elif ended_unfinished(state):
                     if status == "failed":
                         result_ui.error(f"❌ Failed: {state.get('error_message') or 'no explanation was recorded'}")

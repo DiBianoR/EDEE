@@ -240,11 +240,11 @@
       },
       "64997582-798a-4749-af5c-1eba0513e359": {
         "node": "cfg25",
-        "note": "P4 ARTIST · cfg for artist.plan_finishing. | LOOP HEAD of the artist: increments image_gen_retry_count; attaches the scaffold via $('Prepare for Vision'). 4 entries. | in: retry_count5, If Highly Customizable Products, product_designer - customizable_product_planning, Final corrections → reset retries | out: artist - plan_finishing"
+        "note": "P4 ARTIST · cfg for artist.plan_finishing. | LOOP HEAD of the artist: increments image_gen_retry_count; attaches the scaffold from $('Prepare for Vision'), or $('Resume: Rebuild State') in a resumed job. 4 entries. | in: retry_count5, If Highly Customizable Products, product_designer - customizable_product_planning, Final corrections → reset retries | out: artist - plan_finishing"
       },
       "61100db1-0b48-4aa3-9fac-c397a34d749f": {
         "node": "cfg26",
-        "note": "P4 ARTIST · cfg for artist.render_final. | Render; MODEL_TYPE txt2img on DIRECT_IMAGE_GEN, otherwise img2img over the scaffold from $('Prepare for Vision'). | in: artist - plan_finishing, Render OK? | out: artist - render_final"
+        "note": "P4 ARTIST · cfg for artist.render_final. | Render; MODEL_TYPE txt2img on DIRECT_IMAGE_GEN, otherwise img2img over the scaffold ($('Prepare for Vision'), or $('Resume: Rebuild State') when resumed). | in: artist - plan_finishing, Render OK? | out: artist - render_final"
       },
       "250f53b3-86b0-4370-b0dc-718a73d29852": {
         "node": "artist - render_final",
@@ -400,7 +400,7 @@
       },
       "8b67e947-4394-499e-8528-5529a8c56429": {
         "node": "Phase 5 - Output",
-        "note": "P5 EXIT · Phase output (Set). | Phase 5 exit; strips the item to the envelope. | in: Final review?, After final log | out: Load Phase 6 Config"
+        "note": "P5 EXIT · Phase output (Set). | Phase 5 exit; strips the item to the envelope. | in: Final review?, Resume: keep previous? (continue) | out: Load Phase 6 Config"
       },
       "2a28c124-7436-48af-9571-d4f0ecb1b0bb": {
         "node": "Set Job",
@@ -856,7 +856,7 @@
       },
       "a08c7980-b09a-470e-a4b3-575ffae98409": {
         "node": "Final Gate: Announce",
-        "note": "P5 FINAL GATE (human) · Code. | Final-gate twin of Human Gate: Announce. Source: final_gate_announce.js. | in: Final review?, Final available?, Final decision, Final understood? | out: Final Gate: Wait"
+        "note": "P5 FINAL GATE (human) · Code. | Final-gate twin of Human Gate: Announce. Source: final_gate_announce.js. | in: Final review?, Final available?, Final decision, Final understood?, Resume: Rebuild State | out: Final Gate: Wait"
       },
       "f7687371-814b-483d-ae71-055a7122fe05": {
         "node": "Final Gate: Wait",
@@ -876,7 +876,7 @@
       },
       "fb3f9d15-6660-4226-b737-199ca884e006": {
         "node": "cfg final review",
-        "note": "P5 FINAL GATE (human) · cfg for issue_aggregator.(computed). | Human's text → issue_aggregator. TASK_ID counts final_review turns only (not scaffold ones). | in: Final decision | out: issue_aggregator - final_review"
+        "note": "P5 FINAL GATE (human) · cfg for issue_aggregator.(computed). | Human's text → issue_aggregator. TASK_ID counts final_review turns since the last resume marker (not scaffold ones). | in: Final decision | out: issue_aggregator - final_review"
       },
       "5e2bd1d2-b7d7-4783-8835-a212d4fb1b8c": {
         "node": "issue_aggregator - final_review",
@@ -896,7 +896,7 @@
       },
       "f16320d0-6c7b-4faf-8c72-b976e18d8976": {
         "node": "After final log",
-        "note": "P5 FINAL GATE (human) · Switch. | Routes on $('Final outcome').human_action. | in: final_gate - log_final_decision | out: [continue]Phase 5 - Output, [rework]Final corrections → reset retries, [fail]cfg61, [abort]cfg final abort"
+        "note": "P5 FINAL GATE (human) · Switch. | Routes on $('Final outcome').human_action. continue/abort pass through the Resume: keep previous? checks. | in: final_gate - log_final_decision | out: [continue]Resume: keep previous? (continue), [rework]Final corrections → reset retries, [fail]cfg61, [abort]Resume: keep previous? (abort)"
       },
       "e2fc3c1c-2425-4ee2-8392-77ffff4bfbed": {
         "node": "Final corrections → reset retries",
@@ -904,7 +904,7 @@
       },
       "481d31d2-16b8-4d56-884c-862da073fe24": {
         "node": "cfg final abort",
-        "note": "P5 FINAL GATE (human) · cfg for error_handler.report_error. | Human asked to stop: UserAborted. | in: After final log | out: error_handler - report_error8"
+        "note": "P5 FINAL GATE (human) · cfg for error_handler.report_error. | Human asked to stop: UserAborted. | in: Resume: keep previous? (abort) | out: error_handler - report_error8"
       },
       "6a276acf-976f-4c94-afb5-de4774ca36db": {
         "node": "Render OK?",
@@ -917,6 +917,42 @@
       "65d31d85-27ed-4a70-8ff2-935c301b712d": {
         "node": "cfg render abort",
         "note": "P4 ARTIST · cfg for error_handler.report_error. | Image model returned no image 3×: RenderFailed. | in: Render OK? | out: error_handler - report_error9"
+      },
+      "08ff6b6f-b168-445e-9f67-54bf3836be01": {
+        "node": "Resume Trigger",
+        "note": "P5 RESUME (finished job → final gate) · Webhook trigger. | Frontend's 'Resume final review' webhook (resume-final-gate); answers via Resume: Respond OK. Source: main_workflow_nodes/resume_*.js. | out: Resume: Load Job"
+      },
+      "d336701d-e0eb-42c0-be26-16750a00199e": {
+        "node": "Resume: Load Job",
+        "note": "P5 RESUME (finished job → final gate) · Code. | Checks the source job is finished and not busy, loads its transcript, infers the style from the artist's prompts. Source: resume_load_job.js. | in: Resume Trigger | out: Resume: Respond OK"
+      },
+      "65d9d2bb-7513-443a-ac03-2b85faabaa64": {
+        "node": "Resume: Respond OK",
+        "note": "P5 RESUME (finished job → final gate) · respondToWebhook. | Answers the frontend once the job is accepted; a throw before this answers with the error. | in: Resume: Load Job | out: Set API Key (resume)"
+      },
+      "cc54da16-237b-4e20-8993-c51eb59aa978": {
+        "node": "Set API Key (resume)",
+        "note": "P5 RESUME (finished job → final gate) · Set: google_api_key, openai_api_key. | Copy of Set API Key for the resume entry. | in: Resume: Respond OK | out: Load Resume Config"
+      },
+      "767d56df-5adc-485f-990b-81d4f6c0e4b9": {
+        "node": "Load Resume Config",
+        "note": "P5 RESUME (finished job → final gate) · Load Config sub-workflow. | Builds a fresh config (inferred style, current tiers, human_review_mode wait); passes the transcript through. | in: Set API Key (resume) | out: Resume: Rebuild State"
+      },
+      "5911424d-f350-4fa5-a3ab-f698079c1835": {
+        "node": "Resume: Rebuild State",
+        "note": "P5 RESUME (finished job → final gate) · Code. | Replays the transcript into session_state, backs up (overwrite) or copies (new) the job, posts the resume marker, opens the final gate. cfg25/cfg26/Restore reach back here BY NAME. Source: resume_rebuild_state.js. | in: Load Resume Config | out: Final Gate: Announce"
+      },
+      "90c4295c-d960-4275-8fda-a65ad46e5f36": {
+        "node": "Resume: keep previous? (continue)",
+        "note": "P5 RESUME (finished job → final gate) · IF. | Resumed and the artist never ran → keep the previous result, no Phase 6. Otherwise the normal Phase 5 exit. | in: After final log | out: [true]Resume: Restore Completed, [false]Phase 5 - Output"
+      },
+      "3f60d5b5-f332-41e6-add2-4e64db9d8a12": {
+        "node": "Resume: keep previous? (abort)",
+        "note": "P5 RESUME (finished job → final gate) · IF. | Resumed → a stop keeps the previous result; otherwise the normal abort. | in: After final log | out: [true]Resume: Restore Completed, [false]cfg final abort"
+      },
+      "35a07f8c-8456-4716-942d-7bdc700762a6": {
+        "node": "Resume: Restore Completed",
+        "note": "P5 RESUME (finished job → final gate) · Code. | Marks the job completed with its previous image, message and report (no model calls). Source: resume_restore_completed.js. | in: Resume: keep previous? (continue), Resume: keep previous? (abort) | out: (end of run)"
       }
     }
   }

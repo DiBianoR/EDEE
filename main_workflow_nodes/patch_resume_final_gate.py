@@ -1,0 +1,185 @@
+"""
+Add "Resume final review" to EDEE-main's DRAFT (never published by this script).
+
+    py -3 main_workflow_nodes/patch_resume_final_gate.py
+
+Re-runnable: nodes that already exist get their code/parameters refreshed from the
+resume_*.js sources instead of being added twice. Uses the REST API (like n8n_notes.py)
+because the new "Set API Key (resume)" copies the live keys node, and this keeps the
+keys out of any tool call or chat. Always publishIfActive=false; backs up before and
+after; verifies afterwards that only the intended nodes and connections changed.
+
+What it does (STRUCTURE.md, "Resume final review"):
+  new chain   Resume Trigger → Resume: Load Job → Resume: Respond OK → Set API Key (resume)
+              → Load Resume Config → Resume: Rebuild State → Final Gate: Announce
+  new exits   After final log [continue] → Resume: keep previous? (continue)
+                  [true] → Resume: Restore Completed   [false] → Phase 5 - Output
+              After final log [abort]    → Resume: keep previous? (abort)
+                  [true] → Resume: Restore Completed   [false] → cfg final abort
+  edits       cfg25 / cfg26: scaffold falls back to Resume: Rebuild State
+              cfg final review: TASK_ID counts final_review turns after the resume marker
+"""
+
+import copy
+import json
+import os
+import sys
+import uuid
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, os.path.dirname(HERE))
+from n8n_notes import api, backup, NODE_FIELDS, SETTINGS_FIELDS  # noqa: E402
+
+WORKFLOW_ID = "HtwI6u1ae2xwKw1f"
+
+
+def code(name):
+    with open(os.path.join(HERE, name), encoding="utf-8") as f:
+        return f.read()
+
+
+SCAFFOLD = ("={{ $('Prepare for Vision').isExecuted ? $('Prepare for Vision').item.json.%s"
+            " : ($('Resume: Rebuild State').isExecuted ? $('Resume: Rebuild State').first(0, 0).json.%s : '') }}")
+FINAL_REVIEW_TASK = ("={{ (() => { const ev = $json.session_events;"
+                     " const start = ev.map(e => e.task).lastIndexOf('resume_final_gate');"
+                     " return ev.slice(start + 1).some(e => e.author === 'issue_aggregator' && String(e.task).startsWith('final_review'))"
+                     " ? 'final_review_reply' : 'final_review_open'; })() }}")
+KEEP_CONTINUE = "={{ $('Resume: Rebuild State').isExecuted && !$('artist - render_final').isExecuted }}"
+KEEP_ABORT = "={{ $('Resume: Rebuild State').isExecuted }}"
+
+
+def if_params(template, expression):
+    p = copy.deepcopy(template["parameters"])
+    cond = p["conditions"]["conditions"][0]
+    cond["leftValue"] = expression
+    cond["id"] = str(uuid.uuid4())
+    return p
+
+
+def build_new_nodes(nodes):
+    by = {n["name"]: n for n in nodes}
+    api_trigger, keys, load_cfg, if_tpl = by["API Trigger"], by["Set API Key"], by["Load Phase 1 Config"], by["Final review?"]
+    code_v = by["Final Gate: Announce"]["typeVersion"]
+    return [
+        {"name": "Resume Trigger", "type": "n8n-nodes-base.webhook", "typeVersion": api_trigger["typeVersion"],
+         "position": [3088, 384], "webhookId": str(uuid.uuid4()), "credentials": copy.deepcopy(api_trigger.get("credentials")),
+         "parameters": {"httpMethod": "POST", "path": "resume-final-gate", "authentication": "headerAuth",
+                        "responseMode": "responseNode", "options": {}}},
+        {"name": "Resume: Load Job", "type": "n8n-nodes-base.code", "typeVersion": code_v, "position": [3264, 384],
+         "parameters": {"jsCode": code("resume_load_job.js")}},
+        {"name": "Resume: Respond OK", "type": "n8n-nodes-base.respondToWebhook", "typeVersion": 1.5, "position": [3424, 384],
+         "parameters": {"respondWith": "json",
+                        "responseBody": "={{ JSON.stringify({ ok: true, job_id: $json.job_id, style_preference: $json.style_preference, style_inferred: $json.resume.style_inferred }) }}",
+                        "options": {}}},
+        {"name": "Set API Key (resume)", "type": keys["type"], "typeVersion": keys["typeVersion"], "position": [3584, 384],
+         "parameters": copy.deepcopy(keys["parameters"])},
+        {"name": "Load Resume Config", "type": load_cfg["type"], "typeVersion": load_cfg["typeVersion"], "position": [3744, 384],
+         "parameters": copy.deepcopy(load_cfg["parameters"])},
+        {"name": "Resume: Rebuild State", "type": "n8n-nodes-base.code", "typeVersion": code_v, "position": [3904, 384],
+         "parameters": {"jsCode": code("resume_rebuild_state.js")}},
+        {"name": "Resume: keep previous? (continue)", "type": if_tpl["type"], "typeVersion": if_tpl["typeVersion"],
+         "position": [5376, 1040], "parameters": if_params(if_tpl, KEEP_CONTINUE)},
+        {"name": "Resume: keep previous? (abort)", "type": if_tpl["type"], "typeVersion": if_tpl["typeVersion"],
+         "position": [5376, 1216], "parameters": if_params(if_tpl, KEEP_ABORT)},
+        {"name": "Resume: Restore Completed", "type": "n8n-nodes-base.code", "typeVersion": code_v, "position": [5584, 1120],
+         "parameters": {"jsCode": code("resume_restore_completed.js")}},
+    ]
+
+
+def link(conns, src, out, dst):
+    branches = conns.setdefault(src, {}).setdefault("main", [])
+    while len(branches) <= out:
+        branches.append([])
+    if not any(t["node"] == dst for t in branches[out]):
+        branches[out].append({"node": dst, "type": "main", "index": 0})
+
+
+def unlink(conns, src, out, dst):
+    branches = conns.get(src, {}).get("main", [])
+    if out < len(branches):
+        branches[out] = [t for t in branches[out] if t["node"] != dst]
+
+
+def set_assignment(node, field, value):
+    for a in node["parameters"]["assignments"]["assignments"]:
+        if a["name"] == field:
+            a["value"] = value
+            return
+    raise SystemExit(f"{node['name']} has no '{field}' assignment")
+
+
+def main():
+    backup("before resume final review")
+    before = api("GET", f"/workflows/{WORKFLOW_ID}")
+    nodes = copy.deepcopy(before["nodes"])
+    conns = copy.deepcopy(before["connections"])
+    by = {n["name"]: n for n in nodes}
+
+    added = []
+    for new in build_new_nodes(before["nodes"]):
+        if new["name"] in by:   # re-run: refresh code/params, keep id, position and webhookId
+            old_conds = by[new["name"]]["parameters"].get("conditions", {}).get("conditions")
+            if old_conds:       # IF nodes: keep the existing condition id, so a re-run doesn't churn it
+                new["parameters"]["conditions"]["conditions"][0]["id"] = old_conds[0]["id"]
+            by[new["name"]]["parameters"] = new["parameters"]
+        else:
+            new["id"] = str(uuid.uuid4())
+            nodes.append(new)
+            by[new["name"]] = new
+            added.append(new["name"])
+
+    for name in ("cfg25", "cfg26"):
+        set_assignment(by[name], "base64_img_string", SCAFFOLD % ("base64_img_string", "resume_scaffold_b64"))
+        set_assignment(by[name], "base64_img_string_mime", SCAFFOLD % ("base64_img_string_mime", "resume_scaffold_mime"))
+    set_assignment(by["cfg final review"], "TASK_ID", FINAL_REVIEW_TASK)
+
+    chain = ["Resume Trigger", "Resume: Load Job", "Resume: Respond OK", "Set API Key (resume)",
+             "Load Resume Config", "Resume: Rebuild State", "Final Gate: Announce"]
+    for src, dst in zip(chain, chain[1:]):
+        link(conns, src, 0, dst)
+    unlink(conns, "After final log", 0, "Phase 5 - Output")
+    link(conns, "After final log", 0, "Resume: keep previous? (continue)")
+    link(conns, "Resume: keep previous? (continue)", 0, "Resume: Restore Completed")
+    link(conns, "Resume: keep previous? (continue)", 1, "Phase 5 - Output")
+    unlink(conns, "After final log", 3, "cfg final abort")
+    link(conns, "After final log", 3, "Resume: keep previous? (abort)")
+    link(conns, "Resume: keep previous? (abort)", 0, "Resume: Restore Completed")
+    link(conns, "Resume: keep previous? (abort)", 1, "cfg final abort")
+
+    body = {
+        "name": before["name"],
+        "nodes": [{k: v for k, v in n.items() if k in NODE_FIELDS} for n in nodes],
+        "connections": conns,
+        "settings": {k: v for k, v in (before.get("settings") or {}).items() if k in SETTINGS_FIELDS},
+        "staticData": before.get("staticData"),
+        "pinData": before.get("pinData"),
+        "nodeGroups": before.get("nodeGroups") or [],
+    }
+    if api("GET", f"/workflows/{WORKFLOW_ID}")["versionId"] != before["versionId"]:
+        sys.exit("EDEE-main changed while preparing the patch; nothing written. Re-run.")
+    api("PUT", f"/workflows/{WORKFLOW_ID}", params={"publishIfActive": "false"}, json=body)
+    after = api("GET", f"/workflows/{WORKFLOW_ID}")
+
+    # Verify: every pre-existing node is unchanged except the three we edited.
+    expected = {"cfg25", "cfg26", "cfg final review"} | {n["name"] for n in build_new_nodes(before["nodes"])}
+    old = {n["id"]: n for n in before["nodes"]}
+    changed = [n["name"] for n in after["nodes"] if n["id"] in old
+               and json.dumps(n.get("parameters"), sort_keys=True) != json.dumps(old[n["id"]].get("parameters"), sort_keys=True)]
+    problems = []
+    if set(changed) - expected:
+        problems.append(f"unexpected parameter changes: {sorted(set(changed) - expected)}")
+    missing = [n for n in chain + ["Resume: keep previous? (continue)", "Resume: keep previous? (abort)", "Resume: Restore Completed"]
+               if n not in {x["name"] for x in after["nodes"]}]
+    if missing:
+        problems.append(f"nodes missing after save: {missing}")
+    if after.get("activeVersionId") != before.get("activeVersionId"):
+        problems.append("the PUBLISHED version moved")
+    print(f"added {len(added)} node(s): {added}; edited: {sorted(set(changed) & expected)}; "
+          f"draft {before['versionId'][:8]} -> {after['versionId'][:8]}; published {after.get('activeVersionId', '')[:8]}")
+    if problems:
+        sys.exit("VERIFY FAILED: " + "; ".join(problems))
+    backup("after resume final review")
+
+
+if __name__ == "__main__":
+    main()
