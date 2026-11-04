@@ -1,5 +1,12 @@
 🔜=priority  🛠=WIP  🌗=partway  ✔=Done
 
+🔜- n8n "Connect AI assistants to build and run workflows" (instance MCP: let Claude Code / Cursor build, run and iterate on workflows directly). We definitely want this. Check cost first: the instance shows "gateway credits $2 left", so find out whether MCP use draws on those credits. Until then keep using the repo exports + paste-ready node code.
+
+scaffold stop trying to intelligently draw objects
+large text size? Web accessibility guidelines in terms of font size. 12 pt+
+need white bg or it looks like there's a square
+loved color coding - but accessibility
+
 edit problem illustration
 simpler scaffolding
 automatic feedback
