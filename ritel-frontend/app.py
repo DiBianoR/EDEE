@@ -66,9 +66,9 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 STYLE_OPTIONS = ["casual_mobile", "storybook", "cel_shaded_anime", "claymation_diorama", "mid_century_modern"]
 REVIEW_MODES = {
     "automatic": ("Automatic", "Never pause. The pipeline carries on as soon as its own reviewers approve each stage."),
-    # Disabled for now: the 30 s window doesn't work in practice. The pipeline still accepts
-    # "timeout", so restoring this line brings the option back.
-    # "timeout": ("Ask me, 30 s to react", "Pauses at each review and moves on after 30 seconds of **no activity**. Start typing and it waits for you instead, as if you'd picked *Wait for me*."),
+    # Typing now holds the gate open: the workflow's decision switches route the "extend"
+    # action, which they used to drop, ending the run mid-sentence.
+    "timeout": ("Ask me, 30 s to react", "Pauses at each review and moves on after 30 seconds of **no activity**. Start typing and it waits for you instead, as if you'd picked *Wait for me*."),
     "wait": ("Wait for me", "Pauses at each review until you answer. It only gives up after 10 minutes with no typing or clicking, so you can take as long as you need."),
 }
 # The UI default. The PIPELINE's own fallback stays "automatic" (config.js): that one is

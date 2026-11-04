@@ -2,9 +2,921 @@
   "HtwI6u1ae2xwKw1f": {
     "workflow": "EDEE-main",
     "notes": {
+      "bd909553-91d6-4981-970c-234f2c6702d7": {
+        "node": "Phase 2 - Output",
+        "note": "P2 MERGE+REVIEW LOOP · Phase output (Set). | Phase 2 exit; strips the item to the envelope. | in: If Ready for code | out: Load Phase 3 Config"
+      },
+      "f2dd722e-180a-46db-b228-7b84605598a0": {
+        "node": "If 3D Objects",
+        "note": "P2 SITUATIONAL · IF. | Each IF either runs its specialist or skips to the next IF. | in: image_detail_planner - situational_planning | out: [true]cfg12, [false]If Graphs"
+      },
+      "2643d277-9c96-4b6c-82f6-0828cb001ec9": {
+        "node": "If Arranged Objects",
+        "note": "P2 SITUATIONAL · IF. | in: If Graphs, data_viz_expert - plan_graph | out: [true]cfg14, [false]If Artistic Planning"
+      },
+      "5a78c9ac-b953-460b-a6ca-ee5d0c78ce00": {
+        "node": "If Graphs",
+        "note": "P2 SITUATIONAL · IF. | in: If 3D Objects, 3d_specialist - plan_3d | out: [true]cfg13, [false]If Arranged Objects"
+      },
+      "7da329c1-b35f-44bd-9ba0-040efee48fa5": {
+        "node": "Problem Validation Agent - Output",
+        "note": "P1 VALIDATION · Phase output (Set). | Phase 1 exit; strips the item to config/session_state/session_events. | in: problem_validation - format_ready_branch, problem_validation - format_math_only_branch, problem_validation - format_visual_only_branch | out: Load Phase 2 Config"
+      },
+      "5396a9d2-26fa-4c61-9ad6-9988afc6e7d7": {
+        "node": "Problem Validation Agent - Switch",
+        "note": "P1 VALIDATION · Switch. | Output names differ from values: both=ready, problem=math_only. | in: problem_validation - Logic Router | out: [both]cfg3, [problem]cfg4, [visual_only]cfg43, [neither]cfg5"
+      },
+      "c4b48ac7-b070-4b95-86cc-df829a7bb884": {
+        "node": "API Trigger",
+        "note": "ENTRY · Webhook trigger. | Frontend's generate-diagram webhook (/webhook = published, /webhook-test = draft). | out: Set Job"
+      },
+      "5cf24bb3-94f4-4479-b2cd-a0a9ad402ca8": {
+        "node": "Prepare for Vision",
+        "note": "P3 VISION QA · Code. | Binary PNG → base64, and broadcasts it to {job_id}/latest.png. That broadcast is what the scaffold gate shows the human. | in: Python Execution Node | out: cfg22"
+      },
+      "f468949c-25d1-486b-8f37-a6fb8d03ecac": {
+        "node": "Python Execution Node",
+        "note": "P3 EXECUTION · HTTP Request. | POST to render-matplotlib (Cloud Run). Error output [1] carries the traceback. | in: Hoist python_code | out: [ok]Prepare for Vision, [error]cfg57"
+      },
+      "a0a0eb69-506d-4480-bf38-89d744fdc525": {
+        "node": "Mock Input",
+        "note": "LEGACY (detached, unused) · Set (raw JSON). | Old fixed mock payload, replaced by Select Query + Mock Input1."
+      },
+      "4f752494-0a0c-404e-99cf-ad9eba37302b": {
+        "node": "When clicking ‘Execute workflow’",
+        "note": "ENTRY · Manual trigger. | Manual test run from the editor. | out: Select Query"
+      },
+      "a88003f2-64b4-40bb-b6b2-ba158fffb4e5": {
+        "node": "Set API Key",
+        "note": "ENTRY · Set: google_api_key, openai_api_key. | Holds the Gemini/OpenAI keys (redacted in git by the pre-commit hook). | in: Set Job, Mock Input1 | out: Load Phase 1 Config"
+      },
+      "2c65aed1-a48f-4266-9268-791a469f3a34": {
+        "node": "TODO: Primitives",
+        "note": "LEGACY (detached, unused) · Stop and Error. | Placeholder for a COMPOSITE_PRIMITIVES path; that route currently uses the STANDARD path."
+      },
+      "2c047cfb-8ac2-4f8c-b352-49cf80105ac3": {
+        "node": "View Image",
+        "note": "DEBUG TOOL (detached) · Code. | Debug: paste after any node to view its base64_img_string as a binary image."
+      },
+      "9743afe2-57de-4b25-bba6-e7f79e10cc00": {
+        "node": "Load Phase 1 Config",
+        "note": "ENTRY · Load Config sub-workflow. | FIRST config build: bakes style into instructions and seeds session_state. Later Load Phase N Config calls pass config/state through. | in: Set API Key | out: cfg60"
+      },
+      "13f117fb-882f-45ed-9b24-132265edb5ee": {
+        "node": "cfg",
+        "note": "TEMPLATE (detached) basic agent call · cfg (blank: fill PHASE/AGENT/TASK). | Fill PHASE/AGENT/TASK. | out: universal agent"
+      },
+      "7e4da905-09f8-4bc0-b983-8d155b4f0265": {
+        "node": "cfg2",
+        "note": "LEGACY (detached, unused) · cfg for problem_validation.extract_visual. | in: problem_validation - extract_math | out: problem_validation - extract_visual"
+      },
+      "c6853b48-c6ae-4a5a-a21f-b1576525c0ee": {
+        "node": "cfg1",
+        "note": "LEGACY (detached, unused) · cfg for problem_validation.extract_math. | Old two-call Phase 1, replaced by extract_math_and_visual (cfg60). | out: problem_validation - extract_math"
+      },
+      "ea23e7d4-d638-42c1-a0c8-acc679b73caa": {
+        "node": "cfg3",
+        "note": "P1 VALIDATION · cfg for problem_validation.check_conflict. | Both found: check they don't conflict. | in: Problem Validation Agent - Switch | out: problem_validation - check_conflict"
+      },
+      "8de56176-7396-4d7c-b36c-8400bc338342": {
+        "node": "cfg4",
+        "note": "P1 VALIDATION · cfg for image_description.propose_diagram. | Math only: invent the most educational diagram. | in: Problem Validation Agent - Switch | out: image_description - propose_diagram"
+      },
+      "40edac57-929c-4fd2-8861-ea019f80f533": {
+        "node": "cfg5",
+        "note": "P1 VALIDATION · cfg for error_handler.report_unknown_error. | Neither found: clean failure. | in: Problem Validation Agent - Switch | out: error_handler - report_unknown_error1"
+      },
+      "876b1e7a-2a47-4b52-967c-5b6eebb22b9e": {
+        "node": "Load Phase 2 Config",
+        "note": "P2 SPECIALISTS · Load Config sub-workflow. | Pass-through config reload (phase boundary). | in: Problem Validation Agent - Output | out: cfg6"
+      },
+      "e2fec768-7af2-4733-94c2-ce71756a6c24": {
+        "node": "cfg6",
+        "note": "P2 SPECIALISTS · cfg for image_detail_planner.review_request. | Detail planner (manager) reviews the request before fanning out. | in: Load Phase 2 Config | out: image_detail_planner - review_request"
+      },
+      "1deb7a09-c8b4-42e3-ad01-273652b4272d": {
+        "node": "cfg7",
+        "note": "P2 SPECIALISTS · cfg for dimension_expert.estimate_dimensions. | in: image_detail_planner - review_request | out: dimension_expert - estimate_dimensions"
+      },
+      "10621f7d-fea5-4910-8c89-b6a59ce6d01b": {
+        "node": "cfg8",
+        "note": "P2 SPECIALISTS · cfg for layout_expert.plan_composition. | in: dimension_expert - estimate_dimensions | out: layout_expert - plan_composition"
+      },
+      "1121b049-5bd3-425c-9c62-7849e1d4af3d": {
+        "node": "cfg9",
+        "note": "P2 SPECIALISTS · cfg for visual_director.plan_viewpoint. | in: layout_expert - plan_composition | out: visual_director - plan_viewpoint"
+      },
+      "32081fe3-8ad2-4af9-a467-a8fc29a3e13a": {
+        "node": "cfg10",
+        "note": "P2 SPECIALISTS · cfg for markup_specialist.plan_markings. | in: visual_director - plan_viewpoint | out: markup_specialist - plan_markings"
+      },
+      "b02a929f-92d9-4907-8e36-e8616ec4017b": {
+        "node": "cfg11",
+        "note": "P2 SPECIALISTS · cfg for educator.enhance_clarity. | in: markup_specialist - plan_markings | out: educator - enhance_clarity"
+      },
+      "ad827f3c-abce-4852-915c-4a90f608a4d9": {
+        "node": "dimension_expert - estimate_dimensions",
+        "note": "P2 SPECIALISTS · Universal Agent call (set up by cfg7). | in: cfg7 | out: cfg8"
+      },
+      "7b76c06b-c053-4e20-9ef7-d956dde355e3": {
+        "node": "layout_expert - plan_composition",
+        "note": "P2 SPECIALISTS · Universal Agent call (set up by cfg8). | in: cfg8 | out: cfg9"
+      },
+      "02141f07-d3ea-487e-9cdc-b114062f6454": {
+        "node": "visual_director - plan_viewpoint",
+        "note": "P2 SPECIALISTS · Universal Agent call (set up by cfg9). | in: cfg9 | out: cfg10"
+      },
+      "2f23cedd-dbdb-45bf-830a-7ab301200fae": {
+        "node": "markup_specialist - plan_markings",
+        "note": "P2 SPECIALISTS · Universal Agent call (set up by cfg10). | in: cfg10 | out: cfg11"
+      },
+      "0b0da90b-79ff-4b07-9f1b-6511b414c9ca": {
+        "node": "educator - enhance_clarity",
+        "note": "P2 SPECIALISTS · Universal Agent call (set up by cfg11). | in: cfg11 | out: cfg32"
+      },
+      "a6117dd0-398b-4082-9f26-a356b696cc20": {
+        "node": "cfg12",
+        "note": "P2 SITUATIONAL · cfg for 3d_specialist.plan_3d. | in: If 3D Objects | out: 3d_specialist - plan_3d"
+      },
+      "3036b30e-307f-467b-a3db-53192dfaf545": {
+        "node": "cfg13",
+        "note": "P2 SITUATIONAL · cfg for data_viz_expert.plan_graph. | in: If Graphs | out: data_viz_expert - plan_graph"
+      },
+      "62d5bf45-0159-4493-aff7-5530c3264c9d": {
+        "node": "cfg14",
+        "note": "P2 SITUATIONAL · cfg for arrangement_planner.plan_object_arrangement. | in: If Arranged Objects | out: arrangement_planner - plan_object_arrangement"
+      },
+      "7ab82f24-2674-4651-8393-00a134bf4446": {
+        "node": "3d_specialist - plan_3d",
+        "note": "P2 SITUATIONAL · Universal Agent call (set up by cfg12). | in: cfg12 | out: If Graphs"
+      },
+      "ecf2fe91-1dae-4066-bca6-63a7c45af559": {
+        "node": "data_viz_expert - plan_graph",
+        "note": "P2 SITUATIONAL · Universal Agent call (set up by cfg13). | in: cfg13 | out: If Arranged Objects"
+      },
+      "abf992f4-7451-4a61-9ca3-0a2b712e4a1a": {
+        "node": "cfg15",
+        "note": "P2 MERGE+REVIEW LOOP · cfg for image_detail_planner.merge_plans. | Merge every specialist plan into one rendering-ready description. | in: artistic_planner - artistic_planning, If Artistic Planning | out: image_detail_planner - merge_plans"
+      },
+      "4386997e-0319-41f9-824e-699378a0bd67": {
+        "node": "cfg16",
+        "note": "P2 MERGE+REVIEW LOOP · cfg for image_detail_planner.review_description. | Increments retry_count for the description-review loop. | in: image_detail_planner - merge_plans, retry_count | out: image_detail_planner - review_description"
+      },
+      "7a23d14b-9d64-4780-986f-4ef18a922562": {
+        "node": "Load Phase 3 Config",
+        "note": "P3 ROUTE+DESIGN · Load Config sub-workflow. | Pass-through config reload (phase boundary). | in: Phase 2 - Output | out: cfg17"
+      },
+      "6a6e278d-a3f9-4fcb-b4eb-1bb8a5b17813": {
+        "node": "cfg17",
+        "note": "P3 ROUTE+DESIGN · cfg for selector.choose_path. | Selector picks STANDARD_DIAGRAM / COMPOSITE_PRIMITIVES / DIRECT_IMAGE_GEN. | in: Load Phase 3 Config | out: selector - choose_path"
+      },
+      "6c5e4d29-da44-4bbd-9cf8-d41beee945b1": {
+        "node": "selector - choose_path",
+        "note": "P3 ROUTE+DESIGN · Universal Agent call (set up by cfg17). | in: cfg17 | out: Route Workflow3"
+      },
+      "e69d4877-bf49-4d56-9e2a-8cdc1df40471": {
+        "node": "cfg18",
+        "note": "P3 CODING LOOP · cfg for coder.plan_logic. | LOOP HEAD for all Phase 3 redo paths: increments coding_retry_count and carries retry_directives. 5 entries. | in: scaffolding_designer - design_scaffolding, retry_count3, retry_count2, retry_count4, Human corrections → reset retries | out: coder - plan_logic"
+      },
+      "33ee865c-2732-40ea-be40-cbf99ab72396": {
+        "node": "cfg19",
+        "note": "P3 CODING LOOP · cfg for coder.write_code. | Write the matplotlib script (python_code is hoisted, not kept in state). | in: coder - plan_logic | out: coder - write_code"
+      },
+      "7bbd39e4-f83d-44a7-bb43-2874fc99e678": {
+        "node": "cfg20",
+        "note": "P3 CODING LOOP · cfg for reviewer.syntax_check. | Three reviewers in sequence: syntax → logic → math. | in: coder - write_code | out: reviewer - syntax_check"
+      },
+      "d3fd2a06-03c8-4aa5-825e-6e9aef13e91f": {
+        "node": "cfg21",
+        "note": "P3 CODING LOOP · cfg for reviewer.logic_check. | in: reviewer - syntax_check | out: reviewer - logic_check"
+      },
+      "b449ef35-9a42-4336-98a2-f18bd781f7bb": {
+        "node": "reviewer - logic_check",
+        "note": "P3 CODING LOOP · Universal Agent call (set up by cfg21). | in: cfg21 | out: cfg52"
+      },
+      "8453bbf0-2089-4ce0-bff9-d16e590ca30a": {
+        "node": "reviewer - syntax_check",
+        "note": "P3 CODING LOOP · Universal Agent call (set up by cfg20). | in: cfg20 | out: cfg21"
+      },
+      "58157086-cb38-4d77-b364-3935a9d49862": {
+        "node": "cfg22",
+        "note": "P3 VISION QA · cfg for inspector.verify_adherence. | Four inspectors in sequence, each attaches the render: adherence → perspective → overlaps → artifacts. | in: Prepare for Vision | out: inspector - verify_adherence"
+      },
+      "97f32d2f-0182-41a1-8907-cd6dba932f72": {
+        "node": "cfg23",
+        "note": "P3 VISION QA · cfg for inspector.check_overlaps. | in: inspector - verify_perspective | out: inspector - check_overlaps"
+      },
+      "942b2ebb-851c-4d03-9800-2f88e9bdd584": {
+        "node": "cfg24",
+        "note": "P3 VISION QA · cfg for inspector.detect_artifacts. | in: inspector - check_overlaps | out: inspector - detect_artifacts"
+      },
+      "4b5a8040-9896-4bd3-a08e-0d7d329623dd": {
+        "node": "inspector - verify_adherence",
+        "note": "P3 VISION QA · Universal Agent call (set up by cfg22). | in: cfg22 | out: cfg37"
+      },
+      "be6ce1e4-d43f-44cc-a32d-d9b505a545a3": {
+        "node": "inspector - detect_artifacts",
+        "note": "P3 VISION QA · Universal Agent call (set up by cfg24). | in: cfg24 | out: cfg63"
+      },
+      "e8c2337f-0b86-4eff-816e-9d6364fe266b": {
+        "node": "inspector - check_overlaps",
+        "note": "P3 VISION QA · Universal Agent call (set up by cfg23). | in: cfg23 | out: cfg24"
+      },
+      "ef5e63b0-95b4-4d29-bc37-fd3990cadb14": {
+        "node": "Phase 3 - Output",
+        "note": "P3 EXIT · Phase output (Set). | Phase 3 exit; strips the item to the envelope. | in: Archive Scaffolding | out: Load Phase 4 Config"
+      },
+      "d5b00632-8557-4d24-b1ed-f78ac170a094": {
+        "node": "Load Phase 4 Config",
+        "note": "P4 PRODUCTS · Load Config sub-workflow. | Pass-through config reload (phase boundary). | in: Phase 3 - Output | out: If customizable_products_in_phase4"
+      },
+      "0772a4cd-cf4e-4e66-babc-9253bfb078b4": {
+        "node": "Load Phase 5 Config",
+        "note": "P5 REVIEW LOOP · Load Config sub-workflow. | Pass-through config reload (phase boundary). | in: Phase 4 - Output | out: cfg27"
+      },
+      "f55595ac-c371-4a56-807b-b3034fcccc03": {
+        "node": "Hoist python_code",
+        "note": "P3 EXECUTION · Set: python_code, execution_retry_count. | Lifts python_code from coder - write_code; increments execution_retry_count. | in: if bool_var3 | out: Python Execution Node"
+      },
+      "64997582-798a-4749-af5c-1eba0513e359": {
+        "node": "cfg25",
+        "note": "P4 ARTIST · cfg for artist.plan_finishing. | LOOP HEAD of the artist: increments image_gen_retry_count; attaches the scaffold via $('Prepare for Vision'). 4 entries. | in: retry_count5, If Highly Customizable Products, product_designer - customizable_product_planning, Final corrections → reset retries | out: artist - plan_finishing"
+      },
+      "61100db1-0b48-4aa3-9fac-c397a34d749f": {
+        "node": "cfg26",
+        "note": "P4 ARTIST · cfg for artist.render_final. | Render; MODEL_TYPE txt2img on DIRECT_IMAGE_GEN, otherwise img2img over the scaffold from $('Prepare for Vision'). | in: artist - plan_finishing, Render OK? | out: artist - render_final"
+      },
+      "250f53b3-86b0-4370-b0dc-718a73d29852": {
+        "node": "artist - render_final",
+        "note": "P4 ARTIST · Universal Agent call (set up by cfg26). | in: cfg26 | out: Render OK?"
+      },
+      "1059ad05-4881-41b9-954c-3d82a81d7e4f": {
+        "node": "Phase 4 - Output",
+        "note": "P4 ARTIST · Phase output (Set). | Phase 4 exit; strips the item, so later nodes reach the image via $('artist - render_final'). | in: Render OK? | out: Load Phase 5 Config"
+      },
+      "d97a5a7e-60e7-448c-8160-9d9aaea6a513": {
+        "node": "cfg27",
+        "note": "P5 REVIEW LOOP · cfg for image_verifier.review_bias. | Four verifiers in sequence, each attaches the render from $('artist - render_final'): bias → aesthetics → safety → math. | in: Load Phase 5 Config | out: image_verifier - review_bias"
+      },
+      "f626cfa5-bce4-41c0-a39f-ac344aecc421": {
+        "node": "cfg28",
+        "note": "P5 REVIEW LOOP · cfg for image_verifier.review_aesthetics. | in: image_verifier - review_bias | out: image_verifier - review_aesthetics"
+      },
+      "b8e4c908-6bfc-4c41-bf58-f264e6b763d0": {
+        "node": "cfg29",
+        "note": "P5 REVIEW LOOP · cfg for image_verifier.review_safety. | in: image_verifier - review_aesthetics | out: image_verifier - review_safety"
+      },
+      "1acda5d6-376e-4051-8ad7-9f68e79a0ee2": {
+        "node": "cfg30",
+        "note": "P5 REVIEW LOOP · cfg for image_verifier.review_math. | in: image_verifier - review_safety | out: image_verifier3 - review_math"
+      },
+      "c79a790f-582d-44da-90cc-92d99507a36c": {
+        "node": "cfg31",
+        "note": "P5 REVIEW LOOP · cfg for issue_aggregator.aggregate_feedback. | Final Gatekeeper merges the reviews into final_pass. | in: image_verifier3 - review_math | out: issue_aggregator - aggregate_feedback"
+      },
+      "7f8c1ff4-71b1-439c-8eac-ba557cfb938a": {
+        "node": "Load Phase 6 Config",
+        "note": "P6 REPORT · Load Config sub-workflow. | Pass-through config reload (phase boundary). | in: Phase 5 - Output | out: cfg38"
+      },
+      "0b278d1e-6218-42a9-8397-35994c639cdd": {
+        "node": "issue_aggregator - aggregate_feedback",
+        "note": "P5 REVIEW LOOP · Universal Agent call (set up by cfg31). | in: cfg31 | out: if final_pass"
+      },
+      "bf8067bb-ed5b-48d3-a0c7-33ed1b17fbc0": {
+        "node": "image_verifier - review_bias",
+        "note": "P5 REVIEW LOOP · Universal Agent call (set up by cfg27). | in: cfg27 | out: cfg28"
+      },
+      "e3931d49-cd15-4fd9-a834-0efb84aea7ec": {
+        "node": "image_verifier - review_aesthetics",
+        "note": "P5 REVIEW LOOP · Universal Agent call (set up by cfg28). | in: cfg28 | out: cfg29"
+      },
+      "ceb3ea76-976d-415d-906b-c0d395e87bfd": {
+        "node": "image_verifier - review_safety",
+        "note": "P5 REVIEW LOOP · Universal Agent call (set up by cfg29). | in: cfg29 | out: cfg30"
+      },
+      "122d3bd5-95a9-4fc7-8970-3db124df5adb": {
+        "node": "image_verifier3 - review_math",
+        "note": "P5 REVIEW LOOP · Universal Agent call (set up by cfg30). | in: cfg30 | out: cfg31"
+      },
+      "3ca623c0-998b-4028-acb2-fc4ef7deaa55": {
+        "node": "problem_validation - extract_math",
+        "note": "LEGACY (detached, unused) · Universal Agent call (set up by cfg1). | in: cfg1 | out: cfg2"
+      },
+      "7d499392-4aee-4538-a9f9-68f654c7200e": {
+        "node": "problem_validation - extract_visual",
+        "note": "LEGACY (detached, unused) · Universal Agent call (set up by cfg2). | in: cfg2"
+      },
+      "97070fc5-fe50-40c0-933b-4633feac45da": {
+        "node": "problem_validation - Logic Router",
+        "note": "P1 VALIDATION · Code. | Sets validation_route from math_found / image_request_found. | in: problem_validation - extract_math_and_visual | out: Problem Validation Agent - Switch"
+      },
+      "e7c65e5d-b78a-4d49-be7e-b3905bf94e41": {
+        "node": "problem_validation - check_conflict",
+        "note": "P1 VALIDATION · Universal Agent call (set up by cfg3). | in: cfg3 | out: valid"
+      },
+      "c558e9c2-a981-4759-9c03-a253d679ffae": {
+        "node": "cfg32",
+        "note": "P2 SITUATIONAL · cfg for image_detail_planner.situational_planning. | Planner sets needs_3d / needs_graph / needs_arrangement / requires_artistic flags for the IF chain below. | in: educator - enhance_clarity | out: image_detail_planner - situational_planning"
+      },
+      "318c5480-727c-438c-b249-34030769465a": {
+        "node": "image_detail_planner - review_request",
+        "note": "P2 SPECIALISTS · Universal Agent call (set up by cfg6). | in: cfg6 | out: cfg7"
+      },
+      "911ee2b8-e1a0-4faa-905e-d77ce4e83d6e": {
+        "node": "image_detail_planner - merge_plans",
+        "note": "P2 MERGE+REVIEW LOOP · Universal Agent call (set up by cfg15). | in: cfg15 | out: cfg16"
+      },
+      "fa1a61a2-23b3-41a9-89bc-ff792734e53f": {
+        "node": "image_detail_planner - review_description",
+        "note": "P2 MERGE+REVIEW LOOP · Universal Agent call (set up by cfg16). | in: cfg16 | out: If Ready for code"
+      },
+      "60f7363c-17b1-4b55-b304-5306fe95f354": {
+        "node": "image_detail_planner - situational_planning",
+        "note": "P2 SITUATIONAL · Universal Agent call (set up by cfg32). | in: cfg32 | out: If 3D Objects"
+      },
+      "12902a33-abe5-403b-ade4-5ebbc93cc583": {
+        "node": "image_description - propose_diagram",
+        "note": "P1 VALIDATION · Universal Agent call (set up by cfg4). | in: cfg4 | out: cfg42"
+      },
+      "d762063a-a8a2-48bc-8e84-b6f7ee8bd0ee": {
+        "node": "arrangement_planner - plan_object_arrangement",
+        "note": "P2 SITUATIONAL · Universal Agent call (set up by cfg14). | in: cfg14 | out: If Artistic Planning"
+      },
+      "a214df17-44a8-427b-92c0-25b71cb8e965": {
+        "node": "cfg33",
+        "note": "P2 SITUATIONAL · cfg for artistic_planner.artistic_planning. | in: If Artistic Planning | out: artistic_planner - artistic_planning"
+      },
+      "46e115bd-402a-4e56-8be0-5bfa35599f7c": {
+        "node": "artistic_planner - artistic_planning",
+        "note": "P2 SITUATIONAL · Universal Agent call (set up by cfg33). | in: cfg33 | out: cfg15"
+      },
+      "609e7e9e-b92d-4444-8d71-34106912b2a2": {
+        "node": "If Artistic Planning",
+        "note": "P2 SITUATIONAL · IF. | False skips straight to merge (cfg15). | in: If Arranged Objects, arrangement_planner - plan_object_arrangement | out: [true]cfg33, [false]cfg15"
+      },
+      "642e4697-2e51-46dd-9821-c5f1fd23c683": {
+        "node": "cfg34",
+        "note": "P3 ROUTE+DESIGN · cfg for scaffolding_designer.design_scaffolding. | Designs the geometric blueprint the coder implements. | in: scaffolding_manager - inject_constraints | out: scaffolding_designer - design_scaffolding"
+      },
+      "e85985b1-d0f1-446d-81c8-88c8b20b7ccd": {
+        "node": "scaffolding_designer - design_scaffolding",
+        "note": "P3 ROUTE+DESIGN · Universal Agent call (set up by cfg34). | in: cfg34 | out: cfg18"
+      },
+      "65387ff0-e4e3-420f-b01d-decc1605d6cd": {
+        "node": "cfg36",
+        "note": "LEGACY (detached, unused) · cfg for inspector.detect_error_loops. | Error-loop detector, never wired in; its IF has an empty condition. | out: inspector - detect_error_loops"
+      },
+      "fabed1be-d258-49b5-ae03-d311a25d8efe": {
+        "node": "inspector - detect_error_loops",
+        "note": "LEGACY (detached, unused) · Universal Agent call (set up by cfg36). | in: cfg36 | out: If in error loop"
+      },
+      "f30e0911-b686-4fe5-94cb-2e547d1d552a": {
+        "node": "If in error loop",
+        "note": "LEGACY (detached, unused) · IF. | Unfinished: empty condition, no outputs. | in: inspector - detect_error_loops"
+      },
+      "f3d8982a-7b9c-43a2-ab62-112e2ec940f4": {
+        "node": "cfg37",
+        "note": "P3 VISION QA · cfg for inspector.verify_perspective. | in: inspector - verify_adherence | out: inspector - verify_perspective"
+      },
+      "24fa26e0-390d-488c-a577-1801fd8e6601": {
+        "node": "inspector - verify_perspective",
+        "note": "P3 VISION QA · Universal Agent call (set up by cfg37). | in: cfg37 | out: cfg23"
+      },
+      "9aa9d9c5-a8ea-4a01-a12e-d4413fdc1a2c": {
+        "node": "cfg38",
+        "note": "P6 REPORT · cfg for final_reporter.generate_user_message. | in: Load Phase 6 Config | out: final_reporter - generate_user_message"
+      },
+      "79bdcf73-af08-4c9e-85a3-41bc194328d4": {
+        "node": "cfg39",
+        "note": "P6 REPORT · cfg for final_reporter.generate_archival_report. | in: final_reporter - generate_user_message | out: final_reporter - generate_archival_report"
+      },
+      "d8692fd8-9f4b-4823-9458-630d52a6afe3": {
+        "node": "final_reporter - generate_user_message",
+        "note": "P6 REPORT · Universal Agent call (set up by cfg38). | in: cfg38 | out: cfg39"
+      },
+      "06f78a9c-5a28-4777-9c5b-c762b83a66f7": {
+        "node": "final_reporter - generate_archival_report",
+        "note": "P6 REPORT · Universal Agent call (set up by cfg39). | in: cfg39 | out: Phase 6 - Output"
+      },
+      "8b67e947-4394-499e-8528-5529a8c56429": {
+        "node": "Phase 5 - Output",
+        "note": "P5 EXIT · Phase output (Set). | Phase 5 exit; strips the item to the envelope. | in: Final review?, After final log | out: Load Phase 6 Config"
+      },
+      "2a28c124-7436-48af-9571-d4f0ecb1b0bb": {
+        "node": "Set Job",
+        "note": "ENTRY · Set: job_id, original_query, style_preference, is_test_mode, max_text_tier, max_image_tier, human_review_mode. | Normalizes the launch payload: job_id, original_query, style, tiers, human_review_mode (default automatic). | in: API Trigger, When Executed by Another Workflow | out: Set API Key"
+      },
+      "9707d588-587c-49aa-91d5-0473bc4b66b4": {
+        "node": "Phase 6 - Output",
+        "note": "P6 REPORT · Phase output (Set). | in: final_reporter - generate_archival_report | out: Send Final Broadcast"
+      },
+      "03084ead-e0e5-482f-9dda-009324540041": {
+        "node": "Send Final Broadcast",
+        "note": "P6 REPORT · Code. | Completion payload to the state manager: final image from $('artist - render_final'), user message, transcript. A failure here stops the run. | in: Phase 6 - Output | out: (end of run)"
+      },
+      "78817b78-1aa1-4082-b670-0bda05711f27": {
+        "node": "valid",
+        "note": "P1 VALIDATION · IF. | Conflict check verdict (session_state.valid). | in: problem_validation - check_conflict | out: [true]cfg41, [false]cfg40"
+      },
+      "991a0739-e23a-4f0f-9d2d-7667eb3502aa": {
+        "node": "cfg40",
+        "note": "P1 VALIDATION · cfg for error_handler.report_unknown_error. | Math and visual conflict: clean failure. | in: valid | out: error_handler - report_unknown_error3"
+      },
+      "5cbb9000-5939-4b12-a472-ded178030859": {
+        "node": "cfg41",
+        "note": "P1 VALIDATION · cfg for problem_validation.format_ready_branch. | in: valid | out: problem_validation - format_ready_branch"
+      },
+      "45e3286e-2d5c-42ab-b39b-0e94929846d7": {
+        "node": "problem_validation - format_ready_branch",
+        "note": "P1 VALIDATION · Universal Agent call (set up by cfg41). | in: cfg41 | out: Problem Validation Agent - Output"
+      },
+      "a0aa9128-f8eb-4b03-a399-a0a4862074c9": {
+        "node": "cfg42",
+        "note": "P1 VALIDATION · cfg for problem_validation.format_math_only_branch. | in: image_description - propose_diagram | out: problem_validation - format_math_only_branch"
+      },
+      "f5b1c27d-7477-4b0a-abe8-29ff64f2e820": {
+        "node": "cfg43",
+        "note": "P1 VALIDATION · cfg for problem_validation.format_visual_only_branch. | Visual only: format the request as-is. | in: Problem Validation Agent - Switch | out: problem_validation - format_visual_only_branch"
+      },
+      "3ea1fcd8-00c3-49ee-92ae-9211ec0572e9": {
+        "node": "problem_validation - format_math_only_branch",
+        "note": "P1 VALIDATION · Universal Agent call (set up by cfg42). | in: cfg42 | out: Problem Validation Agent - Output"
+      },
+      "7ad86ace-2772-404d-be97-0b985ad33c7c": {
+        "node": "problem_validation - format_visual_only_branch",
+        "note": "P1 VALIDATION · Universal Agent call (set up by cfg43). | in: cfg43 | out: Problem Validation Agent - Output"
+      },
+      "1995c616-134d-49c3-a629-4666b3f9efa4": {
+        "node": "error_handler - report_unknown_error1",
+        "note": "P1 VALIDATION · Universal Agent call (set up by cfg5). | in: cfg5 | out: (end of run)"
+      },
+      "cd5935ba-9aa5-4072-96cf-0ae9a37f032d": {
+        "node": "cfg44",
+        "note": "P2 MERGE+REVIEW LOOP · cfg for error_handler.report_error. | Description failed review 3×: MaxRetriesExceeded. | in: If Ready for code | out: error_handler - report_error3"
+      },
+      "93cbec8e-628f-4c0f-a1a3-8d09acf6b020": {
+        "node": "If Ready for code",
+        "note": "P2 MERGE+REVIEW LOOP · Switch. | Branches on session_state.ready_for_artist (review_description's verdict); MaxRetries/False also count retry_count at $('cfg16'). | in: image_detail_planner - review_description | out: [True]Phase 2 - Output, [MaxRetriesExceeded]cfg44, [False]retry_count"
+      },
+      "f507f2d6-9f3c-4c91-9067-a7d694472f99": {
+        "node": "retry_count",
+        "note": "P2 MERGE+REVIEW LOOP · Set: retry_count. | Loop-back: re-reads retry_count from cfg16 and returns to it. | in: If Ready for code | out: cfg16"
+      },
+      "4883ba5f-1930-4291-a644-0e7d92c61e0f": {
+        "node": "universal agent",
+        "note": "TEMPLATE (detached) basic agent call · Universal Agent call (set up by cfg). | in: cfg"
+      },
+      "35344bab-2783-4ae0-bd83-e4cd72e10745": {
+        "node": "cfg45",
+        "note": "TEMPLATE (detached) agent IF with retry loop · cfg (blank: fill PHASE/AGENT/TASK). | Increments retry_count. | in: retry_count1 | out: T/F RETRY agent"
+      },
+      "40e3b055-6198-4d5d-bda9-93296fe66fe5": {
+        "node": "cfg46",
+        "note": "TEMPLATE (detached) agent IF with retry loop · cfg for error_handler.report_error. | MaxRetriesExceeded exit. | in: if bool_var | out: error_handler - report_error1"
+      },
+      "7e8e2c63-c18a-458a-8c72-944dd619c9f6": {
+        "node": "error_handler - report_error1",
+        "note": "TEMPLATE (detached) agent IF with retry loop · Universal Agent call (set up by cfg46). | in: cfg46"
+      },
+      "12e75ef7-6440-40e1-856a-fbb6e19adabb": {
+        "node": "retry_count1",
+        "note": "TEMPLATE (detached) agent IF with retry loop · Set: retry_count. | Loop-back to cfg45. | in: error_expert - troubleshoot | out: cfg45"
+      },
+      "577add31-3688-4863-9a11-08aeda1981e1": {
+        "node": "T/F RETRY agent",
+        "note": "TEMPLATE (detached) agent IF with retry loop · Universal Agent call (set up by cfg45). | in: cfg45 | out: if bool_var"
+      },
+      "a74f317e-f17c-45c0-8f8b-8da2e4163521": {
+        "node": "if bool_var",
+        "note": "TEMPLATE (detached) agent IF with retry loop · Switch. | True output left open for the circuit you paste it into. | in: T/F RETRY agent | out: [MaxRetriesExceeded]cfg46, [False]cfg35"
+      },
+      "8145dc52-f878-4568-8050-fa7356d9532f": {
+        "node": "cfg47",
+        "note": "TEMPLATE (detached) error exit · cfg for error_handler.report_error. | out: error_handler - report_error"
+      },
+      "3ad24498-29fc-4dd6-964c-2dc97b6d9383": {
+        "node": "error_handler - report_unknown_error3",
+        "note": "P1 VALIDATION · Universal Agent call (set up by cfg40). | in: cfg40 | out: (end of run)"
+      },
+      "af62120c-a9d0-42ec-b791-6dab0b762fa2": {
+        "node": "cfg48",
+        "note": "TEMPLATE (detached) unknown-error exit · cfg for error_handler.report_unknown_error. | out: error_handler - report_unknown_error"
+      },
+      "9bf94fc9-7d40-4df8-ab10-bf3067986d72": {
+        "node": "error_handler - report_unknown_error",
+        "note": "TEMPLATE (detached) unknown-error exit · Universal Agent call (set up by cfg48). | in: cfg48"
+      },
+      "3178b27d-df74-454c-9490-6eec12b538f6": {
+        "node": "error_handler - report_error3",
+        "note": "P2 MERGE+REVIEW LOOP · Universal Agent call (set up by cfg44). | in: cfg44 | out: (end of run)"
+      },
+      "116e8141-9ad9-43d8-95da-f4f46642e154": {
+        "node": "error_handler - report_error",
+        "note": "TEMPLATE (detached) error exit · Universal Agent call (set up by cfg47). | in: cfg47"
+      },
+      "d819308d-f4e3-4b7a-af01-719744fa4caf": {
+        "node": "cfg49",
+        "note": "TEMPLATE (detached) agent-driven IF · cfg (blank: fill PHASE/AGENT/TASK). | out: T/F agent"
+      },
+      "31b4b25b-b82b-4915-88b9-38310fbb8bdd": {
+        "node": "T/F agent",
+        "note": "TEMPLATE (detached) agent-driven IF · Universal Agent call (set up by cfg49). | in: cfg49 | out: if bool_var1"
+      },
+      "831514fe-3ed1-4350-b0b8-e55175033b72": {
+        "node": "if bool_var1",
+        "note": "TEMPLATE (detached) agent-driven IF · IF. | Branches on session_state.bool_var, which the agent's schema must output. | in: T/F agent"
+      },
+      "5e0ca82b-299d-4c4e-a5bc-0ccdaf1390c5": {
+        "node": "cfg50",
+        "note": "TEMPLATE (detached) agent-driven SWITCH · cfg (blank: fill PHASE/AGENT/TASK). | out: CASE(enum) agent"
+      },
+      "e2f2b41d-c2c9-4515-a4b4-08c7ef9e6bc1": {
+        "node": "CASE(enum) agent",
+        "note": "TEMPLATE (detached) agent-driven SWITCH · Universal Agent call (set up by cfg50). | in: cfg50 | out: Route Workflow (enum_var)"
+      },
+      "9b0000e5-518a-42ca-8de0-949241cdad38": {
+        "node": "Route Workflow3",
+        "note": "P3 ROUTE+DESIGN · Switch. | COMPOSITE_PRIMITIVES shares the STANDARD path (see TODO: Primitives). DIRECT_IMAGE_GEN skips scaffolding entirely. | in: selector - choose_path | out: [STANDARD_DIAGRAM]cfg inject constraints, [COMPOSITE_PRIMITIVES]cfg inject constraints, [DIRECT_IMAGE_GEN]Archive Scaffolding"
+      },
+      "cb10d94a-cfed-4a55-a97b-e1350d46d144": {
+        "node": "Route Workflow (enum_var)",
+        "note": "TEMPLATE (detached) agent-driven SWITCH · Switch. | Branches on session_state.enum_var (VAL1/VAL2/VAL3 placeholders). | in: CASE(enum) agent"
+      },
+      "076c9b0e-a13a-4341-883b-14faf5f21acd": {
+        "node": "cfg51",
+        "note": "TEMPLATE (detached) agent picks next task · cfg (blank: fill PHASE/AGENT/TASK). | out: CASE(enum) agent1"
+      },
+      "5ee90e83-2431-46f2-b1c2-2c3e6ba68eff": {
+        "node": "CASE(enum) agent1",
+        "note": "TEMPLATE (detached) agent picks next task · Universal Agent call (set up by cfg51). | in: cfg51 | out: task picker"
+      },
+      "91158c09-eab5-41b3-9207-64c6c4594d6f": {
+        "node": "task picker",
+        "note": "TEMPLATE (detached) agent picks next task · Code. | Maps enum_var → TASK_ID via taskMap (placeholder entries). | in: CASE(enum) agent1 | out: chosen task"
+      },
+      "6d07614d-a4d1-4f56-9e68-522d75e7ba2a": {
+        "node": "chosen task",
+        "note": "TEMPLATE (detached) agent picks next task · Universal Agent call (set up by task picker). | in: task picker"
+      },
+      "b679e0c4-e6cb-4c7b-9d2f-69f363ab151a": {
+        "node": "task picker1",
+        "note": "TEMPLATE (detached) enum→task lookup · Code. | Same map without the agent; enum_var comes from upstream. | out: chosen task1"
+      },
+      "5657d836-0774-4a6b-a934-9faaefa99e8b": {
+        "node": "chosen task1",
+        "note": "TEMPLATE (detached) enum→task lookup · Universal Agent call (set up by task picker1). | in: task picker1"
+      },
+      "4e0d105a-ee57-4eb5-8d32-fce41df85afd": {
+        "node": "chosen task2",
+        "note": "TEMPLATE (detached) code-computed next task · Universal Agent call (set up by complex conditional). | in: complex conditional"
+      },
+      "ddad566c-b63b-4b4a-9dd3-d3492a6870b2": {
+        "node": "complex conditional",
+        "note": "TEMPLATE (detached) code-computed next task · Code. | Code decides TASK_ID from several state conditions (example cases). | out: chosen task2"
+      },
+      "05176b76-bac6-42d6-899a-71c4e00b791c": {
+        "node": "if bool_var3",
+        "note": "P3 CODING LOOP · Switch. | Branches on session_state.passed_review; MaxRetries/False count coding_retry_count at $('cfg18'). | in: review_manager - consolidate_review | out: [True]Hoist python_code, [MaxRetriesExceeded]cfg54, [False]cfg56"
+      },
+      "1f81c7d1-061a-48b4-9473-bca813e7d9b7": {
+        "node": "retry_count3",
+        "note": "P3 CODING LOOP · Set: coding_retry_count, execution_retry_count, inspection_retry_count. | Loop-back to cfg18 carrying the three retry counters. | in: review_manager - troubleshoot | out: cfg18"
+      },
+      "5032f3dd-0771-421c-b770-7118ffa6b6e2": {
+        "node": "cfg54",
+        "note": "P3 CODING LOOP · cfg for error_handler.report_error. | Code rejected 3×: MaxRetriesExceeded. | in: if bool_var3 | out: error_handler - report_error4"
+      },
+      "a698daa4-84cd-4d2b-adcf-12da46b79c36": {
+        "node": "error_handler - report_error4",
+        "note": "P3 CODING LOOP · Universal Agent call (set up by cfg54). | in: cfg54 | out: (end of run)"
+      },
+      "f6e258ef-fff9-4c4a-acdb-48741a5d3f58": {
+        "node": "cfg inject constraints",
+        "note": "P3 ROUTE+DESIGN · Code. | Code cfg: composes situational_directives from directive_library entries whose planner flag is true. | in: Route Workflow3 | out: scaffolding_manager - inject_constraints"
+      },
+      "04114284-7f19-4474-8b84-2994b1a91392": {
+        "node": "cfg35",
+        "note": "TEMPLATE (detached) agent IF with retry loop · cfg for error_expert.troubleshoot. | False: troubleshoot, then loop back. | in: if bool_var | out: error_expert - troubleshoot"
+      },
+      "9c35f0fe-fe36-4b8f-bfbb-86148dc79b50": {
+        "node": "error_expert - troubleshoot",
+        "note": "TEMPLATE (detached) agent IF with retry loop · Universal Agent call (set up by cfg35). | in: cfg35 | out: retry_count1"
+      },
+      "670c6ac3-c8e0-417d-9bcd-b53d7185341f": {
+        "node": "cfg53",
+        "note": "P3 VISION QA · cfg for error_handler.report_error. | Shared failure exit: scaffold rejected 3× with no human, or human gate 'fail'. | in: Human available?, After human log | out: error_handler - report_error2"
+      },
+      "abb9099d-286f-4058-8aeb-93356b4a80f9": {
+        "node": "error_handler - report_error2",
+        "note": "P3 VISION QA · Universal Agent call (set up by cfg53). | in: cfg53 | out: (end of run)"
+      },
+      "6abd1d51-7ea4-4e92-9392-8c4ea2868f62": {
+        "node": "retry_count2",
+        "note": "P3 VISION QA · Set: inspection_retry_count, execution_retry_count, coding_retry_count. | Loop-back to cfg18; resets coding and execution counters. | in: inspection_manager - troubleshoot_visual | out: cfg18"
+      },
+      "4ddc10e6-1cc9-4ad7-970c-6ba3f6e14f4f": {
+        "node": "cfg55",
+        "note": "P3 VISION QA · cfg for inspection_manager.troubleshoot_visual. | Rejected render: inspection manager writes visual fix instructions. | in: inspections passed? | out: inspection_manager - troubleshoot_visual"
+      },
+      "7b4d75d7-9702-41d1-b669-ff793f43d462": {
+        "node": "cfg56",
+        "note": "P3 CODING LOOP · cfg for review_manager.troubleshoot. | Code rejected: review manager turns reviews into fix instructions. | in: if bool_var3 | out: review_manager - troubleshoot"
+      },
+      "3952d78a-1910-447e-8372-adadb4774aae": {
+        "node": "cfg57",
+        "note": "P3 EXECUTION · Code. | Code cfg: turns the HTTP error into a readable PYTHON RUNTIME ERROR for the review manager. | in: Python Execution Node | out: review_manager - log_error"
+      },
+      "461f35e3-caf8-4a29-8735-85195885e0cf": {
+        "node": "cfg58",
+        "note": "P3 EXECUTION · cfg for error_handler.report_error. | Execution failed 3×: MaxRetriesExceeded. | in: if bool_var4 | out: error_handler - report_error5"
+      },
+      "3b8932ce-d678-480b-b494-8d99c03ade50": {
+        "node": "error_handler - report_error5",
+        "note": "P3 EXECUTION · Universal Agent call (set up by cfg58). | in: cfg58 | out: (end of run)"
+      },
+      "c68c2bab-758d-44e0-8228-8b81381032f8": {
+        "node": "retry_count4",
+        "note": "P3 EXECUTION · Set: execution_retry_count, coding_retry_count, inspection_retry_count. | Loop-back to cfg18; resets coding_retry_count to 0. | in: review_manager - troubleshoot1 | out: cfg18"
+      },
+      "444b5893-da52-472f-9807-9063d446cfe6": {
+        "node": "if bool_var4",
+        "note": "P3 EXECUTION · Switch. | Execution failed 3×? → fail, else troubleshoot and recode. | in: review_manager - log_error | out: [MaxRetriesExceeded]cfg58, [False]cfg59"
+      },
+      "46efb184-48ca-48e2-9d41-7341ad988ded": {
+        "node": "cfg59",
+        "note": "P3 EXECUTION · cfg for review_manager.troubleshoot. | in: if bool_var4 | out: review_manager - troubleshoot1"
+      },
+      "5be7d3c0-e3d7-4a89-a915-a94dd6e75a97": {
+        "node": "inspections passed?",
+        "note": "P3 VISION QA · Switch. | True → scaffold gate. MaxRetries → rescue gate (human) or fail. False → troubleshoot_visual. | in: inspection_manager - consolidate_inspection | out: [True]Human review?, [MaxRetriesExceeded]Human available?, [False]cfg55"
+      },
+      "7bdc891e-e839-45ad-8abe-e25b688b8968": {
+        "node": "cfg61",
+        "note": "P5 REVIEW LOOP · cfg for error_handler.report_error. | Shared failure exit: illustration rejected 3× with no human, or final gate 'fail'. | in: Final available?, After final log | out: error_handler - report_error6"
+      },
+      "2bac095d-8d63-44bc-b73c-76ef8d03f804": {
+        "node": "error_handler - report_error6",
+        "note": "P5 REVIEW LOOP · Universal Agent call (set up by cfg61). | in: cfg61 | out: (end of run)"
+      },
+      "cce0bcc1-9226-4ac6-b413-532a5d2ff645": {
+        "node": "retry_count5",
+        "note": "P5 REVIEW LOOP · Set: image_gen_retry_count. | Loop-back to cfg25 with its retry count. | in: issue_aggregator - troubleshoot_visual | out: cfg25"
+      },
+      "acecaff0-1fbd-4800-a381-ee7ffeff10f5": {
+        "node": "cfg62",
+        "note": "P5 REVIEW LOOP · cfg for issue_aggregator.troubleshoot_visual. | Rejected illustration: Gatekeeper writes repaint instructions. | in: if final_pass | out: issue_aggregator - troubleshoot_visual"
+      },
+      "dcd4a201-4ceb-4c16-ac74-7b840c5526ac": {
+        "node": "if final_pass",
+        "note": "P5 REVIEW LOOP · Switch. | True → final gate. MaxRetries (counted at $('cfg25')) → rescue gate or fail. False → troubleshoot. | in: issue_aggregator - aggregate_feedback | out: [True]Final review?, [MaxRetriesExceeded]Final available?, [False]cfg62"
+      },
       "9abb8dd0-bb77-4ccd-8533-01d563614627": {
         "node": "When Executed by Another Workflow",
-        "note": "ENTRY (batch): Test Orchestrator calls EDEE-main here with job_id, original_query, style_preference, max tiers. Same path as API Trigger from Set Job on; no human_review_mode sent, so it runs automatic."
+        "note": "ENTRY · Sub-workflow trigger. | Test Orchestrator calls EDEE-main here; no human_review_mode sent, so it runs automatic. | out: Set Job"
+      },
+      "4fedd1be-dfa7-49c2-809a-3c9c2c2a4489": {
+        "node": "Select Query",
+        "note": "ENTRY · Set: query_index, job_id, style_preference. | Pick query_index (1-based) from Mock Input1's library, plus style. | in: When clicking ‘Execute workflow’ | out: Mock Input1"
+      },
+      "ac9d4c3a-368a-48b8-a668-fb1b4e419793": {
+        "node": "Mock Input1",
+        "note": "ENTRY · Code. | Query library + payload builder for manual runs; skips Set Job. | in: Select Query | out: Set API Key"
+      },
+      "2115b277-cd32-4140-9358-5cf21e449a15": {
+        "node": "cfg60",
+        "note": "P1 VALIDATION · cfg for problem_validation.extract_math_and_visual. | One call extracts both the math problem and the visual request. | in: Load Phase 1 Config | out: problem_validation - extract_math_and_visual"
+      },
+      "601e6529-6d85-4c10-a6d5-478c53a510d1": {
+        "node": "problem_validation - extract_math_and_visual",
+        "note": "P1 VALIDATION · Universal Agent call (set up by cfg60). | in: cfg60 | out: problem_validation - Logic Router"
+      },
+      "4103ada3-95db-4dc4-a241-17f570991a2a": {
+        "node": "cfg63",
+        "note": "P3 VISION QA · cfg for inspection_manager.consolidate_inspection. | Inspection manager verdict; increments inspection_retry_count. | in: inspector - detect_artifacts | out: inspection_manager - consolidate_inspection"
+      },
+      "83930e46-a940-444d-ad05-fc7ac04a9e16": {
+        "node": "inspection_manager - consolidate_inspection",
+        "note": "P3 VISION QA · Universal Agent call (set up by cfg63). | in: cfg63 | out: inspections passed?"
+      },
+      "eb69c4c4-5764-4fad-9abd-1407797a040c": {
+        "node": "coder - plan_logic",
+        "note": "P3 CODING LOOP · Universal Agent call (set up by cfg18). | in: cfg18 | out: cfg19"
+      },
+      "a7bfbee4-2e50-4acf-9bbf-d3bb12ab0e74": {
+        "node": "coder - write_code",
+        "note": "P3 CODING LOOP · Universal Agent call (set up by cfg19). | in: cfg19 | out: cfg20"
+      },
+      "10c177df-6507-42f8-9991-fee2024e9d96": {
+        "node": "cfg52",
+        "note": "P3 CODING LOOP · cfg for reviewer.math_check. | in: reviewer - logic_check | out: reviewer - math_check"
+      },
+      "997423e6-6467-4347-8799-70263901b5eb": {
+        "node": "reviewer - math_check",
+        "note": "P3 CODING LOOP · Universal Agent call (set up by cfg52). | in: cfg52 | out: cfg64"
+      },
+      "777d40f4-052c-4617-9133-7782204c6b2b": {
+        "node": "cfg64",
+        "note": "P3 CODING LOOP · cfg for review_manager.consolidate_review. | Review manager merges the three reviews into passed_review + fix_instructions. | in: reviewer - math_check | out: review_manager - consolidate_review"
+      },
+      "9a81e5e2-2930-4840-91ee-0670fae1d356": {
+        "node": "review_manager - consolidate_review",
+        "note": "P3 CODING LOOP · Universal Agent call (set up by cfg64). | in: cfg64 | out: if bool_var3"
+      },
+      "d9fee9d5-b448-49c9-86df-05568900456d": {
+        "node": "scaffolding_manager - inject_constraints",
+        "note": "P3 ROUTE+DESIGN · Universal Agent call (set up by cfg inject constraints). | no_model task: assembles the stage-3 briefing. | in: cfg inject constraints | out: cfg34"
+      },
+      "e4df7f02-f816-4244-95cf-1f4365de9032": {
+        "node": "review_manager - troubleshoot",
+        "note": "P3 CODING LOOP · Universal Agent call (set up by cfg56). | in: cfg56 | out: retry_count3"
+      },
+      "014a1262-8b7e-40a6-b6e4-bc1ce70d9840": {
+        "node": "review_manager - log_error",
+        "note": "P3 EXECUTION · Universal Agent call (set up by cfg57). | in: cfg57 | out: if bool_var4"
+      },
+      "2e61c982-fce3-4798-bc72-effa42235103": {
+        "node": "review_manager - troubleshoot1",
+        "note": "P3 EXECUTION · Universal Agent call (set up by cfg59). | in: cfg59 | out: retry_count4"
+      },
+      "b9131a7a-c6b5-40f6-92ef-815304c9f39d": {
+        "node": "inspection_manager - troubleshoot_visual",
+        "note": "P3 VISION QA · Universal Agent call (set up by cfg55). | in: cfg55 | out: retry_count2"
+      },
+      "6376a76c-66d2-4a98-8363-389bb7c61831": {
+        "node": "artist - plan_finishing",
+        "note": "P4 ARTIST · Universal Agent call (set up by cfg25). | in: cfg25 | out: cfg26"
+      },
+      "c6bc7e51-5c5e-490f-a071-b74798415500": {
+        "node": "issue_aggregator - troubleshoot_visual",
+        "note": "P5 REVIEW LOOP · Universal Agent call (set up by cfg62). | in: cfg62 | out: retry_count5"
+      },
+      "7e1dc65c-83e2-4320-aaef-e8d0cc05a991": {
+        "node": "Archive Scaffolding",
+        "note": "P3 EXIT · Code. | Pins the approved scaffold (or the placeholder on DIRECT_IMAGE_GEN) to {job_id}/scaffolding.png. 3 entries. | in: Route Workflow3, Human review?, After human log | out: Phase 3 - Output"
+      },
+      "e75f9de5-170d-4cd7-91cc-77cce48b11b7": {
+        "node": "cfg65",
+        "note": "P4 PRODUCTS · cfg for product_designer.customizable_product_planning. | in: If Highly Customizable Products | out: product_designer - customizable_product_planning"
+      },
+      "063b9ebe-31e9-4fbd-815e-cb9c3847535b": {
+        "node": "If Highly Customizable Products",
+        "note": "P4 PRODUCTS · IF. | in: If customizable_products_in_phase4, product_scout - detect_customizable_products | out: [true]cfg65, [false]cfg25"
+      },
+      "9c3b25b8-3cf1-4f86-966c-d33216b16faa": {
+        "node": "product_designer - customizable_product_planning",
+        "note": "P4 PRODUCTS · Universal Agent call (set up by cfg65). | in: cfg65 | out: cfg25"
+      },
+      "38a4ed83-f42e-4662-85f7-6f0200cec6f1": {
+        "node": "cfg66",
+        "note": "P4 PRODUCTS · cfg for product_scout.detect_customizable_products. | in: If customizable_products_in_phase4 | out: product_scout - detect_customizable_products"
+      },
+      "36b3ad45-3b84-433f-a007-357883e2b1c3": {
+        "node": "If customizable_products_in_phase4",
+        "note": "P4 PRODUCTS · IF. | Config switch: run product_scout in Phase 4? | in: Load Phase 4 Config | out: [true]cfg66, [false]If Highly Customizable Products"
+      },
+      "57fa1329-0222-42b9-a4aa-3ffd01f28e97": {
+        "node": "product_scout - detect_customizable_products",
+        "note": "P4 PRODUCTS · Universal Agent call (set up by cfg66). | in: cfg66 | out: If Highly Customizable Products"
+      },
+      "102968a0-b204-4d7e-9b47-a72929745cd8": {
+        "node": "Human review?",
+        "note": "P3 SCAFFOLD GATE (human) · IF. | Mode ≠ automatic → open the scaffold gate, else skip to Archive Scaffolding. | in: inspections passed? | out: [true]Human Gate: Announce, [false]Archive Scaffolding"
+      },
+      "5814b067-9cc4-4a7c-8e22-21455c66fb9f": {
+        "node": "Human Gate: Announce",
+        "note": "P3 SCAFFOLD GATE (human) · Code. | Publishes status awaiting_human + resume_url; picks the wait slice. Source: main_workflow_nodes/human_gate_announce.js. | in: Human review?, Human available?, Human decision, Manager understood? | out: Human Gate: Wait"
+      },
+      "2efc59d5-f412-46c4-8a01-81779eb94032": {
+        "node": "Human available?",
+        "note": "P3 SCAFFOLD GATE (human) · IF. | MaxRetries rescue: ask the human instead of failing (non-automatic modes). | in: inspections passed? | out: [true]Human Gate: Announce, [false]cfg53"
+      },
+      "4c9fbbb0-77fd-4cfe-ad37-053d15aa6865": {
+        "node": "Human Gate: Wait",
+        "note": "P3 SCAFFOLD GATE (human) · Wait. | Resumes on webhook POST from the state manager, or when the slice times out. | in: Human Gate: Announce | out: Human Gate: Resolve"
+      },
+      "ec243865-2cea-4133-abaf-8e757d06ebd7": {
+        "node": "Human Gate: Resolve",
+        "note": "P3 SCAFFOLD GATE (human) · Code. | Turns the resume (or timeout) into human_action. Source: human_gate_resolve.js. | in: Human Gate: Wait | out: Human decision"
+      },
+      "a6ba228d-fa7f-4973-b1d2-b585968bcba6": {
+        "node": "Human decision",
+        "note": "P3 SCAFFOLD GATE (human) · Switch. | Output 'extend' (also matches legacy 'corrections') → Announce opens another wait slice while the human is typing. The UI itself only sends message / continue. | in: Human Gate: Resolve | out: [message]cfg human review, [extend]Human Gate: Announce, [continue]Human outcome, [rework]Human outcome, [fail]Human outcome, [abort]Human outcome"
+      },
+      "2d4ae605-be99-43d3-ae59-ee26bd949654": {
+        "node": "Human outcome",
+        "note": "P3 SCAFFOLD GATE (human) · Code. | Funnel: reads user_wants_to_stop / scaffold_acceptable_as_is → abort / continue / rework. Source: human_outcome.js. | in: Human decision, Manager understood? | out: cfg log human decision"
+      },
+      "8bab86ac-eb2b-435a-9f72-0d0e8c06a429": {
+        "node": "cfg human review",
+        "note": "P3 SCAFFOLD GATE (human) · cfg for inspection_manager.(computed). | Human's text → inspection_manager (prompt_author user). TASK_ID picks _open vs _reply. | in: Human decision | out: inspection_manager - human_review"
+      },
+      "01015b6a-9bd6-45f3-ae49-95df9c42b075": {
+        "node": "inspection_manager - human_review",
+        "note": "P3 SCAFFOLD GATE (human) · Universal Agent call (set up by cfg human review). | in: cfg human review | out: Manager understood?"
+      },
+      "d8f99cc0-7c15-4c85-bf15-d43ae477ce61": {
+        "node": "Manager understood?",
+        "note": "P3 SCAFFOLD GATE (human) · IF. | False → ask the human again (conversation stage). | in: inspection_manager - human_review | out: [true]Human outcome, [false]Human Gate: Announce"
+      },
+      "238fe4c4-82bd-4d41-ba20-8753f9e76d05": {
+        "node": "cfg log human decision",
+        "note": "P3 SCAFFOLD GATE (human) · cfg for human_gate.log_human_decision. | Logs the decision as a human_gate event (no_model). | in: Human outcome | out: human_gate - log_human_decision"
+      },
+      "738ab427-1fe6-45d4-b7e9-40db592b889c": {
+        "node": "human_gate - log_human_decision",
+        "note": "P3 SCAFFOLD GATE (human) · Universal Agent call (set up by cfg log human decision). | in: cfg log human decision | out: After human log"
+      },
+      "8fbcb58a-8baa-40f6-9f18-60188050811b": {
+        "node": "After human log",
+        "note": "P3 SCAFFOLD GATE (human) · Switch. | Routes on $('Human outcome').human_action. | in: human_gate - log_human_decision | out: [continue]Archive Scaffolding, [rework]Human corrections → reset retries, [fail]cfg53, [abort]cfg human abort"
+      },
+      "f8608cbb-717b-4d8d-bfa7-7a03066314e0": {
+        "node": "Human corrections → reset retries",
+        "note": "P3 SCAFFOLD GATE (human) · Set: coding_retry_count, execution_retry_count, inspection_retry_count, retry_directives, human_priority_directives. | Zeroes all three counters and arms [HUMAN IN THE LOOP] directives, then back to cfg18. | in: After human log | out: cfg18"
+      },
+      "b64ed7f4-c3f1-44ae-b72b-f60b9c2f9821": {
+        "node": "cfg human abort",
+        "note": "P3 SCAFFOLD GATE (human) · cfg for error_handler.report_error. | Human asked to stop: UserAborted. | in: After human log | out: error_handler - report_error7"
+      },
+      "3748274d-9996-44bf-a679-b2eb48e010f1": {
+        "node": "error_handler - report_error7",
+        "note": "P3 SCAFFOLD GATE (human) · Universal Agent call (set up by cfg human abort). | in: cfg human abort | out: (end of run)"
+      },
+      "961fbd4e-b353-4509-a5ab-fc46052e2d06": {
+        "node": "error_handler - report_error8",
+        "note": "P5 FINAL GATE (human) · Universal Agent call (set up by cfg final abort). | in: cfg final abort | out: (end of run)"
+      },
+      "ba043d92-f93a-4c27-b53f-0c302872dad9": {
+        "node": "Final review?",
+        "note": "P5 FINAL GATE (human) · IF. | Mode ≠ automatic → open the final gate, else skip to Phase 5 - Output. | in: if final_pass | out: [true]Final Gate: Announce, [false]Phase 5 - Output"
+      },
+      "730463fb-11f0-4415-af7b-a18694bc9fd6": {
+        "node": "Final available?",
+        "note": "P5 FINAL GATE (human) · IF. | MaxRetries rescue: ask the human instead of failing. | in: if final_pass | out: [true]Final Gate: Announce, [false]cfg61"
+      },
+      "a08c7980-b09a-470e-a4b3-575ffae98409": {
+        "node": "Final Gate: Announce",
+        "note": "P5 FINAL GATE (human) · Code. | Final-gate twin of Human Gate: Announce. Source: final_gate_announce.js. | in: Final review?, Final available?, Final decision, Final understood? | out: Final Gate: Wait"
+      },
+      "f7687371-814b-483d-ae71-055a7122fe05": {
+        "node": "Final Gate: Wait",
+        "note": "P5 FINAL GATE (human) · Wait. | Shares the execution's resume URL with the scaffold gate's Wait. | in: Final Gate: Announce | out: Final Gate: Resolve"
+      },
+      "03f9f6c4-0371-44d5-a31d-acd199d294bc": {
+        "node": "Final Gate: Resolve",
+        "note": "P5 FINAL GATE (human) · Code. | Source: final_gate_resolve.js. | in: Final Gate: Wait | out: Final decision"
+      },
+      "768971f0-4e54-4326-a075-29d942469d86": {
+        "node": "Final decision",
+        "note": "P5 FINAL GATE (human) · Switch. | Output 'extend' (also matches legacy 'corrections') → Announce opens another wait slice while the human is typing. | in: Final Gate: Resolve | out: [message]cfg final review, [extend]Final Gate: Announce, [continue]Final outcome, [rework]Final outcome, [fail]Final outcome, [abort]Final outcome"
+      },
+      "64dd3c04-ba40-487d-9528-e16876ff830c": {
+        "node": "Final outcome",
+        "note": "P5 FINAL GATE (human) · Code. | Reads user_wants_to_stop / image_acceptable_as_is. Source: final_outcome.js. | in: Final decision, Final understood? | out: cfg log final decision"
+      },
+      "fb3f9d15-6660-4226-b737-199ca884e006": {
+        "node": "cfg final review",
+        "note": "P5 FINAL GATE (human) · cfg for issue_aggregator.(computed). | Human's text → issue_aggregator. TASK_ID counts final_review turns only (not scaffold ones). | in: Final decision | out: issue_aggregator - final_review"
+      },
+      "5e2bd1d2-b7d7-4783-8835-a212d4fb1b8c": {
+        "node": "issue_aggregator - final_review",
+        "note": "P5 FINAL GATE (human) · Universal Agent call (set up by cfg final review). | in: cfg final review | out: Final understood?"
+      },
+      "a1b4dc41-5b3f-4d43-8dde-193e94b66aa1": {
+        "node": "Final understood?",
+        "note": "P5 FINAL GATE (human) · IF. | in: issue_aggregator - final_review | out: [true]Final outcome, [false]Final Gate: Announce"
+      },
+      "75e3b9c0-5e4e-40a5-863b-5a2509df1fa3": {
+        "node": "cfg log final decision",
+        "note": "P5 FINAL GATE (human) · cfg for final_gate.log_human_decision. | Logs as final_gate (not human_gate), so the two gates' histories stay apart. | in: Final outcome | out: final_gate - log_final_decision"
+      },
+      "078d34ba-2e50-4d8c-bee9-18a879f9f448": {
+        "node": "final_gate - log_final_decision",
+        "note": "P5 FINAL GATE (human) · Universal Agent call (set up by cfg log final decision). | in: cfg log final decision | out: After final log"
+      },
+      "f16320d0-6c7b-4faf-8c72-b976e18d8976": {
+        "node": "After final log",
+        "note": "P5 FINAL GATE (human) · Switch. | Routes on $('Final outcome').human_action. | in: final_gate - log_final_decision | out: [continue]Phase 5 - Output, [rework]Final corrections → reset retries, [fail]cfg61, [abort]cfg final abort"
+      },
+      "e2fc3c1c-2425-4ee2-8392-77ffff4bfbed": {
+        "node": "Final corrections → reset retries",
+        "note": "P5 FINAL GATE (human) · Set: image_gen_retry_count, image_retry_directives, image_human_priority_directives. | Zeroes image_gen_retry_count and arms the human repaint directives; geometry is fixed at this stage. | in: After final log | out: cfg25"
+      },
+      "481d31d2-16b8-4d56-884c-862da073fe24": {
+        "node": "cfg final abort",
+        "note": "P5 FINAL GATE (human) · cfg for error_handler.report_error. | Human asked to stop: UserAborted. | in: After final log | out: error_handler - report_error8"
+      },
+      "6a276acf-976f-4c94-afb5-de4774ca36db": {
+        "node": "Render OK?",
+        "note": "P4 ARTIST · Switch. | No image (agent_error) → retry render up to 3×, then cfg render abort. | in: artist - render_final | out: [OK]Phase 4 - Output, [Retry]cfg26, [GiveUp]cfg render abort"
+      },
+      "f06e048b-da49-4f6a-aba4-ae5413ca2a02": {
+        "node": "error_handler - report_error9",
+        "note": "P4 ARTIST · Universal Agent call (set up by cfg render abort). | in: cfg render abort | out: (end of run)"
+      },
+      "65d31d85-27ed-4a70-8ff2-935c301b712d": {
+        "node": "cfg render abort",
+        "note": "P4 ARTIST · cfg for error_handler.report_error. | Image model returned no image 3×: RenderFailed. | in: Render OK? | out: error_handler - report_error9"
       }
     }
   }

@@ -30,7 +30,7 @@ Retry loops are built in at several checkpoints — description review, code syn
 
 ## Human in the loop (two review gates)
 
-The person who launched the run gets two chances to steer the result. First the **scaffolding**, after the AI inspectors approve it and before the artist paints over it, held by the QA Inspection Manager. Then the **finished illustration**, after the Final Gatekeeper approves it and before it is released. One sidebar setting, sent to the pipeline as `human_review_mode`, covers both gates for the whole run. The frontend defaults to *Ask me, 30 s to react*; the pipeline's own fallback stays *Automatic*, because callers with no human (the Test Orchestrator, manual n8n runs) must never wait on a gate nobody will answer.
+The person who launched the run gets two chances to steer the result. First the **scaffolding**, after the AI inspectors approve it and before the artist paints over it, held by the QA Inspection Manager. Then the **finished illustration**, after the Final Gatekeeper approves it and before it is released. One sidebar setting, sent to the pipeline as `human_review_mode`, covers both gates for the whole run. The frontend defaults to *Wait for me*; the pipeline's own fallback stays *Automatic*, because callers with no human (the Test Orchestrator, manual n8n runs) must never wait on a gate nobody will answer.
 
 | Mode | The AI approves a stage | The AI rejects it three times |
 |---|---|---|
