@@ -67,6 +67,9 @@ class Mcp:
     def _post(self, body):
         r = requests.post(self.url, headers=self.headers, json=body, timeout=120)
         r.raise_for_status()
+        # text/event-stream carries no charset, and requests then assumes Latin-1 for
+        # text/*, which garbles every curly quote and emoji in the workflow.
+        r.encoding = "utf-8"
         if "Mcp-Session-Id" in r.headers:
             self.headers["Mcp-Session-Id"] = r.headers["Mcp-Session-Id"]
         return r

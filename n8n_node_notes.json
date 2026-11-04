@@ -1,0 +1,11 @@
+{
+  "HtwI6u1ae2xwKw1f": {
+    "workflow": "EDEE-main",
+    "notes": {
+      "9abb8dd0-bb77-4ccd-8533-01d563614627": {
+        "node": "When Executed by Another Workflow",
+        "note": "ENTRY (batch): Test Orchestrator calls EDEE-main here with job_id, original_query, style_preference, max tiers. Same path as API Trigger from Set Job on; no human_review_mode sent, so it runs automatic."
+      }
+    }
+  }
+}
