@@ -226,3 +226,6 @@ gen-lang-client-*.json
 
 # The paper lives outside git; .git/hooks/post-commit mirrors it to D:\Public\Candace\paper
 notes/paper/
+
+# Local n8n snapshots from n8n_backup.py (contain API keys)
+n8n_backups/

@@ -1,4 +1,112 @@
 {
+  "id": "ef3RGC7luZyHzWgs",
+  "name": "EDEE Global Error Handler",
+  "active": false,
+  "isArchived": false,
+  "versionId": "17d36c3c-72fb-4ce2-ba66-653f47f47387",
+  "activeVersionId": null,
+  "triggerCount": 0,
+  "nodeCount": 7,
+  "createdAt": "2026-05-14T10:24:48.628Z",
+  "updatedAt": "2026-11-04T16:42:43.714Z",
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": true
+  },
+  "tags": [],
+  "parentFolderId": null,
+  "scopes": [
+    "execution:delete",
+    "execution:list",
+    "execution:read",
+    "execution:reveal",
+    "workflow:create",
+    "workflow:delete",
+    "workflow:disableRedaction",
+    "workflow:enableRedaction",
+    "workflow:execute",
+    "workflow:execute-chat",
+    "workflow:export",
+    "workflow:import",
+    "workflow:list",
+    "workflow:move",
+    "workflow:publish",
+    "workflow:read",
+    "workflow:share",
+    "workflow:unpublish",
+    "workflow:unshare",
+    "workflow:update"
+  ],
+  "canExecute": true,
+  "connections": {
+    "Error Trigger": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Set API Key",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "cfg5": {
+      "main": [
+        [
+          {
+            "node": "error_handler - report_fatal_error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "error_handler - report_fatal_error": {
+      "main": [
+        [
+          {
+            "node": "Error Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set API Key": {
+      "main": [
+        [
+          {
+            "node": "Load Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Load Config": {
+      "main": [
+        [
+          {
+            "node": "cfg5",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
   "nodes": [
     {
       "parameters": {},
@@ -160,76 +268,7 @@
       "name": "Load Config"
     }
   ],
-  "connections": {
-    "Error Trigger": {
-      "main": [
-        [
-          {
-            "node": "Code in JavaScript",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Code in JavaScript": {
-      "main": [
-        [
-          {
-            "node": "Set API Key",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "cfg5": {
-      "main": [
-        [
-          {
-            "node": "error_handler - report_fatal_error",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "error_handler - report_fatal_error": {
-      "main": [
-        [
-          {
-            "node": "Error Message",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Set API Key": {
-      "main": [
-        [
-          {
-            "node": "Load Config",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Load Config": {
-      "main": [
-        [
-          {
-            "node": "cfg5",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    }
-  },
-  "pinData": {},
-  "meta": {
-    "instanceId": "050d7f5d3593566ffe36464e2179832d9e4aa282cb8a519a27bd68446dae16b9"
-  }
+  "nodeGroups": [],
+  "activeVersion": null,
+  "meta": null
 }
