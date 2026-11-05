@@ -67,6 +67,8 @@ async def update_state(request: Request):
             if status == "completed":
                 live_name = "final_illustration.png"
                 blob = bucket.blob(f"{job_id}/{live_name}")
+                # Not write-once any more: "Resume final review" overwrites it in place.
+                blob.cache_control = "no-cache, max-age=0"
                 blob.upload_from_string(image_data, content_type=mime_type)
 
                 # Delete the temporary running image to save space
@@ -81,8 +83,8 @@ async def update_state(request: Request):
                 # max-age=3600` by default. That lets any cache between here and a viewer
                 # serve an hour-old picture under the current name: the frontend showed
                 # the first scaffold through every correction, and so would a link in the
-                # Test Orchestrator's sheet. Only this name needs it; final_illustration
-                # and scaffolding are written once per run and are safe to cache.
+                # Test Orchestrator's sheet. final_illustration and scaffolding get the same
+                # header: a resumed job overwrites them, and a redraw rewrites the scaffold.
                 blob.cache_control = "no-cache, max-age=0"
                 blob.upload_from_string(image_data, content_type=mime_type)
 
@@ -108,6 +110,7 @@ async def update_state(request: Request):
             scaff_data = base64.b64decode(scaff_base64)
             scaff_path = f"{job_id}/scaffolding.png"
             scaff_blob = bucket.blob(scaff_path)
+            scaff_blob.cache_control = "no-cache, max-age=0"   # rewritten by a resumed redraw
             scaff_blob.upload_from_string(scaff_data, content_type=scaff_mime)
         elif scaff_placeholder:
             # No scaffold this run (DIRECT_IMAGE_GEN, or an upstream skip). Copy the

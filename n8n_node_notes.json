@@ -536,7 +536,7 @@
       },
       "9b0000e5-518a-42ca-8de0-949241cdad38": {
         "node": "Route Workflow3",
-        "note": "P3 ROUTE+DESIGN · Switch. | COMPOSITE_PRIMITIVES shares the STANDARD path (see TODO: Primitives). DIRECT_IMAGE_GEN skips scaffolding entirely. | in: selector - choose_path | out: [STANDARD_DIAGRAM]cfg inject constraints, [COMPOSITE_PRIMITIVES]cfg inject constraints, [DIRECT_IMAGE_GEN]Archive Scaffolding"
+        "note": "P3 ROUTE+DESIGN · Switch. | COMPOSITE_PRIMITIVES shares the STANDARD path (see TODO: Primitives). DIRECT_IMAGE_GEN skips scaffolding entirely. | in: selector - choose_path, image_detail_planner - amend_description | out: [STANDARD_DIAGRAM]cfg inject constraints, [COMPOSITE_PRIMITIVES]cfg inject constraints, [DIRECT_IMAGE_GEN]Archive Scaffolding"
       },
       "cb10d94a-cfed-4a55-a97b-e1350d46d144": {
         "node": "Route Workflow (enum_var)",
@@ -808,7 +808,7 @@
       },
       "8bab86ac-eb2b-435a-9f72-0d0e8c06a429": {
         "node": "cfg human review",
-        "note": "P3 SCAFFOLD GATE (human) · cfg for inspection_manager.(computed). | Human's text → inspection_manager (prompt_author user). TASK_ID picks _open vs _reply. | in: Human decision | out: inspection_manager - human_review"
+        "note": "P3 SCAFFOLD GATE (human) · cfg for inspection_manager.(computed). | Human's text → inspection_manager (prompt_author user). TASK_ID picks _open vs _reply, counting turns since the last scaffold_redo marker. | in: Human decision | out: inspection_manager - human_review"
       },
       "01015b6a-9bd6-45f3-ae49-95df9c42b075": {
         "node": "inspection_manager - human_review",
@@ -828,7 +828,7 @@
       },
       "8fbcb58a-8baa-40f6-9f18-60188050811b": {
         "node": "After human log",
-        "note": "P3 SCAFFOLD GATE (human) · Switch. | Routes on $('Human outcome').human_action. | in: human_gate - log_human_decision | out: [continue]Archive Scaffolding, [rework]Human corrections → reset retries, [fail]cfg53, [abort]cfg human abort"
+        "note": "P3 SCAFFOLD GATE (human) · Switch. | Routes on $('Human outcome').human_action. abort passes through Resume: keep previous? (scaffold abort). | in: human_gate - log_human_decision | out: [continue]Archive Scaffolding, [rework]Human corrections → reset retries, [fail]cfg53, [abort]Resume: keep previous? (scaffold abort)"
       },
       "f8608cbb-717b-4d8d-bfa7-7a03066314e0": {
         "node": "Human corrections → reset retries",
@@ -836,7 +836,7 @@
       },
       "b64ed7f4-c3f1-44ae-b72b-f60b9c2f9821": {
         "node": "cfg human abort",
-        "note": "P3 SCAFFOLD GATE (human) · cfg for error_handler.report_error. | Human asked to stop: UserAborted. | in: After human log | out: error_handler - report_error7"
+        "note": "P3 SCAFFOLD GATE (human) · cfg for error_handler.report_error. | Human asked to stop: UserAborted. | in: Resume: keep previous? (scaffold abort) | out: error_handler - report_error7"
       },
       "3748274d-9996-44bf-a679-b2eb48e010f1": {
         "node": "error_handler - report_error7",
@@ -876,7 +876,7 @@
       },
       "fb3f9d15-6660-4226-b737-199ca884e006": {
         "node": "cfg final review",
-        "note": "P5 FINAL GATE (human) · cfg for issue_aggregator.(computed). | Human's text → issue_aggregator. TASK_ID counts final_review turns since the last resume marker (not scaffold ones). | in: Final decision | out: issue_aggregator - final_review"
+        "note": "P5 FINAL GATE (human) · cfg for issue_aggregator.(computed). | Human's text → issue_aggregator. TASK_ID: open vs reply by final_review turns since the last resume marker; in a resumed job the *_resume variants (can also redraw the base diagram). | in: Final decision | out: issue_aggregator - final_review"
       },
       "5e2bd1d2-b7d7-4783-8835-a212d4fb1b8c": {
         "node": "issue_aggregator - final_review",
@@ -896,11 +896,11 @@
       },
       "f16320d0-6c7b-4faf-8c72-b976e18d8976": {
         "node": "After final log",
-        "note": "P5 FINAL GATE (human) · Switch. | Routes on $('Final outcome').human_action. continue/abort pass through the Resume: keep previous? checks. | in: final_gate - log_final_decision | out: [continue]Resume: keep previous? (continue), [rework]Final corrections → reset retries, [fail]cfg61, [abort]Resume: keep previous? (abort)"
+        "note": "P5 FINAL GATE (human) · Switch. | Routes on $('Final outcome').human_action. continue/abort pass through the Resume: keep previous? checks; rework through Resume: redraw scaffold?. | in: final_gate - log_final_decision | out: [continue]Resume: keep previous? (continue), [rework]Resume: redraw scaffold?, [fail]cfg61, [abort]Resume: keep previous? (abort)"
       },
       "e2fc3c1c-2425-4ee2-8392-77ffff4bfbed": {
         "node": "Final corrections → reset retries",
-        "note": "P5 FINAL GATE (human) · Set: image_gen_retry_count, image_retry_directives, image_human_priority_directives. | Zeroes image_gen_retry_count and arms the human repaint directives; geometry is fixed at this stage. | in: After final log | out: cfg25"
+        "note": "P5 FINAL GATE (human) · Set: image_gen_retry_count, image_retry_directives, image_human_priority_directives. | Zeroes image_gen_retry_count and arms the human repaint directives; geometry is fixed at this stage. | in: Resume: redraw scaffold? | out: cfg25"
       },
       "481d31d2-16b8-4d56-884c-862da073fe24": {
         "node": "cfg final abort",
@@ -952,7 +952,27 @@
       },
       "35a07f8c-8456-4716-942d-7bdc700762a6": {
         "node": "Resume: Restore Completed",
-        "note": "P5 RESUME (finished job → final gate) · Code. | Marks the job completed with its previous image, message and report, plus a run_settings event (no model calls). Source: resume_restore_completed.js. | in: Resume: keep previous? (continue), Resume: keep previous? (abort) | out: (end of run)"
+        "note": "P5 RESUME (finished job → final gate) · Code. | Marks the job completed with its previous image, message and report, plus a run_settings event (no model calls). Source: resume_restore_completed.js. | in: Resume: keep previous? (continue), Resume: keep previous? (abort), Resume: keep previous? (scaffold abort) | out: (end of run)"
+      },
+      "adb2369e-d2e8-4a8f-b00f-9a6d5d7af9c5": {
+        "node": "Resume: redraw scaffold?",
+        "note": "P5 RESUME: REDRAW BASE DIAGRAM · IF. | Resumed job AND the Gatekeeper's resume variant set redraw_scaffold (human confirmed a base-diagram change) → redraw branch; otherwise the normal Final corrections. | in: After final log | out: [true]Resume: Prepare Redraw, [false]Final corrections → reset retries"
+      },
+      "fb49b0b5-7c2d-4659-b5a1-ba501a13b1c2": {
+        "node": "Resume: Prepare Redraw",
+        "note": "P5 RESUME: REDRAW BASE DIAGRAM · Code. | Restores the planner's last latest_description (Phase 3 never sees Phase 4's product version), clears stale gate flags, arms the painting directives, posts a scaffold_redo marker. Source: resume_prepare_redraw.js. | in: Resume: redraw scaffold? | out: cfg amend description"
+      },
+      "eaabeacf-561e-40f6-af6f-a3fa9b636a69": {
+        "node": "cfg amend description",
+        "note": "P5 RESUME: REDRAW BASE DIAGRAM · cfg for image_detail_planner.amend_description. | Planner rewrites the restored description with the human's scaffold_changes (resume-only task). | in: Resume: Prepare Redraw | out: image_detail_planner - amend_description"
+      },
+      "0bdadd57-9579-4394-ab89-6a5c312f87d3": {
+        "node": "image_detail_planner - amend_description",
+        "note": "P5 RESUME: REDRAW BASE DIAGRAM · Universal Agent call (set up by cfg amend description). | Then the normal Phase 3 from the job's original route: Route Workflow3 → design → coding → inspection → scaffold gate. | in: cfg amend description | out: Route Workflow3"
+      },
+      "42adac14-be6d-4880-a0e2-3abc141dca64": {
+        "node": "Resume: keep previous? (scaffold abort)",
+        "note": "P5 RESUME: REDRAW BASE DIAGRAM · IF. | Resumed job: a stop at the redo's scaffold gate keeps the previous result; otherwise the normal UserAborted failure. | in: After human log | out: [true]Resume: Restore Completed, [false]cfg human abort"
       }
     }
   }

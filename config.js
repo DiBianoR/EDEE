@@ -2513,6 +2513,72 @@ Walk through the problem logically:
 
 
 // =============================================================================
+// 🔁 RESUME-ONLY TASKS ("Resume final review" → redraw the base diagram)
+// Used ONLY in a resumed job: n8n "cfg final review" picks the *_resume variants once a
+// resume_final_gate marker is in the transcript, and the redraw branch calls
+// amend_description. The tasks above are untouched, so a normal run's prompts and schemas
+// are byte-for-byte what they were.
+//
+// The Gatekeeper variants are DERIVED from final_review_open / final_review_reply: the one
+// rule that says the geometry is fixed is replaced, and the schema gains the two redraw
+// fields. If a later edit changes those sentences, Load Config throws here instead of
+// silently shipping a variant that still says "geometry is fixed".
+// =============================================================================
+const deriveTask = (base, from, to, extra) => {
+  const t = tasks[base];
+  if (!t.instruction.includes(from)) throw new Error(`config.js: resume variant of ${base} — the text it replaces has changed; update the RESUME block.`);
+  return { ...t, instruction: t.instruction.replace(from, to), ...extra };
+};
+
+const FINAL_REVIEW_RESUME_SCHEMA = (() => {
+  const s = JSON.parse(JSON.stringify(FINAL_REVIEW_SCHEMA));
+  s.properties.redraw_scaffold = { "type": "BOOLEAN", "description": "True ONLY when the human wants something in the base diagram itself changed (positions, sizes, counts, dimensions, the labels drawn into it) AND has explicitly agreed to the full redraw after you explained what it involves. False otherwise, including while you are still asking." };
+  s.properties.scaffold_changes = { "type": "STRING", "description": "When redraw_scaffold is true: the complete list of changes to the base diagram's geometry, counts, dimensions and labels, stated as how the diagram should be, precisely enough for a planner to rewrite the diagram description. Painting-only changes do NOT go here; they stay in fix_instructions. Empty string otherwise." };
+  s.required = [...s.required, "redraw_scaffold", "scaffold_changes"];
+  return s;
+})();
+
+tasks["final_review_open_resume"] = deriveTask("final_review_open",
+  "2. Corrections go back to the Artist, who repaints over the same approved base diagram. Anything about how the picture is painted can change — objects, colours, style, background, detail, anything the Artist added. The underlying geometry cannot change at this stage: positions, sizes, counts, dimensions, and the labels drawn into the base diagram are fixed. If the human asks for one of those, say so plainly and ask whether to go ahead with the changes that can be made.",
+  "2. Painting corrections go back to the Artist, who repaints over the same base diagram: anything about how the picture is painted can change — objects, colours, style, background, detail, anything the Artist added. This finished job has been reopened, so the base diagram itself CAN also be redrawn: positions, sizes, counts, dimensions, and the labels drawn into it. That is a much bigger step: the diagram description is amended, the base diagram is planned, coded and inspected again, the human reviews the new base diagram, and then the illustration is repainted from scratch, which takes several minutes and repaints everything, not just the part they asked about. If the human asks for a change to the base diagram, tell them plainly what a redraw involves and ask them to confirm they want it before you set redraw_scaffold. Put the diagram changes in scaffold_changes and any painting-only changes in fix_instructions; a request can need both.",
+  { schema: FINAL_REVIEW_RESUME_SCHEMA });
+
+tasks["final_review_reply_resume"] = deriveTask("final_review_reply",
+  "the base diagram's geometry is fixed, so say so if they ask to change it;",
+  "changes to the base diagram's geometry, counts, dimensions or drawn labels need a full redraw, so explain what that involves and set redraw_scaffold only once they have confirmed it (diagram changes in scaffold_changes, painting changes in fix_instructions);",
+  { schema: FINAL_REVIEW_RESUME_SCHEMA });
+
+tasks["amend_description"] = {
+  assigned_agent: "image_detail_planner",
+  history_scope: [],  // task-level override: starts cold — the inputs below are everything it needs
+  instruction: `\
+A finished illustration was reviewed by the human who requested it, and they asked for changes to the underlying diagram itself. The diagram will be redrawn from the description below, so the description has to say exactly what the new diagram should show.
+
+Original Query: \`\`\`{original_query}\`\`\`
+
+Current Diagram Description: {latest_description}
+
+Changes the human asked for (confirmed by them):
+"""
+{scaffold_changes}
+"""
+
+YOUR JOB: rewrite the Current Diagram Description so it describes the diagram WITH these changes.
+- Apply every requested change, and make everything that depends on it consistent (a changed count or dimension must agree everywhere it is mentioned, including labels and measurements).
+- Change nothing else. Keep the structure, wording, level of detail and format of the existing description wherever the changes don't touch it.
+- If a requested change would contradict the math problem itself, apply it anyway and note the conflict in reasoning; the human has already confirmed it.`,
+  schema: {
+    "type": "OBJECT",
+    "properties": {
+      "reasoning": { "type": "STRING", "description": "Which parts of the description each requested change touches, and anything else that had to change to stay consistent." },
+      "latest_description": { "type": "STRING", "description": "The complete amended diagram description." }
+    },
+    "required": ["reasoning", "latest_description"]
+  }
+};
+
+
+// =============================================================================
 // ⚙️ CONFIG OBJECT
 // =============================================================================
 const config = {

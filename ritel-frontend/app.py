@@ -123,13 +123,15 @@ GATES = {
         "placeholder": "e.g. The two bags should be side by side, and the labels are too small.",
     },
     "final": {
-        "tasks": ("final_review_open", "final_review_reply"),
+        # *_resume: the same conversation in a reopened job (can also redraw the base diagram).
+        "tasks": ("final_review_open", "final_review_reply", "final_review_open_resume", "final_review_reply_resume"),
         "manager": "issue_aggregator",
         "logger": "final_gate",
         "manager_name": "Final Gatekeeper",
         "manager_title": "Final Gatekeeper",
         "approved": "The reviewers approved the finished illustration.",
         "ask": "Anything to change before it's released? The artist repaints over the same base diagram, so its geometry and labels stay fixed; everything painted on top can change.",
+        "ask_resumed": "Anything to change? Painted details can be repainted, and because this job was reopened, the base diagram itself (positions, sizes, counts, labels) can also be redrawn. That takes longer and repaints everything; the Final Gatekeeper will check with you first.",
         "rejected": "The reviewers rejected this illustration three times.",
         "empty_hint": "Leave it empty to release the illustration as it is.",
         "redo": "repaint the illustration",
@@ -1256,7 +1258,10 @@ def render_human_panel(state, events):
                             f"Tell the {esc(g['manager_name'])} what to fix, or leave the box empty to accept it as it is.</div>",
                             unsafe_allow_html=True)
             else:
-                st.markdown(f"<div class='gatebox'>🙋 <b>{esc(g['approved'])}</b> {esc(g['ask'])}</div>",
+                # A reopened job ("Resume final review") can also redraw the base diagram.
+                resumed = any(ev.get("task") == "resume_final_gate" for ev in events)
+                ask = g.get("ask_resumed", g["ask"]) if resumed else g["ask"]
+                st.markdown(f"<div class='gatebox'>🙋 <b>{esc(g['approved'])}</b> {esc(ask)}</div>",
                             unsafe_allow_html=True)
             with st.form(key=f"form_{sig}", border=False):
                 st.text_area(f"Your reply to the {g['manager_name']}", key=f"msg_{sig}", height=90,

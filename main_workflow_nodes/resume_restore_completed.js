@@ -2,7 +2,8 @@
 // 🔁 RESUME: RESTORE COMPLETED  (Code node, "Run Once for All Items")
 //
 // Ends a resumed job WITHOUT re-running Phase 6, when the human's resumed round changed
-// nothing that needs a new report. Reached from two IFs after "After final log":
+// nothing that needs a new report. Reached from two IFs after "After final log", and from
+// one after "After human log" (a stop at the scaffold gate during a redraw):
 //   • continue, and the artist never ran in this execution: approved as is, walked away
 //     (the gate timed out), or the Gatekeeper concluded no changes were wanted. The
 //     report from the original run still describes this exact image, so re-generating it
@@ -32,7 +33,10 @@ const latestRun = (nodeName) => {
 const rebuilt = $("Resume: Rebuild State").first().json;
 const load = $("Resume: Load Job").first().json;
 const { config, session_state, session_events: events = [] } = items[0].json;
-const action = (latestRun("Final outcome") || {}).human_action;
+// Human outcome (the scaffold gate) only runs in a resumed job during a redraw, so a stop
+// there is "abort" too.
+const scaffoldStop = (latestRun("Human outcome") || {}).human_action === "abort";
+const action = scaffoldStop ? "abort" : (latestRun("Final outcome") || {}).human_action;
 const previous = load.resume.previous || {};
 const now = new Date().toISOString();
 
@@ -40,7 +44,9 @@ const note = {
     author: "final_gate",
     task: "resume_final_gate",
     status: "ok",
-    parts: [{ text: action === "abort"
+    parts: [{ text: scaffoldStop
+        ? "The human reviewer stopped the base-diagram redraw. The job keeps the illustration and report it had before the round."
+        : action === "abort"
         ? "The human reviewer stopped the resumed review round. The job keeps the illustration and report it had before the round."
         : "The resumed review round ended without a repaint. The job keeps the illustration and report it had before the round." }],
     timestamp: now,

@@ -16,8 +16,18 @@ What it does (STRUCTURE.md, "Resume final review"):
                   [true] → Resume: Restore Completed   [false] → Phase 5 - Output
               After final log [abort]    → Resume: keep previous? (abort)
                   [true] → Resume: Restore Completed   [false] → cfg final abort
+  redraw      After final log [rework]   → Resume: redraw scaffold?
+                  [true]  → Resume: Prepare Redraw → cfg amend description
+                            → image_detail_planner - amend_description → Route Workflow3
+                  [false] → Final corrections → reset retries
+              After human log [abort]    → Resume: keep previous? (scaffold abort)
+                  [true] → Resume: Restore Completed   [false] → cfg human abort
   edits       cfg25 / cfg26: scaffold falls back to Resume: Rebuild State
-              cfg final review: TASK_ID counts final_review turns after the resume marker
+              cfg final review: after a resume marker, uses the *_resume task variants and
+                  counts final_review turns from that marker (normal runs: unchanged)
+              cfg human review: counts human_review turns after the last scaffold_redo
+                  marker (normal runs: unchanged)
+              Send Final Broadcast: appends the run_settings record
 """
 
 import copy
@@ -40,12 +50,20 @@ def code(name):
 
 SCAFFOLD = ("={{ $('Prepare for Vision').isExecuted ? $('Prepare for Vision').item.json.%s"
             " : ($('Resume: Rebuild State').isExecuted ? $('Resume: Rebuild State').first(0, 0).json.%s : '') }}")
+# No resume marker → start = -1 → the whole history and the plain task names, i.e. exactly
+# what these expressions returned before the resume feature existed.
 FINAL_REVIEW_TASK = ("={{ (() => { const ev = $json.session_events;"
                      " const start = ev.map(e => e.task).lastIndexOf('resume_final_gate');"
-                     " return ev.slice(start + 1).some(e => e.author === 'issue_aggregator' && String(e.task).startsWith('final_review'))"
-                     " ? 'final_review_reply' : 'final_review_open'; })() }}")
+                     " const reply = ev.slice(start + 1).some(e => e.author === 'issue_aggregator' && String(e.task).startsWith('final_review'));"
+                     " return (reply ? 'final_review_reply' : 'final_review_open') + (start >= 0 ? '_resume' : ''); })() }}")
+HUMAN_REVIEW_TASK = ("={{ (() => { const ev = $json.session_events;"
+                     " const start = ev.map(e => e.task).lastIndexOf('scaffold_redo');"
+                     " return ev.slice(start + 1).some(e => e.author === 'inspection_manager' && String(e.task).startsWith('human_review'))"
+                     " ? 'human_review_reply' : 'human_review_open'; })() }}")
 KEEP_CONTINUE = "={{ $('Resume: Rebuild State').isExecuted && !$('artist - render_final').isExecuted }}"
 KEEP_ABORT = "={{ $('Resume: Rebuild State').isExecuted }}"
+REDRAW = "={{ $('Resume: Rebuild State').isExecuted && $json.session_state.redraw_scaffold === true }}"
+REDRAW_CHAIN = ["Resume: Prepare Redraw", "cfg amend description", "image_detail_planner - amend_description", "Route Workflow3"]
 
 
 def if_params(template, expression):
@@ -56,9 +74,22 @@ def if_params(template, expression):
     return p
 
 
+def cfg_params(template, phase, agent, task):
+    """A standard cfg Set node (PHASE_ID / AGENT_ID / TASK_ID, include other fields)."""
+    p = copy.deepcopy(template["parameters"])
+    values = {"PHASE_ID": phase, "AGENT_ID": agent, "TASK_ID": task}
+    p["assignments"]["assignments"] = [a for a in p["assignments"]["assignments"] if a["name"] in values]
+    for a in p["assignments"]["assignments"]:
+        a["value"] = values[a["name"]]
+    if {a["name"] for a in p["assignments"]["assignments"]} != set(values):
+        raise SystemExit(f"cfg template {template['name']} lacks PHASE_ID/AGENT_ID/TASK_ID")
+    return p
+
+
 def build_new_nodes(nodes):
     by = {n["name"]: n for n in nodes}
     api_trigger, keys, load_cfg, if_tpl = by["API Trigger"], by["Set API Key"], by["Load Phase 1 Config"], by["Final review?"]
+    cfg_tpl, ua_tpl = by["cfg32"], by["image_detail_planner - review_description"]
     code_v = by["Final Gate: Announce"]["typeVersion"]
     return [
         {"name": "Resume Trigger", "type": "n8n-nodes-base.webhook", "typeVersion": api_trigger["typeVersion"],
@@ -83,6 +114,17 @@ def build_new_nodes(nodes):
          "position": [5376, 1216], "parameters": if_params(if_tpl, KEEP_ABORT)},
         {"name": "Resume: Restore Completed", "type": "n8n-nodes-base.code", "typeVersion": code_v, "position": [5584, 1120],
          "parameters": {"jsCode": code("resume_restore_completed.js")}},
+        # --- redraw the base diagram (resumed jobs only) ---
+        {"name": "Resume: redraw scaffold?", "type": if_tpl["type"], "typeVersion": if_tpl["typeVersion"],
+         "position": [5296, 528], "parameters": if_params(if_tpl, REDRAW)},
+        {"name": "Resume: Prepare Redraw", "type": "n8n-nodes-base.code", "typeVersion": code_v, "position": [5456, 368],
+         "parameters": {"jsCode": code("resume_prepare_redraw.js")}},
+        {"name": "cfg amend description", "type": cfg_tpl["type"], "typeVersion": cfg_tpl["typeVersion"], "position": [5616, 368],
+         "parameters": cfg_params(cfg_tpl, "2", "image_detail_planner", "amend_description")},
+        {"name": "image_detail_planner - amend_description", "type": ua_tpl["type"], "typeVersion": ua_tpl["typeVersion"],
+         "position": [5776, 368], "parameters": copy.deepcopy(ua_tpl["parameters"])},
+        {"name": "Resume: keep previous? (scaffold abort)", "type": if_tpl["type"], "typeVersion": if_tpl["typeVersion"],
+         "position": [2560, 592], "parameters": if_params(if_tpl, KEEP_ABORT)},
     ]
 
 
@@ -177,6 +219,10 @@ def main():
         set_assignment(by[name], "base64_img_string", SCAFFOLD % ("base64_img_string", "resume_scaffold_b64"))
         set_assignment(by[name], "base64_img_string_mime", SCAFFOLD % ("base64_img_string_mime", "resume_scaffold_mime"))
     set_assignment(by["cfg final review"], "TASK_ID", FINAL_REVIEW_TASK)
+    human_task = next(a["value"] for a in by["cfg human review"]["parameters"]["assignments"]["assignments"] if a["name"] == "TASK_ID")
+    if "inspection_manager" not in human_task or "human_review_reply" not in human_task:
+        raise SystemExit(f"cfg human review TASK_ID is not what this patch expects: {human_task}")
+    set_assignment(by["cfg human review"], "TASK_ID", HUMAN_REVIEW_TASK)
     patch_broadcast(by["Send Final Broadcast"])
 
     chain = ["Resume Trigger", "Resume: Load Job", "Resume: Respond OK", "Set API Key (resume)",
@@ -191,6 +237,18 @@ def main():
     link(conns, "After final log", 3, "Resume: keep previous? (abort)")
     link(conns, "Resume: keep previous? (abort)", 0, "Resume: Restore Completed")
     link(conns, "Resume: keep previous? (abort)", 1, "cfg final abort")
+    # Redraw the base diagram: a confirmed redraw request leaves the final gate as "rework".
+    unlink(conns, "After final log", 1, "Final corrections → reset retries")
+    link(conns, "After final log", 1, "Resume: redraw scaffold?")
+    link(conns, "Resume: redraw scaffold?", 0, "Resume: Prepare Redraw")
+    link(conns, "Resume: redraw scaffold?", 1, "Final corrections → reset retries")
+    for src, dst in zip(REDRAW_CHAIN, REDRAW_CHAIN[1:]):
+        link(conns, src, 0, dst)
+    # A stop at the redo's scaffold gate keeps the previous result, like a stop at the final gate.
+    unlink(conns, "After human log", 3, "cfg human abort")
+    link(conns, "After human log", 3, "Resume: keep previous? (scaffold abort)")
+    link(conns, "Resume: keep previous? (scaffold abort)", 0, "Resume: Restore Completed")
+    link(conns, "Resume: keep previous? (scaffold abort)", 1, "cfg human abort")
 
     body = {
         "name": before["name"],
@@ -206,8 +264,8 @@ def main():
     api("PUT", f"/workflows/{WORKFLOW_ID}", params={"publishIfActive": "false"}, json=body)
     after = api("GET", f"/workflows/{WORKFLOW_ID}")
 
-    # Verify: every pre-existing node is unchanged except the three we edited.
-    expected = ({"cfg25", "cfg26", "cfg final review", "Send Final Broadcast"}
+    # Verify: every pre-existing node is unchanged except the ones edited above.
+    expected = ({"cfg25", "cfg26", "cfg final review", "cfg human review", "Send Final Broadcast"}
                 | {n["name"] for n in build_new_nodes(before["nodes"])})
     old = {n["id"]: n for n in before["nodes"]}
     changed = [n["name"] for n in after["nodes"] if n["id"] in old
@@ -215,8 +273,7 @@ def main():
     problems = []
     if set(changed) - expected:
         problems.append(f"unexpected parameter changes: {sorted(set(changed) - expected)}")
-    missing = [n for n in chain + ["Resume: keep previous? (continue)", "Resume: keep previous? (abort)", "Resume: Restore Completed"]
-               if n not in {x["name"] for x in after["nodes"]}]
+    missing = [n["name"] for n in build_new_nodes(before["nodes"]) if n["name"] not in {x["name"] for x in after["nodes"]}]
     if missing:
         problems.append(f"nodes missing after save: {missing}")
     if after.get("activeVersionId") != before.get("activeVersionId"):
