@@ -6,6 +6,9 @@
   Current state (2026-11-04): review_bias, review_aesthetics, review_safety and check_overlaps already see no description (image_verifier and inspector have empty history scopes). detect_artifacts sees scaffolding_blueprint. verify_adherence, verify_perspective and review_math are given latest_description up front, and nobody writes a blind description to compare against.
   Why it matters: in the resume repaint test, the user asked for "only the counter colour"; the artist redrew the whole composition, and final_reporter still told the user "every other element was kept exactly as before". A blind description would have caught that.
 
+🔜- Image-edit route at the final gate: small, local changes (e.g. "make him smile instead of frown") applied as a direct edit of the finished illustration, keeping everything else pixel-stable, instead of a full img2img repaint over the scaffold, which redraws the whole composition. The Final Gatekeeper decides edit vs repaint (and vs base-diagram redraw).
+  Needs: a new edit task with its own wording; a decision on whether the editor also sees the scaffold (default: no, the final image only); and a blind check afterwards that nothing outside the requested change moved. This is the only route where an image model is shown a previous artist render, so keep it isolated from the normal artist tasks.
+
 scaffold stop trying to intelligently draw objects
 large text size? Web accessibility guidelines in terms of font size. 12 pt+
 need white bg or it looks like there's a square
