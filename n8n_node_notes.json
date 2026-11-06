@@ -412,7 +412,7 @@
       },
       "03084ead-e0e5-482f-9dda-009324540041": {
         "node": "Send Final Broadcast",
-        "note": "P6 REPORT · Code. | Completion payload to the state manager: final image from $('artist - render_final'), user message, transcript + a run_settings event (style/tiers, read by Resume). A failure here stops the run. | in: Phase 6 - Output | out: (end of run)"
+        "note": "P6 REPORT · Code. | Completion payload to the state manager: final image from $('artist - render_final'), user message, transcript + a run_settings event (style/tiers, read by Resume). Final image = last successful artist render or (resumed) spot edit. A failure here stops the run. | in: Phase 6 - Output | out: (end of run)"
       },
       "78817b78-1aa1-4082-b670-0bda05711f27": {
         "node": "valid",
@@ -856,7 +856,7 @@
       },
       "a08c7980-b09a-470e-a4b3-575ffae98409": {
         "node": "Final Gate: Announce",
-        "note": "P5 FINAL GATE (human) · Code. | Final-gate twin of Human Gate: Announce. Source: final_gate_announce.js. | in: Final review?, Final available?, Final decision, Final understood?, Resume: Rebuild State | out: Final Gate: Wait"
+        "note": "P5 FINAL GATE (human) · Code. | Final-gate twin of Human Gate: Announce. Source: final_gate_announce.js. | in: Final review?, Final available?, Final decision, Final understood?, Resume: Rebuild State, Resume: After Spot Edit | out: Final Gate: Wait"
       },
       "f7687371-814b-483d-ae71-055a7122fe05": {
         "node": "Final Gate: Wait",
@@ -900,7 +900,7 @@
       },
       "e2fc3c1c-2425-4ee2-8392-77ffff4bfbed": {
         "node": "Final corrections → reset retries",
-        "note": "P5 FINAL GATE (human) · Set: image_gen_retry_count, image_retry_directives, image_human_priority_directives. | Zeroes image_gen_retry_count and arms the human repaint directives; geometry is fixed at this stage. | in: Resume: redraw scaffold? | out: cfg25"
+        "note": "P5 FINAL GATE (human) · Set: image_gen_retry_count, image_retry_directives, image_human_priority_directives. | Zeroes image_gen_retry_count and arms the human repaint directives; geometry is fixed at this stage. | in: Resume: spot edit? | out: cfg25"
       },
       "481d31d2-16b8-4d56-884c-862da073fe24": {
         "node": "cfg final abort",
@@ -944,7 +944,7 @@
       },
       "90c4295c-d960-4275-8fda-a65ad46e5f36": {
         "node": "Resume: keep previous? (continue)",
-        "note": "P5 RESUME (finished job → final gate) · IF. | Resumed and the artist never ran → keep the previous result, no Phase 6. Otherwise the normal Phase 5 exit. | in: After final log | out: [true]Resume: Restore Completed, [false]Phase 5 - Output"
+        "note": "P5 RESUME (finished job → final gate) · IF. | Resumed and neither the artist nor the image editor ran → keep the previous result, no Phase 6. Otherwise the normal Phase 5 exit. | in: After final log | out: [true]Resume: Restore Completed, [false]Phase 5 - Output"
       },
       "3f60d5b5-f332-41e6-add2-4e64db9d8a12": {
         "node": "Resume: keep previous? (abort)",
@@ -956,7 +956,7 @@
       },
       "adb2369e-d2e8-4a8f-b00f-9a6d5d7af9c5": {
         "node": "Resume: redraw scaffold?",
-        "note": "P5 RESUME: REDRAW BASE DIAGRAM · IF. | Resumed job AND the Gatekeeper's resume variant set redraw_scaffold (human confirmed a base-diagram change) → redraw branch; otherwise the normal Final corrections. | in: After final log | out: [true]Resume: Prepare Redraw, [false]Final corrections → reset retries"
+        "note": "P5 RESUME: REDRAW BASE DIAGRAM · IF. | Resumed job AND the Gatekeeper's resume variant set redraw_scaffold (human confirmed a base-diagram change) → redraw branch; otherwise on to Resume: spot edit?. | in: After final log | out: [true]Resume: Prepare Redraw, [false]Resume: spot edit?"
       },
       "fb49b0b5-7c2d-4659-b5a1-ba501a13b1c2": {
         "node": "Resume: Prepare Redraw",
@@ -973,6 +973,22 @@
       "42adac14-be6d-4880-a0e2-3abc141dca64": {
         "node": "Resume: keep previous? (scaffold abort)",
         "note": "P5 RESUME: REDRAW BASE DIAGRAM · IF. | Resumed job: a stop at the redo's scaffold gate keeps the previous result; otherwise the normal UserAborted failure. | in: After human log | out: [true]Resume: Restore Completed, [false]cfg human abort"
+      },
+      "041e1436-d578-4c02-9375-92427310870d": {
+        "node": "Resume: spot edit?",
+        "note": "P5 RESUME: SPOT EDIT · IF. | Resumed job AND the Gatekeeper set spot_edit (one or two small local changes) → spot-edit branch; otherwise the normal repaint via Final corrections. | in: Resume: redraw scaffold? | out: [true]Resume: Prepare Spot Edit, [false]Final corrections → reset retries"
+      },
+      "49913807-d6b5-449e-80ad-892627733947": {
+        "node": "Resume: Prepare Spot Edit",
+        "note": "P5 RESUME: SPOT EDIT · Code. | Code cfg for image_editor.edit_final: picks the CURRENT image (last successful render or edit), posts a 'Spot edit N in a row' marker the Gatekeeper uses for the drift reminder. Source: resume_prepare_spot_edit.js. | in: Resume: spot edit? | out: image_editor - edit_final"
+      },
+      "677d5cdb-513b-4f67-b037-cf996f436eb7": {
+        "node": "image_editor - edit_final",
+        "note": "P5 RESUME: SPOT EDIT · Universal Agent call (set up by Resume: Prepare Spot Edit). | Edits the finished illustration with edit_instructions, keeping everything else (isolated agent, no history). Broadcasts the result to latest.png. | in: Resume: Prepare Spot Edit | out: Resume: After Spot Edit"
+      },
+      "e188cf5f-7c77-458f-9da0-017f49f2af43": {
+        "node": "Resume: After Spot Edit",
+        "note": "P5 RESUME: SPOT EDIT · Code. | Back to Final Gate: Announce (no Phase 5 review: the human reviews it). A failed edit leaves a final_gate note and the image unchanged. Source: resume_after_spot_edit.js. | in: image_editor - edit_final | out: Final Gate: Announce"
       }
     }
   }

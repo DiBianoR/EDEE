@@ -27,7 +27,12 @@ What it does (STRUCTURE.md, "Resume final review"):
                   counts final_review turns from that marker (normal runs: unchanged)
               cfg human review: counts human_review turns after the last scaffold_redo
                   marker (normal runs: unchanged)
-              Send Final Broadcast: appends the run_settings record
+              Send Final Broadcast: appends the run_settings record; final image = the last
+                  successful artist render or spot edit
+  spot edit   Resume: redraw scaffold? [false] → Resume: spot edit?
+                  [true]  → Resume: Prepare Spot Edit → image_editor - edit_final
+                            → Resume: After Spot Edit → Final Gate: Announce
+                  [false] → Final corrections → reset retries
 """
 
 import copy
@@ -60,10 +65,13 @@ HUMAN_REVIEW_TASK = ("={{ (() => { const ev = $json.session_events;"
                      " const start = ev.map(e => e.task).lastIndexOf('scaffold_redo');"
                      " return ev.slice(start + 1).some(e => e.author === 'inspection_manager' && String(e.task).startsWith('human_review'))"
                      " ? 'human_review_reply' : 'human_review_open'; })() }}")
-KEEP_CONTINUE = "={{ $('Resume: Rebuild State').isExecuted && !$('artist - render_final').isExecuted }}"
+KEEP_CONTINUE = ("={{ $('Resume: Rebuild State').isExecuted && !$('artist - render_final').isExecuted"
+                 " && !$('image_editor - edit_final').isExecuted }}")
 KEEP_ABORT = "={{ $('Resume: Rebuild State').isExecuted }}"
 REDRAW = "={{ $('Resume: Rebuild State').isExecuted && $json.session_state.redraw_scaffold === true }}"
 REDRAW_CHAIN = ["Resume: Prepare Redraw", "cfg amend description", "image_detail_planner - amend_description", "Route Workflow3"]
+SPOT_EDIT = "={{ $('Resume: Rebuild State').isExecuted && $json.session_state.spot_edit === true }}"
+SPOT_EDIT_CHAIN = ["Resume: Prepare Spot Edit", "image_editor - edit_final", "Resume: After Spot Edit", "Final Gate: Announce"]
 
 
 def if_params(template, expression):
@@ -125,6 +133,15 @@ def build_new_nodes(nodes):
          "position": [5776, 368], "parameters": copy.deepcopy(ua_tpl["parameters"])},
         {"name": "Resume: keep previous? (scaffold abort)", "type": if_tpl["type"], "typeVersion": if_tpl["typeVersion"],
          "position": [2560, 592], "parameters": if_params(if_tpl, KEEP_ABORT)},
+        # --- spot edit of the finished illustration (resumed jobs only) ---
+        {"name": "Resume: spot edit?", "type": if_tpl["type"], "typeVersion": if_tpl["typeVersion"],
+         "position": [5456, 208], "parameters": if_params(if_tpl, SPOT_EDIT)},
+        {"name": "Resume: Prepare Spot Edit", "type": "n8n-nodes-base.code", "typeVersion": code_v, "position": [5616, 208],
+         "parameters": {"jsCode": code("resume_prepare_spot_edit.js")}},
+        {"name": "image_editor - edit_final", "type": ua_tpl["type"], "typeVersion": ua_tpl["typeVersion"],
+         "position": [5776, 208], "parameters": copy.deepcopy(ua_tpl["parameters"])},
+        {"name": "Resume: After Spot Edit", "type": "n8n-nodes-base.code", "typeVersion": code_v, "position": [5936, 208],
+         "parameters": {"jsCode": code("resume_after_spot_edit.js")}},
     ]
 
 
@@ -172,18 +189,46 @@ BROADCAST_EDITS = [
     ("    session_events: events,\n    user_message: ss.user_message ?? null,",
      "    session_events: events,\n    events: [runSettingsEvent],       // into the doc's working transcript too\n"
      "    user_message: ss.user_message ?? null,"),
+    # Spot edits (resumed jobs): the final image is whichever of the artist's render and the
+    # image editor's edit succeeded LAST. Normal runs have no image_editor turns, so this
+    # resolves to the artist's last render exactly as before.
+    ("// Final render (artist output). Null-safe: nulls if the node never ran.\n"
+     "const artistJson = latestRun('artist - render_final');\n"
+     "const finalRender = {\n"
+     "    img:  artistJson?.base64_img_string || null,\n"
+     "    mime: artistJson?.base64_img_string_mime || null\n"
+     "};\n",
+     "// Final render. Normally the artist's last render. In a resumed job (\"Resume final review\")\n"
+     "// a spot edit can come after it, so the LAST successful image turn in the transcript decides\n"
+     "// which node's output is final; failing both, the image the job was resumed with. Normal\n"
+     "// runs have no image_editor turns, so this is the artist's last render, as before.\n"
+     "// Null-safe: nulls if nothing ran.\n"
+     "const lastImageTurn = [...events].reverse().find(e => e.status === \"ok\" &&\n"
+     "    ((e.author === \"artist\" && e.task === \"render_final\") || (e.author === \"image_editor\" && e.task === \"edit_final\")));\n"
+     "const resumedWith = latestRun('Resume: Rebuild State');\n"
+     "const imageJson = (lastImageTurn?.author === \"image_editor\" ? latestRun('image_editor - edit_final') : null)\n"
+     "    || latestRun('artist - render_final')\n"
+     "    || (resumedWith && { base64_img_string: resumedWith.resume_final_b64, base64_img_string_mime: resumedWith.resume_final_mime });\n"
+     "const finalRender = {\n"
+     "    img:  imageJson?.base64_img_string || null,\n"
+     "    mime: imageJson?.base64_img_string_mime || null\n"
+     "};\n"),
 ]
 
 
 def patch_broadcast(node):
+    """Apply each edit that isn't in the live code yet (re-runnable)."""
     code = node["parameters"]["jsCode"]
-    if "runSettingsEvent" in code:
-        return False
+    changed = False
     for old, new in BROADCAST_EDITS:
+        if new in code:
+            continue
         if code.count(old) != 1:
             raise SystemExit(f"Send Final Broadcast: expected exactly one occurrence of:\n{old}")
         code = code.replace(old, new)
+        changed = True
     node["parameters"]["jsCode"] = code
+    return changed
     return True
 
 
@@ -241,7 +286,13 @@ def main():
     unlink(conns, "After final log", 1, "Final corrections → reset retries")
     link(conns, "After final log", 1, "Resume: redraw scaffold?")
     link(conns, "Resume: redraw scaffold?", 0, "Resume: Prepare Redraw")
-    link(conns, "Resume: redraw scaffold?", 1, "Final corrections → reset retries")
+    # Not a redraw: a spot edit, or (normal case) the repaint via Final corrections.
+    unlink(conns, "Resume: redraw scaffold?", 1, "Final corrections → reset retries")
+    link(conns, "Resume: redraw scaffold?", 1, "Resume: spot edit?")
+    link(conns, "Resume: spot edit?", 0, "Resume: Prepare Spot Edit")
+    link(conns, "Resume: spot edit?", 1, "Final corrections → reset retries")
+    for src, dst in zip(SPOT_EDIT_CHAIN, SPOT_EDIT_CHAIN[1:]):
+        link(conns, src, 0, dst)
     for src, dst in zip(REDRAW_CHAIN, REDRAW_CHAIN[1:]):
         link(conns, src, 0, dst)
     # A stop at the redo's scaffold gate keeps the previous result, like a stop at the final gate.

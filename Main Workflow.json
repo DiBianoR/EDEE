@@ -3,12 +3,12 @@
   "name": "EDEE-main",
   "active": true,
   "isArchived": false,
-  "versionId": "d1cf8d70-57a2-4fbb-bd26-71448d813150",
-  "activeVersionId": "d1cf8d70-57a2-4fbb-bd26-71448d813150",
+  "versionId": "87e23f9e-b0c9-47f2-bbff-cc19339875d3",
+  "activeVersionId": "87e23f9e-b0c9-47f2-bbff-cc19339875d3",
   "triggerCount": 2,
-  "nodeCount": 265,
+  "nodeCount": 269,
   "createdAt": "2026-05-14T10:17:28.124Z",
-  "updatedAt": "2026-11-04T23:48:46.509Z",
+  "updatedAt": "2026-11-06T20:08:00.530Z",
   "settings": {
     "executionOrder": "v1",
     "binaryMode": "separate",
@@ -2744,7 +2744,7 @@
         ],
         [
           {
-            "node": "Final corrections → reset retries",
+            "node": "Resume: spot edit?",
             "type": "main",
             "index": 0
           }
@@ -2796,6 +2796,57 @@
         [
           {
             "node": "cfg human abort",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Resume: spot edit?": {
+      "main": [
+        [
+          {
+            "node": "Resume: Prepare Spot Edit",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Final corrections → reset retries",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Resume: Prepare Spot Edit": {
+      "main": [
+        [
+          {
+            "node": "image_editor - edit_final",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "image_editor - edit_final": {
+      "main": [
+        [
+          {
+            "node": "Resume: After Spot Edit",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Resume: After Spot Edit": {
+      "main": [
+        [
+          {
+            "node": "Final Gate: Announce",
             "type": "main",
             "index": 0
           }
@@ -6808,7 +6859,7 @@
       "id": "03084ead-e0e5-482f-9dda-009324540041",
       "name": "Send Final Broadcast",
       "notesInFlow": true,
-      "notes": "P6 REPORT · Code. | Completion payload to the state manager: final image from $('artist - render_final'), user message, transcript + a run_settings event (style/tiers, read by Resume). A failure here stops the run. | in: Phase 6 - Output | out: (end of run)",
+      "notes": "P6 REPORT · Code. | Completion payload to the state manager: final image from $('artist - render_final'), user message, transcript + a run_settings event (style/tiers, read by Resume). Final image = last successful artist render or (resumed) spot edit. A failure here stops the run. | in: Phase 6 - Output | out: (end of run)",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
@@ -6816,7 +6867,7 @@
         1568
       ],
       "parameters": {
-        "jsCode": "// =============================================================================\n// 📦 FINAL BROADCAST CONTRACT — the completion payload for the GUI stack.\n// \"Phase 6 - Output\" carries ONLY { config, session_state, session_events };\n// everything else is assembled HERE from direct node references. This node is\n// the single source of truth for what ships on completion.\n//\n// NAMING: the Firestore doc's working transcript (built turn by turn from nodes\n// 1 & 3's per-event broadcasts) is `session_events_incremental`. The FINISHED\n// transcript — this payload's `session_events` — is what ends up in the bucket\n// as {job_id}/session_events.json.\n//\n// DELIVERABLES and who consumes them:\n//   ritel-state-manager/main.py (/update-state → Firestore + GCS bucket):\n//    1. job_id                              REQUIRED — Firestore doc key\n//    2. status: \"completed\"                 routes the final image, deletes\n//                                           {job_id}/latest.png, and — as a\n//                                           terminal status — triggers the listener\n//                                           to materialize {job_id}/session_events.json\n//                                           from the doc's session_events_incremental\n//    3. base64_img_string (+ 4. _mime)      final render → {job_id}/final_illustration.png\n//    5. session_events                      one-shot finished transcript. NOT stored\n//                                           in the doc (listener pops it): fallback\n//                                           transcript source + debug cross-check\n//                                           against session_events_incremental\n//                                           (\"TRANSCRIPT MISMATCH\" in Cloud Run\n//                                           logs on divergence).\n//    6. total_cost                          top-level realtime field; node 3 already\n//                                           ships the running total every turn —\n//                                           this is the same sum, finalized\n//   ritel-frontend/app.py (via the Firestore doc; it renders\n//   session_events_incremental — the one-shot copy never reaches the doc):\n//    7. user_message                        chat panel (st.info)\n//    8. archival_report                     zip download: archival_report.txt\n//    9. latest_description                  metadata panel\n//   10. original_query                      metadata panel\n//   (+ generation_successful, timestamp, and the \"-\" phase/agent/task markers,\n//    which the frontend shows as generic metadata / completion state)\n//\n//   NOTE: scaffolding is NOT shipped here anymore — \"Archive Scaffolding\" pins\n//   {job_id}/scaffolding.png at the end of Phase 3 (real render or placeholder),\n//   and re-sending the same bytes doubled this payload for nothing.\n//\n// ⚠️ NEVER include `config` (contains api_keys) or api keys in the payload —\n//    the listener merges the entire payload into the Firestore job doc.\n// ⚠️ LOAD-BEARING, not fire-and-forget (same policy as nodes 1 & 3 now): if this\n//    POST fails, Firestore never learns the run completed — no final image, no\n//    transcript materialization, a zombie \"running\" doc — while the workflow\n//    would return a phantom \"Workflow Complete\". So a failure STOPS the run.\n// ⚠️ NEVER reach back by name with a bare .first()/.last()/.all(). Those pick the\n//    ITEM; the RUN is the second argument, and omitting it lets n8n choose — it\n//    resolves against THIS node's run index (0, since this node runs once), so on\n//    any retry loop you silently read the FIRST, REJECTED attempt. .item resolves\n//    the run correctly but doesn't exist in \"Run Once for All Items\" mode. Hence\n//    latestRun(): walk the runs and keep the last one that produced data.\n// =============================================================================\n\nconst latestRun = (nodeName) => {\n    let latest = null;\n    for (let run = 0; run < 50; run++) {   // cap is a sanity guard; real loops max at 3\n        let data;\n        try { data = $(nodeName).all(0, run); }\n        catch (e) { break; }               // past the last run, or node never executed\n        if (data && data.length) latest = data[data.length - 1].json;\n    }\n    return latest;                         // null = node never ran on this path\n};\n\nconst { config = {}, session_state: ss = {}, session_events: rawEvents = [] } =\n    latestRun('Phase 6 - Output') || {};\n\n// === 🏷️ RUN SETTINGS — launch choices baked into the config and otherwise lost ===\n// \"Resume final review\" (Resume: Load Job) reads the LAST run_settings event to rebuild\n// the config with the same style. Author \"run_settings\" is in no agent's history_scope,\n// so no agent ever sees it.\nconst runSettingsEvent = {\n    author: \"run_settings\",\n    task: \"run_settings\",\n    status: \"ok\",\n    parts: [{ text: JSON.stringify({\n        style_preference: config.style_preference ?? null,\n        max_text_tier: config.maximum_text_tier ?? null,\n        max_image_tier: config.maximum_image_tier ?? null\n    }) }],\n    timestamp: new Date().toISOString(),\n    model: \"none\",\n    cost: 0\n};\nconst events = [...rawEvents, runSettingsEvent];\n\n// Final render (artist output). Null-safe: nulls if the node never ran.\nconst artistJson = latestRun('artist - render_final');\nconst finalRender = {\n    img:  artistJson?.base64_img_string || null,\n    mime: artistJson?.base64_img_string_mime || null\n};\n\n// === 💸 TOTAL COST — sum of per-event model costs in the transcript ===\nconst totalCost = Number(\n    events.reduce((sum, ev) => sum + (ev.cost || 0), 0).toFixed(6)\n);\n\nconst finalPayload = {\n    job_id: config.job_id,\n    status: \"completed\",\n    timestamp: new Date().toISOString(),\n    phase_id: \"-\",\n    agent_id: \"-\",\n    task_id: \"-\",\n    total_cost: totalCost,\n    base64_img_string: finalRender.img,\n    base64_img_string_mime: finalRender.mime || \"image/png\",\n    session_events: events,\n    events: [runSettingsEvent],       // into the doc's working transcript too\n    user_message: ss.user_message ?? null,\n    archival_report: ss.archival_report ?? null,\n    generation_successful: ss.generation_successful ?? null,\n    latest_description: ss.latest_description ?? null,\n    original_query: ss.original_query ?? null\n};\n\n// Fire the completion payload to the Cloud Run listener\nif (config.enable_gui_logging === true && config.gui_webhook_url) {\n    try {\n        await this.helpers.httpRequest({\n            method: 'POST',\n            url: config.gui_webhook_url,\n            headers: { 'Content-Type': 'application/json' },\n            body: finalPayload,\n            json: true,\n            timeout: 30000   // heaviest POST of the run: final image + full transcript,\n                             // and the listener materializes session_events.json\n                             // before responding\n        });\n    } catch (e) {\n        throw new Error(`Final broadcast failed — completion NOT persisted: ${e.message}`);\n    }\n}\n\nreturn [{ json: {\n    status: \"Workflow Complete\",\n    job_id: config.job_id,\n    generation_successful: ss.generation_successful ?? null,\n    user_message: ss.user_message ?? null,\n    latest_description: ss.latest_description ?? null,\n    archival_report: ss.archival_report ?? null,\n    total_cost: totalCost,\n    session_events: events\n} }];"
+        "jsCode": "// =============================================================================\n// 📦 FINAL BROADCAST CONTRACT — the completion payload for the GUI stack.\n// \"Phase 6 - Output\" carries ONLY { config, session_state, session_events };\n// everything else is assembled HERE from direct node references. This node is\n// the single source of truth for what ships on completion.\n//\n// NAMING: the Firestore doc's working transcript (built turn by turn from nodes\n// 1 & 3's per-event broadcasts) is `session_events_incremental`. The FINISHED\n// transcript — this payload's `session_events` — is what ends up in the bucket\n// as {job_id}/session_events.json.\n//\n// DELIVERABLES and who consumes them:\n//   ritel-state-manager/main.py (/update-state → Firestore + GCS bucket):\n//    1. job_id                              REQUIRED — Firestore doc key\n//    2. status: \"completed\"                 routes the final image, deletes\n//                                           {job_id}/latest.png, and — as a\n//                                           terminal status — triggers the listener\n//                                           to materialize {job_id}/session_events.json\n//                                           from the doc's session_events_incremental\n//    3. base64_img_string (+ 4. _mime)      final render → {job_id}/final_illustration.png\n//    5. session_events                      one-shot finished transcript. NOT stored\n//                                           in the doc (listener pops it): fallback\n//                                           transcript source + debug cross-check\n//                                           against session_events_incremental\n//                                           (\"TRANSCRIPT MISMATCH\" in Cloud Run\n//                                           logs on divergence).\n//    6. total_cost                          top-level realtime field; node 3 already\n//                                           ships the running total every turn —\n//                                           this is the same sum, finalized\n//   ritel-frontend/app.py (via the Firestore doc; it renders\n//   session_events_incremental — the one-shot copy never reaches the doc):\n//    7. user_message                        chat panel (st.info)\n//    8. archival_report                     zip download: archival_report.txt\n//    9. latest_description                  metadata panel\n//   10. original_query                      metadata panel\n//   (+ generation_successful, timestamp, and the \"-\" phase/agent/task markers,\n//    which the frontend shows as generic metadata / completion state)\n//\n//   NOTE: scaffolding is NOT shipped here anymore — \"Archive Scaffolding\" pins\n//   {job_id}/scaffolding.png at the end of Phase 3 (real render or placeholder),\n//   and re-sending the same bytes doubled this payload for nothing.\n//\n// ⚠️ NEVER include `config` (contains api_keys) or api keys in the payload —\n//    the listener merges the entire payload into the Firestore job doc.\n// ⚠️ LOAD-BEARING, not fire-and-forget (same policy as nodes 1 & 3 now): if this\n//    POST fails, Firestore never learns the run completed — no final image, no\n//    transcript materialization, a zombie \"running\" doc — while the workflow\n//    would return a phantom \"Workflow Complete\". So a failure STOPS the run.\n// ⚠️ NEVER reach back by name with a bare .first()/.last()/.all(). Those pick the\n//    ITEM; the RUN is the second argument, and omitting it lets n8n choose — it\n//    resolves against THIS node's run index (0, since this node runs once), so on\n//    any retry loop you silently read the FIRST, REJECTED attempt. .item resolves\n//    the run correctly but doesn't exist in \"Run Once for All Items\" mode. Hence\n//    latestRun(): walk the runs and keep the last one that produced data.\n// =============================================================================\n\nconst latestRun = (nodeName) => {\n    let latest = null;\n    for (let run = 0; run < 50; run++) {   // cap is a sanity guard; real loops max at 3\n        let data;\n        try { data = $(nodeName).all(0, run); }\n        catch (e) { break; }               // past the last run, or node never executed\n        if (data && data.length) latest = data[data.length - 1].json;\n    }\n    return latest;                         // null = node never ran on this path\n};\n\nconst { config = {}, session_state: ss = {}, session_events: rawEvents = [] } =\n    latestRun('Phase 6 - Output') || {};\n\n// === 🏷️ RUN SETTINGS — launch choices baked into the config and otherwise lost ===\n// \"Resume final review\" (Resume: Load Job) reads the LAST run_settings event to rebuild\n// the config with the same style. Author \"run_settings\" is in no agent's history_scope,\n// so no agent ever sees it.\nconst runSettingsEvent = {\n    author: \"run_settings\",\n    task: \"run_settings\",\n    status: \"ok\",\n    parts: [{ text: JSON.stringify({\n        style_preference: config.style_preference ?? null,\n        max_text_tier: config.maximum_text_tier ?? null,\n        max_image_tier: config.maximum_image_tier ?? null\n    }) }],\n    timestamp: new Date().toISOString(),\n    model: \"none\",\n    cost: 0\n};\nconst events = [...rawEvents, runSettingsEvent];\n\n// Final render. Normally the artist's last render. In a resumed job (\"Resume final review\")\n// a spot edit can come after it, so the LAST successful image turn in the transcript decides\n// which node's output is final; failing both, the image the job was resumed with. Normal\n// runs have no image_editor turns, so this is the artist's last render, as before.\n// Null-safe: nulls if nothing ran.\nconst lastImageTurn = [...events].reverse().find(e => e.status === \"ok\" &&\n    ((e.author === \"artist\" && e.task === \"render_final\") || (e.author === \"image_editor\" && e.task === \"edit_final\")));\nconst resumedWith = latestRun('Resume: Rebuild State');\nconst imageJson = (lastImageTurn?.author === \"image_editor\" ? latestRun('image_editor - edit_final') : null)\n    || latestRun('artist - render_final')\n    || (resumedWith && { base64_img_string: resumedWith.resume_final_b64, base64_img_string_mime: resumedWith.resume_final_mime });\nconst finalRender = {\n    img:  imageJson?.base64_img_string || null,\n    mime: imageJson?.base64_img_string_mime || null\n};\n\n// === 💸 TOTAL COST — sum of per-event model costs in the transcript ===\nconst totalCost = Number(\n    events.reduce((sum, ev) => sum + (ev.cost || 0), 0).toFixed(6)\n);\n\nconst finalPayload = {\n    job_id: config.job_id,\n    status: \"completed\",\n    timestamp: new Date().toISOString(),\n    phase_id: \"-\",\n    agent_id: \"-\",\n    task_id: \"-\",\n    total_cost: totalCost,\n    base64_img_string: finalRender.img,\n    base64_img_string_mime: finalRender.mime || \"image/png\",\n    session_events: events,\n    events: [runSettingsEvent],       // into the doc's working transcript too\n    user_message: ss.user_message ?? null,\n    archival_report: ss.archival_report ?? null,\n    generation_successful: ss.generation_successful ?? null,\n    latest_description: ss.latest_description ?? null,\n    original_query: ss.original_query ?? null\n};\n\n// Fire the completion payload to the Cloud Run listener\nif (config.enable_gui_logging === true && config.gui_webhook_url) {\n    try {\n        await this.helpers.httpRequest({\n            method: 'POST',\n            url: config.gui_webhook_url,\n            headers: { 'Content-Type': 'application/json' },\n            body: finalPayload,\n            json: true,\n            timeout: 30000   // heaviest POST of the run: final image + full transcript,\n                             // and the listener materializes session_events.json\n                             // before responding\n        });\n    } catch (e) {\n        throw new Error(`Final broadcast failed — completion NOT persisted: ${e.message}`);\n    }\n}\n\nreturn [{ json: {\n    status: \"Workflow Complete\",\n    job_id: config.job_id,\n    generation_successful: ss.generation_successful ?? null,\n    user_message: ss.user_message ?? null,\n    latest_description: ss.latest_description ?? null,\n    archival_report: ss.archival_report ?? null,\n    total_cost: totalCost,\n    session_events: events\n} }];"
       }
     },
     {
@@ -11102,7 +11153,7 @@
       "id": "a08c7980-b09a-470e-a4b3-575ffae98409",
       "name": "Final Gate: Announce",
       "notesInFlow": true,
-      "notes": "P5 FINAL GATE (human) · Code. | Final-gate twin of Human Gate: Announce. Source: final_gate_announce.js. | in: Final review?, Final available?, Final decision, Final understood?, Resume: Rebuild State | out: Final Gate: Wait",
+      "notes": "P5 FINAL GATE (human) · Code. | Final-gate twin of Human Gate: Announce. Source: final_gate_announce.js. | in: Final review?, Final available?, Final decision, Final understood?, Resume: Rebuild State, Resume: After Spot Edit | out: Final Gate: Wait",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
@@ -11648,7 +11699,7 @@
       "id": "e2fc3c1c-2425-4ee2-8392-77ffff4bfbed",
       "name": "Final corrections → reset retries",
       "notesInFlow": true,
-      "notes": "P5 FINAL GATE (human) · Set: image_gen_retry_count, image_retry_directives, image_human_priority_directives. | Zeroes image_gen_retry_count and arms the human repaint directives; geometry is fixed at this stage. | in: Resume: redraw scaffold? | out: cfg25",
+      "notes": "P5 FINAL GATE (human) · Set: image_gen_retry_count, image_retry_directives, image_human_priority_directives. | Zeroes image_gen_retry_count and arms the human repaint directives; geometry is fixed at this stage. | in: Resume: spot edit? | out: cfg25",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.5,
       "position": [
@@ -12033,7 +12084,7 @@
       "id": "90c4295c-d960-4275-8fda-a65ad46e5f36",
       "name": "Resume: keep previous? (continue)",
       "notesInFlow": true,
-      "notes": "P5 RESUME (finished job → final gate) · IF. | Resumed and the artist never ran → keep the previous result, no Phase 6. Otherwise the normal Phase 5 exit. | in: After final log | out: [true]Resume: Restore Completed, [false]Phase 5 - Output",
+      "notes": "P5 RESUME (finished job → final gate) · IF. | Resumed and neither the artist nor the image editor ran → keep the previous result, no Phase 6. Otherwise the normal Phase 5 exit. | in: After final log | out: [true]Resume: Restore Completed, [false]Phase 5 - Output",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.3,
       "position": [
@@ -12051,7 +12102,7 @@
           "conditions": [
             {
               "id": "e8c822a7-078d-4ec5-b2ec-565a3a82f045",
-              "leftValue": "={{ $('Resume: Rebuild State').isExecuted && !$('artist - render_final').isExecuted }}",
+              "leftValue": "={{ $('Resume: Rebuild State').isExecuted && !$('artist - render_final').isExecuted && !$('image_editor - edit_final').isExecuted }}",
               "rightValue": "",
               "operator": {
                 "type": "boolean",
@@ -12120,7 +12171,7 @@
       "id": "adb2369e-d2e8-4a8f-b00f-9a6d5d7af9c5",
       "name": "Resume: redraw scaffold?",
       "notesInFlow": true,
-      "notes": "P5 RESUME: REDRAW BASE DIAGRAM · IF. | Resumed job AND the Gatekeeper's resume variant set redraw_scaffold (human confirmed a base-diagram change) → redraw branch; otherwise the normal Final corrections. | in: After final log | out: [true]Resume: Prepare Redraw, [false]Final corrections → reset retries",
+      "notes": "P5 RESUME: REDRAW BASE DIAGRAM · IF. | Resumed job AND the Gatekeeper's resume variant set redraw_scaffold (human confirmed a base-diagram change) → redraw branch; otherwise on to Resume: spot edit?. | in: After final log | out: [true]Resume: Prepare Redraw, [false]Resume: spot edit?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.3,
       "position": [
@@ -12269,6 +12320,102 @@
           "combinator": "and"
         },
         "options": {}
+      }
+    },
+    {
+      "id": "041e1436-d578-4c02-9375-92427310870d",
+      "name": "Resume: spot edit?",
+      "notesInFlow": true,
+      "notes": "P5 RESUME: SPOT EDIT · IF. | Resumed job AND the Gatekeeper set spot_edit (one or two small local changes) → spot-edit branch; otherwise the normal repaint via Final corrections. | in: Resume: redraw scaffold? | out: [true]Resume: Prepare Spot Edit, [false]Final corrections → reset retries",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        5456,
+        208
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "c8f6e615-26c5-49dd-bf17-7db0f9011672",
+              "leftValue": "={{ $('Resume: Rebuild State').isExecuted && $json.session_state.spot_edit === true }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "49913807-d6b5-449e-80ad-892627733947",
+      "name": "Resume: Prepare Spot Edit",
+      "notesInFlow": true,
+      "notes": "P5 RESUME: SPOT EDIT · Code. | Code cfg for image_editor.edit_final: picks the CURRENT image (last successful render or edit), posts a 'Spot edit N in a row' marker the Gatekeeper uses for the drift reminder. Source: resume_prepare_spot_edit.js. | in: Resume: spot edit? | out: image_editor - edit_final",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        5616,
+        208
+      ],
+      "parameters": {
+        "jsCode": "// =============================================================================\n// 🔁 RESUME: PREPARE SPOT EDIT  (Code node, \"Run Once for All Items\")\n//\n// Resumed jobs only. Reached from \"Resume: spot edit?\" when the Final Gatekeeper's resume\n// variant set spot_edit: one or two small, local changes to the finished illustration,\n// made by the image_editor agent (task edit_final) instead of a repaint over the scaffold.\n// Also acts as the cfg for that call (PHASE / AGENT / TASK + the image to edit).\n//\n// WHICH IMAGE: the current one, i.e. whichever of \"artist render_final\" and\n// \"image_editor edit_final\" succeeded LAST in the transcript. If that turn happened in the\n// job's history rather than in this execution, its node has no output here, and the image\n// the job was resumed with (Resume: Rebuild State) is that same image.\n//\n// DRIFT: every spot edit regenerates the image a little. The marker posted here says how\n// many have been applied in a row since the last full repaint; the Gatekeeper reads it and\n// reminds the human once two are in a row (rule in final_review_open_resume).\n// =============================================================================\n\nconst latestRun = (nodeName) => {\n    let latest = null;\n    for (let run = 0; run < 50; run++) {\n        let data;\n        try { data = $(nodeName).all(0, run); }\n        catch (e) { break; }\n        if (data && data.length) latest = data[data.length - 1].json;\n    }\n    return latest;\n};\n\nconst { config, session_state, session_events: events = [] } = items[0].json;\nconst instructions = String(session_state.edit_instructions || \"\").trim();\nif (!instructions) throw new Error(\"Resume: a spot edit was requested but edit_instructions is empty\");\n\nconst isRender = e => e.status === \"ok\" && e.author === \"artist\" && e.task === \"render_final\";\nconst isEdit = e => e.status === \"ok\" && e.author === \"image_editor\" && e.task === \"edit_final\";\n\nlet last = null, inARow = 0;\nfor (const e of events) {\n    if (isRender(e)) { last = \"artist\"; inARow = 0; }\n    else if (isEdit(e)) { last = \"editor\"; inARow++; }\n}\nconst fromNode = last === \"editor\" ? latestRun(\"image_editor - edit_final\")\n               : last === \"artist\" ? latestRun(\"artist - render_final\") : null;\nconst rebuilt = $(\"Resume: Rebuild State\").first().json;\nconst image = fromNode && fromNode.base64_img_string\n    ? { b64: fromNode.base64_img_string, mime: fromNode.base64_img_string_mime || \"image/png\" }\n    : { b64: rebuilt.resume_final_b64, mime: rebuilt.resume_final_mime || \"image/png\" };\nif (!image.b64) throw new Error(\"Resume: no current illustration found to edit\");\n\nconst n = inARow + 1;\nconst now = new Date().toISOString();\nconst marker = {\n    author: \"final_gate\",\n    task: \"spot_edit\",\n    status: \"ok\",\n    parts: [{ text: `Spot edit ${n} in a row since the last full repaint (spot edits regenerate the image slightly each time, so drift accumulates). Requested change:\\n${instructions}` }],\n    timestamp: now,\n    model: \"none\",\n    cost: 0,\n};\n\nif (config.enable_gui_logging === true && config.gui_webhook_url) {\n    await this.helpers.httpRequest({\n        method: \"POST\",\n        url: config.gui_webhook_url,\n        headers: { \"Content-Type\": \"application/json\" },\n        json: true,\n        timeout: 15000,\n        body: { job_id: config.job_id, status: \"running\", timestamp: now, phase_id: \"4\",\n                agent_id: \"final_gate\", task_id: \"spot_edit\", events: [marker] },\n    });\n}\n\nconst state = { ...session_state };\ndelete state.spot_edit;\ndelete state.redraw_scaffold;\n\nreturn [{ json: {\n    config,\n    session_state: state,\n    session_events: [...events, marker],\n    PHASE_ID: \"4\",\n    AGENT_ID: \"image_editor\",\n    TASK_ID: \"edit_final\",\n    base64_img_string: image.b64,\n    base64_img_string_mime: image.mime,\n} }];\n"
+      }
+    },
+    {
+      "id": "677d5cdb-513b-4f67-b037-cf996f436eb7",
+      "name": "image_editor - edit_final",
+      "notesInFlow": true,
+      "notes": "P5 RESUME: SPOT EDIT · Universal Agent call (set up by Resume: Prepare Spot Edit). | Edits the finished illustration with edit_instructions, keeping everything else (isolated agent, no history). Broadcasts the result to latest.png. | in: Resume: Prepare Spot Edit | out: Resume: After Spot Edit",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        5776,
+        208
+      ],
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "UReLQDgBIPpb9P4f",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/UReLQDgBIPpb9P4f",
+          "cachedResultName": "EDEE — Universal Agent Sub-Workflow"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "e188cf5f-7c77-458f-9da0-017f49f2af43",
+      "name": "Resume: After Spot Edit",
+      "notesInFlow": true,
+      "notes": "P5 RESUME: SPOT EDIT · Code. | Back to Final Gate: Announce (no Phase 5 review: the human reviews it). A failed edit leaves a final_gate note and the image unchanged. Source: resume_after_spot_edit.js. | in: image_editor - edit_final | out: Final Gate: Announce",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        5936,
+        208
+      ],
+      "parameters": {
+        "jsCode": "// =============================================================================\n// 🔁 RESUME: AFTER SPOT EDIT  (Code node, \"Run Once for All Items\")\n//\n// Back to the final gate after \"image_editor - edit_final\". On success the Universal\n// Agent has already broadcast the edited image to {job_id}/latest.png, so the gate shows\n// it. There is no Phase 5 review for a spot edit: the human looking at it IS the review.\n// If no image came back, a final_gate note says so (the Gatekeeper sees it in history)\n// and the gate reopens on the unchanged illustration.\n// =============================================================================\n\nconst out = items[0].json;\nconst { config, session_state, session_events: events = [] } = out;\nlet sessionEvents = events;\n\nif (out.agent_error || !out.base64_img_string) {\n    const now = new Date().toISOString();\n    const note = {\n        author: \"final_gate\",\n        task: \"spot_edit\",\n        status: \"ok\",\n        parts: [{ text: \"The spot edit failed: the image editor returned no image. The illustration is unchanged.\" }],\n        timestamp: now,\n        model: \"none\",\n        cost: 0,\n    };\n    sessionEvents = [...events, note];\n    if (config.enable_gui_logging === true && config.gui_webhook_url) {\n        await this.helpers.httpRequest({\n            method: \"POST\",\n            url: config.gui_webhook_url,\n            headers: { \"Content-Type\": \"application/json\" },\n            json: true,\n            timeout: 15000,\n            body: { job_id: config.job_id, status: \"running\", timestamp: now, phase_id: \"5\",\n                    agent_id: \"final_gate\", task_id: \"spot_edit\", events: [note] },\n        });\n    }\n}\n\n// The image stays off this item: Announce rebuilds the item without it anyway.\nreturn [{ json: {\n    config,\n    session_state,\n    session_events: sessionEvents,\n    human_stage: \"gate\",\n    human_reason: \"review\",\n} }];\n"
       }
     }
   ],

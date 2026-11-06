@@ -2534,19 +2534,56 @@ const FINAL_REVIEW_RESUME_SCHEMA = (() => {
   const s = JSON.parse(JSON.stringify(FINAL_REVIEW_SCHEMA));
   s.properties.redraw_scaffold = { "type": "BOOLEAN", "description": "True ONLY when the human wants something in the base diagram itself changed (positions, sizes, counts, dimensions, the labels drawn into it) AND has explicitly agreed to the full redraw after you explained what it involves. False otherwise, including while you are still asking." };
   s.properties.scaffold_changes = { "type": "STRING", "description": "When redraw_scaffold is true: the complete list of changes to the base diagram's geometry, counts, dimensions and labels, stated as how the diagram should be, precisely enough for a planner to rewrite the diagram description. Painting-only changes do NOT go here; they stay in fix_instructions. Empty string otherwise." };
-  s.required = [...s.required, "redraw_scaffold", "scaffold_changes"];
+  s.properties.spot_edit = { "type": "BOOLEAN", "description": "True when the agreed change will be made as a SPOT EDIT of the finished illustration (an image editor changes only the named details and keeps everything else as it is) instead of a repaint. Never true together with redraw_scaffold. False while you are still asking." };
+  s.properties.edit_instructions = { "type": "STRING", "description": "When spot_edit is true: exactly what to change, where in the picture, and what it should look like afterwards, e.g. 'the batter's mouth: change the frown to a gentle smile'. Only the requested changes; the editor is told separately to keep everything else. Empty string otherwise." };
+  s.required = [...s.required, "redraw_scaffold", "scaffold_changes", "spot_edit", "edit_instructions"];
   return s;
 })();
 
+// The three ways a reopened job's illustration can change, and how to choose. Used in rule 2
+// of final_review_open_resume and summarised in final_review_reply_resume.
+const RESUME_CHANGE_ROUTES = `\
+2. This finished job has been reopened, so a change can be made in one of three ways. Choose the lightest one that can do the job correctly, and say which you chose:
+   a) SPOT EDIT (spot_edit): an image editor changes only the named details of the finished illustration and keeps everything else as it is. Right for one or two small, local changes (an expression, a colour, a small object) that touch nothing whose shape, edges, angles, position, count or label has to be mathematically accurate. Each spot edit can drift the rest of the image a little: you get a note in your history after each one saying how many have been applied in a row. If two have already been applied in a row and the human asks for another, remind them that edits accumulate drift and suggest a repaint instead; do what they choose.
+   b) REPAINT (neither flag): the Artist repaints the whole illustration over the same base diagram. Right when the change is broad (style, lighting, many details), or when objects whose edges, angles or positions must be mathematically accurate have drifted away from the base diagram. A repaint can change things the human didn't mention, so say so.
+   c) REDRAW THE BASE DIAGRAM (redraw_scaffold): the diagram's geometry itself changes (positions, sizes, counts, dimensions, the labels drawn into it). The diagram description is amended, the base diagram is planned, coded and inspected again, the human reviews it, and then the illustration is repainted from scratch, which takes several minutes and repaints everything. Explain this and get the human's explicit confirmation before setting redraw_scaffold. Diagram changes go in scaffold_changes, painting-only changes in fix_instructions; a request can need both.
+   If the human asks for a particular route, use it. If their choice looks clearly wrong (for example a spot edit for a change to a measured length, or a full repaint for one small detail), explain why in one or two sentences and ask whether they're sure, then do what they decide. If you can't tell which route fits, ask them whether they'd like a spot edit or a repaint over the base diagram.`;
+
 tasks["final_review_open_resume"] = deriveTask("final_review_open",
   "2. Corrections go back to the Artist, who repaints over the same approved base diagram. Anything about how the picture is painted can change — objects, colours, style, background, detail, anything the Artist added. The underlying geometry cannot change at this stage: positions, sizes, counts, dimensions, and the labels drawn into the base diagram are fixed. If the human asks for one of those, say so plainly and ask whether to go ahead with the changes that can be made.",
-  "2. Painting corrections go back to the Artist, who repaints over the same base diagram: anything about how the picture is painted can change — objects, colours, style, background, detail, anything the Artist added. This finished job has been reopened, so the base diagram itself CAN also be redrawn: positions, sizes, counts, dimensions, and the labels drawn into it. That is a much bigger step: the diagram description is amended, the base diagram is planned, coded and inspected again, the human reviews the new base diagram, and then the illustration is repainted from scratch, which takes several minutes and repaints everything, not just the part they asked about. If the human asks for a change to the base diagram, tell them plainly what a redraw involves and ask them to confirm they want it before you set redraw_scaffold. Put the diagram changes in scaffold_changes and any painting-only changes in fix_instructions; a request can need both.",
+  RESUME_CHANGE_ROUTES,
   { schema: FINAL_REVIEW_RESUME_SCHEMA });
 
 tasks["final_review_reply_resume"] = deriveTask("final_review_reply",
   "the base diagram's geometry is fixed, so say so if they ask to change it;",
-  "changes to the base diagram's geometry, counts, dimensions or drawn labels need a full redraw, so explain what that involves and set redraw_scaffold only once they have confirmed it (diagram changes in scaffold_changes, painting changes in fix_instructions);",
+  "choose the lightest correct route (spot edit for one or two small local changes that touch nothing measured; repaint for broad changes or when accurate shapes have drifted from the base diagram; redraw the base diagram for geometry changes, only after explaining it and getting their confirmation), follow the human's choice of route but question one that looks clearly wrong, ask them if you can't tell, and remind them about accumulating drift if two spot edits have already been applied in a row (diagram changes in scaffold_changes, spot edits in edit_instructions, repaint changes in fix_instructions);",
   { schema: FINAL_REVIEW_RESUME_SCHEMA });
+
+// SPOT EDIT: a separate agent, so the normal artist tasks never see a previous render.
+// No history at all — it sees only the finished illustration and the instruction below.
+agents["image_editor"] = {
+  model_tier: "slow",
+  model_type: "img2img",
+  history_scope: [],
+  system_identity: `\
+You are a meticulous image retoucher. You make exactly the requested change to an existing illustration and leave every other pixel as it was: same composition, framing, aspect ratio, colours, lighting and art style. You never redraw, restyle, crop or re-frame an image.`
+};
+
+tasks["edit_final"] = {
+  assigned_agent: "image_editor",
+  instruction: `\
+Edit the attached illustration. Make ONLY these changes:
+"""
+{edit_instructions}
+"""
+
+Keep everything else exactly as it is in the attached image:
+- the same composition, framing, camera angle, aspect ratio and size;
+- every object's position, size, shape, edges and angles;
+- all text, numbers and labels, letter for letter;
+- the colours, lighting, shadows, textures and art style.
+Do not redraw, re-render, restyle, crop, zoom or re-frame the image. Change only the pixels the requested edit needs.`
+};
 
 tasks["amend_description"] = {
   assigned_agent: "image_detail_planner",

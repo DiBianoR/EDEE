@@ -560,3 +560,120 @@ Snapshot: `n8n_backups/2026-11-04_184410_after publishing redraw from resume/`
 | Universal Agent Sub-Workflow | `UReLQDgBIPpb9P4f` | `39099494-3efa-41e7-9947-497d28495346` | Version 39099494 | same as draft | Universal Agent Sub-Workflow.json |
 | EDEE Global Error Handler | `ef3RGC7luZyHzWgs` | `17d36c3c-72fb-4ce2-ba66-653f47f47387` | (unnamed) | not published | EDEE Global Error Handler.json |
 | EDEE - Control | `o7uM375uJZDnly9t` | `9a4aae08-e942-432c-9d7a-ae7d62936272` | Version 9a4aae08 | same as draft | Control.json |
+
+## 2026-11-06_140153 — before config.js push
+
+Snapshot: `n8n_backups/2026-11-06_140153_before config.js push/`
+
+| Workflow | Workflow ID | Draft version ID | Version name | Published | File |
+|---|---|---|---|---|---|
+| EDEE-main | `HtwI6u1ae2xwKw1f` | `d1cf8d70-57a2-4fbb-bd26-71448d813150` | (unnamed) | same as draft | Main Workflow.json |
+| Load Config Sub-workflow | `59k24tT721u3gsni` | `44499a51-ce16-4168-b7c9-26bb7706aae8` | (unnamed) | same as draft | Load Config Sub-workflow.json |
+| Test Orchestrator | `So6gmhxxUKhYV8oS` | `5236ed95-c1a4-4085-8227-b45305092800` | (unnamed) | not published | Test Orchestrator.json |
+| Universal Agent Sub-Workflow | `UReLQDgBIPpb9P4f` | `39099494-3efa-41e7-9947-497d28495346` | Version 39099494 | same as draft | Universal Agent Sub-Workflow.json |
+| EDEE Global Error Handler | `ef3RGC7luZyHzWgs` | `17d36c3c-72fb-4ce2-ba66-653f47f47387` | (unnamed) | not published | EDEE Global Error Handler.json |
+| EDEE - Control | `o7uM375uJZDnly9t` | `9a4aae08-e942-432c-9d7a-ae7d62936272` | Version 9a4aae08 | same as draft | Control.json |
+
+## 2026-11-06_140202 — after config.js push
+
+Snapshot: `n8n_backups/2026-11-06_140202_after config.js push/`
+
+| Workflow | Workflow ID | Draft version ID | Version name | Published | File |
+|---|---|---|---|---|---|
+| Load Config Sub-workflow | `59k24tT721u3gsni` | `e3cab72d-3502-40aa-b4cf-09d4fcfee04a` | (unnamed) | `44499a51-ce16-4168-b7c9-26bb7706aae8` (draft differs) | Load Config Sub-workflow.json |
+| EDEE-main | `HtwI6u1ae2xwKw1f` | `d1cf8d70-57a2-4fbb-bd26-71448d813150` | (unnamed) | same as draft | Main Workflow.json |
+| Test Orchestrator | `So6gmhxxUKhYV8oS` | `5236ed95-c1a4-4085-8227-b45305092800` | (unnamed) | not published | Test Orchestrator.json |
+| Universal Agent Sub-Workflow | `UReLQDgBIPpb9P4f` | `39099494-3efa-41e7-9947-497d28495346` | Version 39099494 | same as draft | Universal Agent Sub-Workflow.json |
+| EDEE Global Error Handler | `ef3RGC7luZyHzWgs` | `17d36c3c-72fb-4ce2-ba66-653f47f47387` | (unnamed) | not published | EDEE Global Error Handler.json |
+| EDEE - Control | `o7uM375uJZDnly9t` | `9a4aae08-e942-432c-9d7a-ae7d62936272` | Version 9a4aae08 | same as draft | Control.json |
+
+## 2026-11-06_140304 — before resume final review
+
+Snapshot: `n8n_backups/2026-11-06_140304_before resume final review/`
+
+| Workflow | Workflow ID | Draft version ID | Version name | Published | File |
+|---|---|---|---|---|---|
+| Load Config Sub-workflow | `59k24tT721u3gsni` | `e3cab72d-3502-40aa-b4cf-09d4fcfee04a` | (unnamed) | `44499a51-ce16-4168-b7c9-26bb7706aae8` (draft differs) | Load Config Sub-workflow.json |
+| EDEE-main | `HtwI6u1ae2xwKw1f` | `d1cf8d70-57a2-4fbb-bd26-71448d813150` | (unnamed) | same as draft | Main Workflow.json |
+| Test Orchestrator | `So6gmhxxUKhYV8oS` | `5236ed95-c1a4-4085-8227-b45305092800` | (unnamed) | not published | Test Orchestrator.json |
+| Universal Agent Sub-Workflow | `UReLQDgBIPpb9P4f` | `39099494-3efa-41e7-9947-497d28495346` | Version 39099494 | same as draft | Universal Agent Sub-Workflow.json |
+| EDEE Global Error Handler | `ef3RGC7luZyHzWgs` | `17d36c3c-72fb-4ce2-ba66-653f47f47387` | (unnamed) | not published | EDEE Global Error Handler.json |
+| EDEE - Control | `o7uM375uJZDnly9t` | `9a4aae08-e942-432c-9d7a-ae7d62936272` | Version 9a4aae08 | same as draft | Control.json |
+
+## 2026-11-06_140312 — after resume final review
+
+Snapshot: `n8n_backups/2026-11-06_140312_after resume final review/`
+
+| Workflow | Workflow ID | Draft version ID | Version name | Published | File |
+|---|---|---|---|---|---|
+| EDEE-main | `HtwI6u1ae2xwKw1f` | `69f536e1-8645-4e54-a386-6ffa91923c14` | (unnamed) | `d1cf8d70-57a2-4fbb-bd26-71448d813150` (draft differs) | Main Workflow.json |
+| Load Config Sub-workflow | `59k24tT721u3gsni` | `e3cab72d-3502-40aa-b4cf-09d4fcfee04a` | (unnamed) | `44499a51-ce16-4168-b7c9-26bb7706aae8` (draft differs) | Load Config Sub-workflow.json |
+| Test Orchestrator | `So6gmhxxUKhYV8oS` | `5236ed95-c1a4-4085-8227-b45305092800` | (unnamed) | not published | Test Orchestrator.json |
+| Universal Agent Sub-Workflow | `UReLQDgBIPpb9P4f` | `39099494-3efa-41e7-9947-497d28495346` | Version 39099494 | same as draft | Universal Agent Sub-Workflow.json |
+| EDEE Global Error Handler | `ef3RGC7luZyHzWgs` | `17d36c3c-72fb-4ce2-ba66-653f47f47387` | (unnamed) | not published | EDEE Global Error Handler.json |
+| EDEE - Control | `o7uM375uJZDnly9t` | `9a4aae08-e942-432c-9d7a-ae7d62936272` | Version 9a4aae08 | same as draft | Control.json |
+
+## 2026-11-06_140746 — before spot-edit notes
+
+Snapshot: `n8n_backups/2026-11-06_140746_before spot-edit notes/`
+
+| Workflow | Workflow ID | Draft version ID | Version name | Published | File |
+|---|---|---|---|---|---|
+| EDEE-main | `HtwI6u1ae2xwKw1f` | `69f536e1-8645-4e54-a386-6ffa91923c14` | (unnamed) | `d1cf8d70-57a2-4fbb-bd26-71448d813150` (draft differs) | Main Workflow.json |
+| Load Config Sub-workflow | `59k24tT721u3gsni` | `e3cab72d-3502-40aa-b4cf-09d4fcfee04a` | (unnamed) | `44499a51-ce16-4168-b7c9-26bb7706aae8` (draft differs) | Load Config Sub-workflow.json |
+| Test Orchestrator | `So6gmhxxUKhYV8oS` | `5236ed95-c1a4-4085-8227-b45305092800` | (unnamed) | not published | Test Orchestrator.json |
+| Universal Agent Sub-Workflow | `UReLQDgBIPpb9P4f` | `39099494-3efa-41e7-9947-497d28495346` | Version 39099494 | same as draft | Universal Agent Sub-Workflow.json |
+| EDEE Global Error Handler | `ef3RGC7luZyHzWgs` | `17d36c3c-72fb-4ce2-ba66-653f47f47387` | (unnamed) | not published | EDEE Global Error Handler.json |
+| EDEE - Control | `o7uM375uJZDnly9t` | `9a4aae08-e942-432c-9d7a-ae7d62936272` | Version 9a4aae08 | same as draft | Control.json |
+
+## 2026-11-06_140753 — before notes
+
+Snapshot: `n8n_backups/2026-11-06_140753_before notes/`
+
+| Workflow | Workflow ID | Draft version ID | Version name | Published | File |
+|---|---|---|---|---|---|
+| EDEE-main | `HtwI6u1ae2xwKw1f` | `69f536e1-8645-4e54-a386-6ffa91923c14` | (unnamed) | `d1cf8d70-57a2-4fbb-bd26-71448d813150` (draft differs) | Main Workflow.json |
+| Load Config Sub-workflow | `59k24tT721u3gsni` | `e3cab72d-3502-40aa-b4cf-09d4fcfee04a` | (unnamed) | `44499a51-ce16-4168-b7c9-26bb7706aae8` (draft differs) | Load Config Sub-workflow.json |
+| Test Orchestrator | `So6gmhxxUKhYV8oS` | `5236ed95-c1a4-4085-8227-b45305092800` | (unnamed) | not published | Test Orchestrator.json |
+| Universal Agent Sub-Workflow | `UReLQDgBIPpb9P4f` | `39099494-3efa-41e7-9947-497d28495346` | Version 39099494 | same as draft | Universal Agent Sub-Workflow.json |
+| EDEE Global Error Handler | `ef3RGC7luZyHzWgs` | `17d36c3c-72fb-4ce2-ba66-653f47f47387` | (unnamed) | not published | EDEE Global Error Handler.json |
+| EDEE - Control | `o7uM375uJZDnly9t` | `9a4aae08-e942-432c-9d7a-ae7d62936272` | Version 9a4aae08 | same as draft | Control.json |
+
+## 2026-11-06_140802 — after notes
+
+Snapshot: `n8n_backups/2026-11-06_140802_after notes/`
+
+| Workflow | Workflow ID | Draft version ID | Version name | Published | File |
+|---|---|---|---|---|---|
+| EDEE-main | `HtwI6u1ae2xwKw1f` | `87e23f9e-b0c9-47f2-bbff-cc19339875d3` | (unnamed) | `d1cf8d70-57a2-4fbb-bd26-71448d813150` (draft differs) | Main Workflow.json |
+| Load Config Sub-workflow | `59k24tT721u3gsni` | `e3cab72d-3502-40aa-b4cf-09d4fcfee04a` | (unnamed) | `44499a51-ce16-4168-b7c9-26bb7706aae8` (draft differs) | Load Config Sub-workflow.json |
+| Test Orchestrator | `So6gmhxxUKhYV8oS` | `5236ed95-c1a4-4085-8227-b45305092800` | (unnamed) | not published | Test Orchestrator.json |
+| Universal Agent Sub-Workflow | `UReLQDgBIPpb9P4f` | `39099494-3efa-41e7-9947-497d28495346` | Version 39099494 | same as draft | Universal Agent Sub-Workflow.json |
+| EDEE Global Error Handler | `ef3RGC7luZyHzWgs` | `17d36c3c-72fb-4ce2-ba66-653f47f47387` | (unnamed) | not published | EDEE Global Error Handler.json |
+| EDEE - Control | `o7uM375uJZDnly9t` | `9a4aae08-e942-432c-9d7a-ae7d62936272` | Version 9a4aae08 | same as draft | Control.json |
+
+## 2026-11-06_145627 — before publishing spot edits
+
+Snapshot: `n8n_backups/2026-11-06_145627_before publishing spot edits/`
+
+| Workflow | Workflow ID | Draft version ID | Version name | Published | File |
+|---|---|---|---|---|---|
+| EDEE-main | `HtwI6u1ae2xwKw1f` | `87e23f9e-b0c9-47f2-bbff-cc19339875d3` | (unnamed) | `d1cf8d70-57a2-4fbb-bd26-71448d813150` (draft differs) | Main Workflow.json |
+| Load Config Sub-workflow | `59k24tT721u3gsni` | `e3cab72d-3502-40aa-b4cf-09d4fcfee04a` | (unnamed) | `44499a51-ce16-4168-b7c9-26bb7706aae8` (draft differs) | Load Config Sub-workflow.json |
+| Test Orchestrator | `So6gmhxxUKhYV8oS` | `5236ed95-c1a4-4085-8227-b45305092800` | (unnamed) | not published | Test Orchestrator.json |
+| Universal Agent Sub-Workflow | `UReLQDgBIPpb9P4f` | `39099494-3efa-41e7-9947-497d28495346` | Version 39099494 | same as draft | Universal Agent Sub-Workflow.json |
+| EDEE Global Error Handler | `ef3RGC7luZyHzWgs` | `17d36c3c-72fb-4ce2-ba66-653f47f47387` | (unnamed) | not published | EDEE Global Error Handler.json |
+| EDEE - Control | `o7uM375uJZDnly9t` | `9a4aae08-e942-432c-9d7a-ae7d62936272` | Version 9a4aae08 | same as draft | Control.json |
+
+## 2026-11-06_145651 — after publishing spot edits
+
+Snapshot: `n8n_backups/2026-11-06_145651_after publishing spot edits/`
+
+| Workflow | Workflow ID | Draft version ID | Version name | Published | File |
+|---|---|---|---|---|---|
+| EDEE-main | `HtwI6u1ae2xwKw1f` | `87e23f9e-b0c9-47f2-bbff-cc19339875d3` | (unnamed) | same as draft | Main Workflow.json |
+| Load Config Sub-workflow | `59k24tT721u3gsni` | `e3cab72d-3502-40aa-b4cf-09d4fcfee04a` | (unnamed) | same as draft | Load Config Sub-workflow.json |
+| Test Orchestrator | `So6gmhxxUKhYV8oS` | `5236ed95-c1a4-4085-8227-b45305092800` | (unnamed) | not published | Test Orchestrator.json |
+| Universal Agent Sub-Workflow | `UReLQDgBIPpb9P4f` | `39099494-3efa-41e7-9947-497d28495346` | Version 39099494 | same as draft | Universal Agent Sub-Workflow.json |
+| EDEE Global Error Handler | `ef3RGC7luZyHzWgs` | `17d36c3c-72fb-4ce2-ba66-653f47f47387` | (unnamed) | not published | EDEE Global Error Handler.json |
+| EDEE - Control | `o7uM375uJZDnly9t` | `9a4aae08-e942-432c-9d7a-ae7d62936272` | Version 9a4aae08 | same as draft | Control.json |
