@@ -191,4 +191,30 @@
 - 'Control group' for evaluation; workflow with a single LLM request instead of our agents.
 
 *October
-- 
+- Second human review gate, on the finished illustration
+  - corrections send the artist back to repaint with a fresh retry budget, skipping the
+    machine troubleshooter - the human's corrections are the diagnosis
+  - while the final gate is open the carousel flips between the scaffolding and the new
+    render for side-by-side comparison, and the choice carries over when the run ends
+- Missing image is now recoverable instead of fatal
+  - image models could answer with text instead of a picture and still report success;
+    that used to crash the run. It now records a failure event.
+  - request image-only output so the model can't answer with text
+- Failed runs now show their work
+  - stock "the AI declined" and "render failed" images fill empty carousel slots, with
+    Gemini's refusal reason detected and distinguished from an error
+  - a failed run still shows whatever was produced before it stopped
+- Minimalist scaffolding definition
+  - new doctrine: the scaffold is the minimum usable diagram - only objects, quantities
+    and labels that are part of the problem; scenery, props, texture and cosmetic shading
+    are artist-only, and markings on an object are cut to what a student must read
+  - applied across the designer, the code planner and the coder
+  - previous version kept as a complete alternate config plus a saved change set, so the
+    two scaffolding approaches can be run against each other
+- Control-group batch testing: the Test Orchestrator takes a toggle that routes a whole
+  batch to either the full pipeline or the single-call control workflow
+- Evaluation results & paper plan
+  - full pipeline vs single-call control, 55 runs each, ~450 runs and ~$170 of generation
+  - Generated some rough numerical results for pipeline versus single call, real cost per usable diagram effects of two pass decomposition, etc.
+  - paper work plan written off those results; reference papers and prior draft collected
+- Logged the Firestore expiry situation: extended for now, archive-then-delete sweep as the preferred fix instead of a blind TTL deleter
