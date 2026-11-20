@@ -1,70 +1,110 @@
 🔜=priority  🛠=WIP  🌗=partway  ✔=Done
 
-✔- n8n "Connect AI assistants to build and run workflows" (instance MCP). Connected 2026-11-04; costs no gateway credits.
+SHORT-TERM
+
+[Candace 11/17] Generally, throughout the whole thing, use bigger, clearer fonts.
+
+[Candace 11/17] Be able to go back and use versions that have been rejected by the AI, if you really want to.
+
+[Candace 11/17] Make the chooser for art styles look nice and actually depict somehow what the art style looks like when you hover. Add a couple more options, as well as an open-ended option where you can specify the art style.
+
+[Candace 11/17] Be able to make small edits to scaffolding diagrams, without regenerating the diagrams.
+
+large text size? Web accessibility guidelines in terms of font size. 12 pt+
+
+need white bg or it looks like there's a square
+
+loved color coding - but accessibility
+
+- refrain from drawing elements that cross boundaries of geometric primitives; it's mildly confusing
+
+artist - try to avoid drawing anything "geometric" or "mathematical" that is unrelated to the problem, even if it's not a direct issue
+
+scaffold stop trying to intelligently draw objects
+
+plain diagrams simpler
+
+special instructions for rulers & tickmarks
+
+✔- "highly customizable products", cereal, soda, t-shirts, video games, tv show etc.
+  - double check that scaffolding and designer can't see it.
 
 🔜- Blind image review: at least one image-viewing agent should look at each render WITHOUT any description and write what it actually sees; a separate step then compares that against the intended description (latest_description / the human's corrections). General rule: keep image descriptions away from image-viewing agents. Let them view blind, then check against the description afterwards; where that isn't possible, think it through case by case.
   Current state (2026-11-04): review_bias, review_aesthetics, review_safety and check_overlaps already see no description (image_verifier and inspector have empty history scopes). detect_artifacts sees scaffolding_blueprint. verify_adherence, verify_perspective and review_math are given latest_description up front, and nobody writes a blind description to compare against.
   Why it matters: in the resume repaint test, the user asked for "only the counter colour"; the artist redrew the whole composition, and final_reporter still told the user "every other element was kept exactly as before". A blind description would have caught that.
 
-🌗- (Built for RESUMED jobs 2026-11-06: Gatekeeper picks spot edit / repaint / redraw; image_editor agent; drift reminder after 2 in a row. Still open: pixel-exact preservation — locate the edited region, then composite it onto the original in an image service — and the blind "nothing else moved" check; also offering it in normal runs.)
-  Image-edit route at the final gate: small, local changes (e.g. "make him smile instead of frown") applied as a direct edit of the finished illustration, keeping everything else pixel-stable, instead of a full img2img repaint over the scaffold, which redraws the whole composition. The Final Gatekeeper decides edit vs repaint (and vs base-diagram redraw).
-  Needs: a new edit task with its own wording; a decision on whether the editor also sees the scaffold (default: no, the final image only); and a blind check afterwards that nothing outside the requested change moved. This is the only route where an image model is shown a previous artist render, so keep it isolated from the normal artist tasks.
+🔜- user feedback mechanism
 
-scaffold stop trying to intelligently draw objects
-large text size? Web accessibility guidelines in terms of font size. 12 pt+
-need white bg or it looks like there's a square
-loved color coding - but accessibility
+User Feedback
+  choose between scaffolding or final
+  chance to give feedback after scaffolding, and again after final
+  multiple(3) scaffolding images -> multiple final images
+  frontend: st.components.v1.html is deprecated ("will be removed after 2026-06-01"), logs a warning every gate
+    it is what runs the typing beacon and the chime, because inline script needs parent-document access
+    st.iframe is the named replacement but takes a URL only; a data: URL iframe is cross-origin, so
+    window.parent is blocked and both features break. No clean migration yet - revisit before it is actually removed.
+  human review: the user's requests never reach the artist, and phase 5 quietly reverts them
+    artist history_scope is [artist, issue_aggregator] - never sees the conversation, the fix_instructions, or the gate decision
+    latest_description is last written in phase 2 (merge_plans/review_description); scaffolding_blueprint once by design_scaffolding
+    the human rework loop re-enters at cfg18 (plan_logic), downstream of both, so neither text is ever updated
+    => an added object (say the user asks for a bear) survives as scaffold PIXELS ONLY; every text the artist reads omits it
+    review_math and aggregate_feedback judge the final image against those same stale texts, and Simplicity penalizes extraneous detail
+    => likely flagged, rejected, and the retry loop tells the artist to remove what the user asked for - and the user is never told
+    issue_aggregator does see inspection_manager's half of the conversation but not the user's turns; one side of a dialogue
+    fix A (preferred): manager rewrites latest_description when a request is visible in the final image, same pattern +
+      STRICT wording as customizable_product_planning; fixes the artist and all phase-5 reviewers at once, no new plumbing
+    fix B (lower risk): {human_requests} var seeded "" and armed only after a conversation, into plan_finishing + verifier
+      prompts (same idiom as {situational_directives} / {human_priority_directives}, costs nothing on unattended runs)
 
-edit problem illustration
-simpler scaffolding
 automatic feedback
-jev
+
 When I'm reviewing the final image, I want to be able to use carousel to compare against scaffolding
 
-✔gemini+rubrics
-✔55 raw gemini
-2nd human review
-swap models in frontend
-enforce scale of objects
-plain diagrams simpler
+edit problem illustration
 
-🔜- paper draft
-🔜- user feedback mechanism
-🔜- look into multi-agent systems -> skills
-- refrain from drawing elements that cross boundaries of geometric primitives; it's mildly confusing
+simpler scaffolding
+
+2nd human review
+
+swap models in frontend
+
 - labels can be close to image edge, some kind of algorithmic final check maybe - ok for textbook? but looks bad in image
+
+remove redundancy between consolidate_* and troubleshoot
 
 ✔- improve aesthetic instructions - images are ugly, or follow original too much rather than morphing [artist: plan_finishing, render_final]
   ✔- look up best practices
   - put a professional quality image gen system prompt into artist. general image gen knowledge in system prompt plus specific task in user prompt gave good results elsewhere.
   - do some manually and use what we learn on artist
-✔- "highly customizable products", cereal, soda, t-shirts, video games, tv show etc.
-  - double check that scaffolding and designer can't see it.
-✔- debug where orange is getting classified artistic only
-✔- too much information - some give away solutions / give hints, or restate on a label what you can see at a glance [markup_specialist: plan_markings, image_detail_planner - merge_plans, review_description]
-✔- problem 1 - mice should not always be in separate groups, or a grid, or have a dotted line between groups
-✔no shadows in scaffolding
-✔no redundant labels
-✔automate review & correction process
-✔integrate rubricks into agents; try with/without rubrics
 
-- poor prompts
- - screen prompt / ask for feedback / improvement
- - Meta-Prompting / Prompt Expansion / Prompt Augmentation
-Streamline workflow states - The Standard "Core 8" States (status) + sub-state (step)
-It would be more efficient to stack many constrained fields in one agent rather than have multiple agents, any time information crossover isn't an issue(or is needed), we should do this more.
+🌗Work on failure review agents’ logic, keep them from wasting time in loops
+  ✔Update logic from my notes
+  ✔Limit retries on the same task to 3 max everywhere
+  Decide where review agents should just attempt to patch on the fly rather than full rewrite.
 
-remove redundancy between consolidate_* and troubleshoot
-✔revamping/scoping phase 4-5 properly
-special instructions for rulers & tickmarks
+Job browser in frontend
+  Short name for each job
 
-✔Prompt events aren't replayed. Node 1 logs every prompt with author: "system", and scoping is by author, so putting "system" in any scope pulls in every system prompt from the whole run. And we need alternating prompts so either way it's illegal right? I think the desired behavior is only include user prompts that are in scope if the reply is also in scope. And if we have replies next to each other because we decided to scope-out prompts; we need to squash everything into one turn like we are already doing in some cases.
+Matplotlib's default figure 4:3 aspect ratio. -> toggle or have system choose between 4:3 and square images
 
-✔I want a way to label user prompts author as "user" as well as "system"; depending on whether our system or the end user originated them
+✔Git with
+  Example results
+  Editable agent definitions
 
-✔QUEUE PROCESSING & CONTENT FLUSHING was supposed to reconstruct multi-turn history, but does it handle json responses properly? If it's a single response, I think the json is fine, but if it's part of a multi-turn flattened into one user prompt, how should we display it?
+jev
 
-✔Cost counter
+grids
+
+MID-TERM
+
+🔜- paper draft
+
+🔜- look into multi-agent systems -> skills
+
+🌗- (Built for RESUMED jobs 2026-11-06: Gatekeeper picks spot edit / repaint / redraw; image_editor agent; drift reminder after 2 in a row. Still open: pixel-exact preservation — locate the edited region, then composite it onto the original in an image service — and the blind "nothing else moved" check; also offering it in normal runs.)
+  Image-edit route at the final gate: small, local changes (e.g. "make him smile instead of frown") applied as a direct edit of the finished illustration, keeping everything else pixel-stable, instead of a full img2img repaint over the scaffold, which redraws the whole composition. The Final Gatekeeper decides edit vs repaint (and vs base-diagram redraw).
+  Needs: a new edit task with its own wording; a decision on whether the editor also sees the scaffold (default: no, the final image only); and a blind check afterwards that nothing outside the requested change moved. This is the only route where an image model is shown a previous artist render, so keep it isolated from the normal artist tasks.
+
 sharply cut run costs
   ✔cheap model by default
   🛠less context
@@ -79,6 +119,9 @@ work on managerial agents
   🛠go through and limit scope of all agents, put managers anywhere a lot of data needs to be synthesized, or jobs need to be re-planned after errors.
   🛠examine the workflow around each manager & apply DIRECTIVE_MANAGER if it makes sense
 
+🛠Empirical results - Would like 100 sample images of each sample problem, cost permitting. 10 of each is more realistic at current pricing.
+  ✔Batch processing
+
 chance to run without error 70%->90%
   good-enough result still beats a crash; cutting edge agents just give an apology too
   check logs for common failure modes
@@ -86,53 +129,6 @@ chance to run without error 70%->90%
   check in with user for feedback
   allow manager to modify query after failure[maybe; this is what a human would do]
 
-User Feedback
-  choose between scaffolding or final
-  chance to give feedback after scaffolding, and again after final
-  multiple(3) scaffolding images -> multiple final images
-  frontend: st.components.v1.html is deprecated ("will be removed after 2026-06-01"), logs a warning every gate
-    it is what runs the typing beacon and the chime, because inline script needs parent-document access
-    st.iframe is the named replacement but takes a URL only; a data: URL iframe is cross-origin, so
-    window.parent is blocked and both features break. No clean migration yet - revisit before it is actually removed.
-✔human review: 'Continue' and 'Give up' silently discard whatever is typed in the box
-    FIXED by the single-button gate: one box, one button, and the text is always sent.
-    The manager now decides approve/correct/stop from what you wrote (scaffold_acceptable_as_is,
-    user_wants_to_stop, fix_instructions), so there is no longer a button that throws the text away.
-  human review: the user's requests never reach the artist, and phase 5 quietly reverts them
-    artist history_scope is [artist, issue_aggregator] - never sees the conversation, the fix_instructions, or the gate decision
-    latest_description is last written in phase 2 (merge_plans/review_description); scaffolding_blueprint once by design_scaffolding
-    the human rework loop re-enters at cfg18 (plan_logic), downstream of both, so neither text is ever updated
-    => an added object (say the user asks for a bear) survives as scaffold PIXELS ONLY; every text the artist reads omits it
-    review_math and aggregate_feedback judge the final image against those same stale texts, and Simplicity penalizes extraneous detail
-    => likely flagged, rejected, and the retry loop tells the artist to remove what the user asked for - and the user is never told
-    issue_aggregator does see inspection_manager's half of the conversation but not the user's turns; one side of a dialogue
-    fix A (preferred): manager rewrites latest_description when a request is visible in the final image, same pattern +
-      STRICT wording as customizable_product_planning; fixes the artist and all phase-5 reviewers at once, no new plumbing
-    fix B (lower risk): {human_requests} var seeded "" and armed only after a conversation, into plan_finishing + verifier
-      prompts (same idiom as {situational_directives} / {human_priority_directives}, costs nothing on unattended runs)
-  
-🛠Empirical results - Would like 100 sample images of each sample problem, cost permitting. 10 of each is more realistic at current pricing.
-  ✔Batch processing
-
-Field test and tune: propose_diagram
-Get COMPOSITE_PRIMITIVES branch up and running
-
-🌗Add capabilities universal agent
-  ✔Route workflow(decide which branch to take)
-  ✔Close workflow(return success/failure and an explanation)
-  Pause workflow(wait for real time user feedback)
-  2-part tasks, ex. analysis with slow agent, reprint full code with fast agent
-🌗Work on failure review agents’ logic, keep them from wasting time in loops
-  ✔Update logic from my notes
-  ✔Limit retries on the same task to 3 max everywhere
-  Decide where review agents should just attempt to patch on the fly rather than full rewrite.
-Fallback models, for model unavailability(quota, outage, etc.)
-  ✔Toggle to use fast model
-✔Git with
-  Example results
-  Editable agent definitions
-Job browser in frontend
-  Short name for each job
 Let managers have more autonomy
   ✔DIRECTIVE_MANAGER="You are a manager. Your job is to review, synthesize, remove redundancies, review subordinates' decisions, address concerns, resolve conflicts/contradictions, double check correctness, and make the final call."
   Failure loop detection and handling
@@ -145,35 +141,58 @@ Let managers have more autonomy
   ✔Let them leave warning and error messages for user if there is an issue
   ✔Let them write to a log about issues they noticed with subordinates, for iterative process improvement later.
 
-artist - try to avoid drawing anything "geometric" or "mathematical" that is unrelated to the problem, even if it's not a direct issue
+🌗Add capabilities universal agent
+  ✔Route workflow(decide which branch to take)
+  ✔Close workflow(return success/failure and an explanation)
+  Pause workflow(wait for real time user feedback)
+  2-part tasks, ex. analysis with slow agent, reprint full code with fast agent
 
-Matplotlib's default figure 4:3 aspect ratio. -> toggle or have system choose between 4:3 and square images
+Fallback models, for model unavailability(quota, outage, etc.)
+  ✔Toggle to use fast model
 
-Agent Improvement/fixes
+enforce scale of objects
+
+Get COMPOSITE_PRIMITIVES branch up and running
+
 finish DIRECT_IMAGE_GEN route
+
 New situational planning
   Isolate 3d/2d/isometric early
     Fix wording throughout the workflow
   Distinguish between simple and complex 3d objects
-Study and integrate paper banana - feature matching
-Test how well image readers perceive different issues
-Ask grad students to list failure modes
-Revise System Architecture and Components - finish top level add sub diagrams / details
+
+- poor prompts
+ - screen prompt / ask for feedback / improvement
+ - Meta-Prompting / Prompt Expansion / Prompt Augmentation
+
+Streamline workflow states - The Standard "Core 8" States (status) + sub-state (step)
+
+It would be more efficient to stack many constrained fields in one agent rather than have multiple agents, any time information crossover isn't an issue(or is needed), we should do this more.
+
+Field test and tune: propose_diagram
+
+artist creativity step
+
 OpenAI text prompts. Right now openai is img2img only(/v1/images/edits), which takes a flat prompt string, so Node 1's forceFlatten squashes all history into one labeled user turn. To use openai for text/view_img we'd need a contents->messages translation(role model->assistant, systemInstruction->system message, inlineData->image_url parts) alongside the existing image translation. forceFlatten is already gated on modelType==="img2img" so it stays off for the chat path; the queue processor would emit proper alternating turns as-is.
+
+Study and integrate paper banana - feature matching
+
+Test how well image readers perceive different issues
+
+Ask grad students to list failure modes
+
+Revise System Architecture and Components - finish top level add sub diagrams / details
+
+Agent Improvement/fixes
+
+LONG-TERM
+
 Experiment with coteach
   - Closed source vs. our open source
   - Limited application to proprietary materials
   - No information suggesting they are pursuing grants
   - No information suggesting they are pursuing research into effectiveness, etc.
   - Quick development suggests lack of barriers to develop similar features
-
-
-✔ruler / tape measure specific rules
-✔- improve aesthetic review, concentrating on things other than beauty atm, downside is it's costly if we have to redraw [image_verifier: review_aesthetics]
-✔- enforce shapes better [dimension_expert: estimate_dimensions, 3d_specialist: plan_3d, image_detail_planner: merge_plans, review_description, scaffolding_designer: design_scaffolding]
-artist creativity step
-grids
-✔fix misrouted as artistic image
 
 Automate Firestore expiry (not urgent - nothing is expiring right now)
   - TTL is currently OFF; bucket lifetime extended to 360 days, and the Google Sheet
@@ -187,3 +206,50 @@ Automate Firestore expiry (not urgent - nothing is expiring right now)
   - Alternative to raw TTL: scheduled archive-then-delete sweep (Cloud Scheduler -> Cloud
     Run, reusing POST /archive-incremental/{job_id}), so nothing gets deleted that wasn't
     archived first. TTL is a blind deleter; a sweep can enforce the ordering
+
+FINISHED
+
+✔- n8n "Connect AI assistants to build and run workflows" (instance MCP). Connected 2026-11-04; costs no gateway credits.
+
+✔gemini+rubrics
+
+✔55 raw gemini
+
+✔- debug where orange is getting classified artistic only
+
+✔- too much information - some give away solutions / give hints, or restate on a label what you can see at a glance [markup_specialist: plan_markings, image_detail_planner - merge_plans, review_description]
+
+✔- problem 1 - mice should not always be in separate groups, or a grid, or have a dotted line between groups
+
+✔no shadows in scaffolding
+
+✔no redundant labels
+
+✔automate review & correction process
+
+✔integrate rubricks into agents; try with/without rubrics
+
+✔revamping/scoping phase 4-5 properly
+
+✔Prompt events aren't replayed. Node 1 logs every prompt with author: "system", and scoping is by author, so putting "system" in any scope pulls in every system prompt from the whole run. And we need alternating prompts so either way it's illegal right? I think the desired behavior is only include user prompts that are in scope if the reply is also in scope. And if we have replies next to each other because we decided to scope-out prompts; we need to squash everything into one turn like we are already doing in some cases.
+
+✔I want a way to label user prompts author as "user" as well as "system"; depending on whether our system or the end user originated them
+
+✔QUEUE PROCESSING & CONTENT FLUSHING was supposed to reconstruct multi-turn history, but does it handle json responses properly? If it's a single response, I think the json is fine, but if it's part of a multi-turn flattened into one user prompt, how should we display it?
+
+✔Cost counter
+
+✔human review: 'Continue' and 'Give up' silently discard whatever is typed in the box
+    FIXED by the single-button gate: one box, one button, and the text is always sent.
+    The manager now decides approve/correct/stop from what you wrote (scaffold_acceptable_as_is,
+    user_wants_to_stop, fix_instructions), so there is no longer a button that throws the text away.
+
+✔ruler / tape measure specific rules
+
+✔- improve aesthetic review, concentrating on things other than beauty atm, downside is it's costly if we have to redraw [image_verifier: review_aesthetics]
+
+✔- enforce shapes better [dimension_expert: estimate_dimensions, 3d_specialist: plan_3d, image_detail_planner: merge_plans, review_description, scaffolding_designer: design_scaffolding]
+
+✔fix misrouted as artistic image
+
+OUTDATED
