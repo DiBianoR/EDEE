@@ -728,14 +728,23 @@ if not st.session_state.job_id:
 
 st.markdown("""
 <style>
-  .block-container { padding-top: 2.4rem !important; padding-bottom: 1rem; }
-  .edee-title { font-size: 1.9rem; font-weight: 700; letter-spacing: -0.01em; margin: 0; }
-  .edee-sub { opacity: .85; margin: 0 0 .6rem 0; font-size: 1.05rem; }
-  /* Readability floor: nothing below ~14px, and less fading. Streamlit's own widget labels and
-     captions are fixed at 14px (they ignore the root font size), so they're raised here. */
-  [data-testid="stWidgetLabel"] p, [data-testid="stWidgetLabel"] label { font-size: 1rem !important; font-weight: 600; }
-  [data-testid="stCaptionContainer"], [data-testid="stCaptionContainer"] p { font-size: .95rem !important; color: inherit !important; opacity: .78; }
-  .pill { display:inline-block; padding: 2px 10px; border-radius: 999px; font-size: .9rem; font-weight: 600; letter-spacing:.02em; }
+  /* Narrow side margins: Streamlit's wide layout pads the main area by 5rem a side, which
+     the text needs more than the white space does. */
+  .block-container { padding-top: 2.4rem !important; padding-bottom: 1rem; padding-left: 1.75rem !important; padding-right: 1.75rem !important; max-width: none !important; }
+  .edee-title { font-size: 2.3rem; font-weight: 700; letter-spacing: -0.01em; margin: 0; }
+  .edee-sub { opacity: .85; margin: 0 0 .8rem 0; font-size: 1.2rem; }
+  /* Text sizes. Streamlit's own widget labels and captions are fixed at 14px (they ignore the
+     root font size), so everything Streamlit draws is set explicitly here. Body text 17.6px,
+     nothing below ~15px, and less fading. */
+  [data-testid="stMarkdownContainer"] p, [data-testid="stMarkdownContainer"] li { font-size: 1.1rem; }
+  [data-testid="stWidgetLabel"] p, [data-testid="stWidgetLabel"] label { font-size: 1.12rem !important; font-weight: 600; }
+  [data-testid="stCaptionContainer"], [data-testid="stCaptionContainer"] p { font-size: 1.05rem !important; color: inherit !important; opacity: .8; }
+  textarea { font-size: 1.12rem !important; line-height: 1.5 !important; }
+  [data-baseweb="select"] div { font-size: 1.08rem; }
+  button p { font-size: 1.1rem !important; }
+  button[kind="primary"] p, button[kind="primaryFormSubmit"] p { font-size: 1.2rem !important; font-weight: 700; }
+  [data-testid="stAlert"] p { font-size: 1.15rem; line-height: 1.55; }
+  .pill { display:inline-block; padding: 3px 12px; border-radius: 999px; font-size: 1.02rem; font-weight: 600; letter-spacing:.02em; }
   .pill.idle { background: rgba(107,114,128,.18); }
   .pill.running { background: rgba(37,99,235,.18); color:#2563eb; }
   .pill.awaiting_human { background: rgba(202,138,4,.2); color:#b45309; }
@@ -743,44 +752,46 @@ st.markdown("""
   .pill.failed { background: rgba(220,38,38,.18); color:#b91c1c; }
   .pill.starting { background: rgba(37,99,235,.12); color:#2563eb; }
   .stepper { display:flex; gap:4px; margin: 6px 0 10px 0; }
-  .step { flex:1; text-align:center; font-size:.85rem; line-height:1.25; padding:5px 2px; border-radius:6px; background: rgba(120,120,120,.12); opacity:.8; }
+  .step { flex:1; text-align:center; font-size:1rem; line-height:1.25; padding:7px 3px; border-radius:6px; background: rgba(120,120,120,.12); opacity:.8; }
   .step.done { background: rgba(22,163,74,.18); opacity:1; }
   .step.active { background: rgba(37,99,235,.22); opacity:1; font-weight:700; box-shadow: inset 0 0 0 1px rgba(37,99,235,.5); }
   .step.failed { background: rgba(220,38,38,.2); opacity:1; }
-  .meta { font-size:.92rem; opacity:.9; }
+  .meta { font-size:1.05rem; opacity:.9; }
   .logbox { height: 72vh; min-height: 420px; overflow-y: auto; display:flex; flex-direction: column-reverse;
             border-radius: 10px; border: 1px solid rgba(128,128,128,.25); background: rgba(128,128,128,.06); }
   .loginner { padding: 12px; display:flex; flex-direction:column; gap:10px; }
   .card { border-left: 4px solid var(--c); border-radius: 8px; background: color-mix(in srgb, var(--c) 9%, transparent); padding: 8px 12px 10px 12px; }
   .card.pending { opacity:.85; }
   .card.human { border-left-width: 6px; background: color-mix(in srgb, var(--c) 16%, transparent); }
-  .card .hdr { display:flex; flex-wrap:wrap; align-items:center; gap:6px 10px; font-size:1rem; margin-bottom:6px; }
+  .card .hdr { display:flex; flex-wrap:wrap; align-items:center; gap:6px 10px; font-size:1.12rem; margin-bottom:6px; }
   .card .who { font-weight:700; color: var(--c); }
-  .chip { font-size:.86rem; padding:1px 7px; border-radius:6px; background: rgba(128,128,128,.18); font-family: ui-monospace, monospace; }
+  .chip { font-size:.95rem; padding:1px 8px; border-radius:6px; background: rgba(128,128,128,.18); font-family: ui-monospace, monospace; }
   .chip.model { background: rgba(37,99,235,.15); }
   .chip.none { background: rgba(202,138,4,.18); }
   .chip.cost { background: rgba(22,163,74,.15); }
   .chip.time { background: transparent; opacity:.65; }
-  .field { margin: 4px 0; font-size:1rem; line-height:1.55; }
+  .field { margin: 5px 0; font-size:1.12rem; line-height:1.6; }
   .field .k { font-weight:600; opacity:.85; margin-right:6px; }
   .field .block { white-space: pre-wrap; word-break: break-word; margin-top:2px; }
-  .field pre { white-space: pre-wrap; word-break: break-word; font-size:.9rem; margin: 4px 0; padding: 8px; border-radius:6px; background: rgba(0,0,0,.25); }
-  .bool { display:inline-block; padding:1px 8px; border-radius:6px; font-size:.88rem; font-weight:600; }
+  .field pre { white-space: pre-wrap; word-break: break-word; font-size:1rem; margin: 4px 0; padding: 8px; border-radius:6px; background: rgba(0,0,0,.25); }
+  .bool { display:inline-block; padding:1px 8px; border-radius:6px; font-size:.98rem; font-weight:600; }
   .bool.t { background: rgba(22,163,74,.2); color:#15803d; } .bool.f { background: rgba(220,38,38,.2); color:#b91c1c; }
-  details.inst { margin: 2px 0 6px 0; font-size:.92rem; }
+  details.inst { margin: 2px 0 6px 0; font-size:1.02rem; }
   details.inst summary { cursor:pointer; opacity:.85; }
   details.inst .block { white-space: pre-wrap; word-break: break-word; opacity:.8; padding: 6px 8px; border-left: 2px dashed rgba(128,128,128,.4); margin-top:4px; max-height: 320px; overflow:auto; }
-  .divider { text-align:center; font-size:.85rem; letter-spacing:.08em; text-transform:uppercase; opacity:.8; margin: 6px 0 -2px 0; }
+  .divider { text-align:center; font-size:.95rem; letter-spacing:.08em; text-transform:uppercase; opacity:.8; margin: 6px 0 -2px 0; }
   .thinking::after { content: "…"; animation: dots 1.2s steps(4,end) infinite; }
   @keyframes dots { 0%{content:""} 25%{content:"."} 50%{content:".."} 75%{content:"..."} }
-  .bubble { border-radius: 12px; padding: 8px 12px; margin: 6px 0; font-size:1.02rem; line-height:1.5; max-width: 95%; }
+  .bubble { border-radius: 12px; padding: 8px 12px; margin: 6px 0; font-size:1.15rem; line-height:1.5; max-width: 95%; }
   .bubble.me { background: rgba(202,138,4,.18); margin-left:auto; }
   .bubble.mgr { background: rgba(194,65,12,.14); }
-  .bubble .tag { font-size:.82rem; font-weight:700; opacity:.85; display:block; margin-bottom:2px; }
-  .countdown { font-variant-numeric: tabular-nums; font-weight:700; }
-  .gatebox { border: 1px solid rgba(202,138,4,.5); border-radius: 10px; padding: 10px 14px; background: rgba(202,138,4,.08); margin-bottom: 8px; }
+  .bubble .tag { font-size:.92rem; font-weight:700; opacity:.85; display:block; margin-bottom:2px; }
+  /* What the human must act on gets the most weight: the review prompt and its countdown. */
+  .countdown { font-variant-numeric: tabular-nums; font-weight:700; font-size: 1.35rem; }
+  .gatebox { border: 2px solid rgba(202,138,4,.6); border-radius: 12px; padding: 14px 18px; background: rgba(202,138,4,.1); margin-bottom: 10px; font-size: 1.22rem; line-height: 1.5; }
   /* Narrow screens: the stepper wraps to two rows of three rather than shrinking the text. */
-  @media (max-width: 800px) { .logbox { height: 55vh; } .stepper { flex-wrap: wrap; } .step { flex: 1 1 30%; } }
+  @media (max-width: 800px) { .logbox { height: 55vh; } .stepper { flex-wrap: wrap; } .step { flex: 1 1 30%; }
+    .edee-title { font-size: 1.75rem; line-height: 1.2; } .block-container { padding-left: 1rem !important; padding-right: 1rem !important; } }
 </style>
 """, unsafe_allow_html=True)
 
@@ -876,7 +887,7 @@ st.markdown("<div class='edee-title'>📐 EDEE — Educational Diagram Generator
             "<div class='edee-sub'>Word problem in, mathematically exact illustration out — watch the agents think.</div>",
             unsafe_allow_html=True)
 
-col1, col2 = st.columns([1, 1], gap="large")
+col1, col2 = st.columns([1, 1], gap="medium")
 with col1:
     user_query = st.text_area("Math problem and/or illustration request", height=140,
                               placeholder="Problem: A farmer's rectangular field is 12 m by 8 m ...\n\nIllustration: (optional) what you'd like drawn")
