@@ -229,3 +229,6 @@ notes/paper/
 
 # Local n8n snapshots from n8n_backup.py (contain API keys)
 n8n_backups/
+
+# Local UI comparison screenshots
+notes/screenshots/
