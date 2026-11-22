@@ -2,7 +2,10 @@
 
 SHORT-TERM
 
-[Candace 11/17] Make the chooser for art styles look nice and actually depict somehow what the art style looks like when you hover. Add a couple more options, as well as an open-ended option where you can specify the art style.
+✔[Candace 11/17] Make the chooser for art styles look nice and actually depict somehow what the art style looks like when you hover. Add a couple more options, as well as an open-ended option where you can specify the art style.
+    ✔ More options: emoji, paper_cutout, colored_pencil (11/22)
+    ✔ Open-ended option: "✏️ Describe your own…" → n8n "EDEE - Style Convert" (11/22). Not yet tried in a full real run or a resume.
+    ✔ Chooser: a 3×3 grid of picture tiles (Fluffy the poodle in each style), with a bigger picture on hover (11/22). Source images in ritel-frontend/style_previews_source/.
 
 [Candace 11/17] Be able to make small edits to scaffolding diagrams, without regenerating the diagrams.
 

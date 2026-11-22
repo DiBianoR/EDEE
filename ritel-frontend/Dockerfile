@@ -8,6 +8,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY app.py .
 COPY demo/ ./demo/
+# Style chooser pictures (sized copies only; the originals in style_previews_source/ stay in git)
+COPY style_previews/ ./style_previews/
 
 EXPOSE 8080
 

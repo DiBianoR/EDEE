@@ -70,6 +70,16 @@ STYLE_OPTIONS = ["casual_mobile", "storybook", "cel_shaded_anime", "claymation_d
 # same two strings a config.js preset has, and they travel in the launch payload as
 # custom_style. The strings themselves are never shown, only the label and any notes.
 CUSTOM_STYLE = "custom"
+STYLE_NAMES = {"casual_mobile": "Casual mobile game", "storybook": "Storybook", "cel_shaded_anime": "Cel-shaded anime",
+               "claymation_diorama": "Claymation diorama", "mid_century_modern": "Mid-century modern", "emoji": "Emoji",
+               "paper_cutout": "Paper cut-out", "colored_pencil": "Colored pencil", CUSTOM_STYLE: "Your own"}
+# Short enough for a third of the sidebar on a phone; the full name is shown above the grid.
+STYLE_LABELS = {**STYLE_NAMES, "casual_mobile": "Mobile", "cel_shaded_anime": "Anime",
+                "claymation_diorama": "Claymation", "mid_century_modern": "Mid-century",
+                "paper_cutout": "Cut paper", "colored_pencil": "Pencil"}
+# One picture per preset, same subject in every style (made from style_previews_source/ by
+# its make_sizes.py): thumb/ for the chooser tiles, large/ for the hover pop-up.
+STYLE_PREVIEW_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "style_previews")
 STYLE_CONVERT_URL = os.environ.get("STYLE_CONVERT_URL", "https://edee.app.n8n.cloud/webhook/style-convert")
 REVIEW_MODES = {
     "automatic": ("Automatic", "Never pause. The pipeline carries on as soon as its own reviewers approve each stage."),
@@ -882,6 +892,75 @@ def custom_style_ready(text):
     return None
 
 
+@st.cache_resource
+def style_previews():
+    """{style: (thumb data URI, large data URI)}; a style with no picture is left out and
+    its tile shows its label instead. Inline data URIs, not st.image: those are served from
+    /media/ and can 404 across reruns or Cloud Run instances."""
+    out = {}
+    for key in STYLE_OPTIONS:
+        uris = []
+        for size in ("thumb", "large"):
+            try:
+                with open(os.path.join(STYLE_PREVIEW_DIR, size, f"{key}.jpg"), "rb") as f:
+                    uris.append("data:image/jpeg;base64," + base64.b64encode(f.read()).decode())
+            except OSError:
+                break
+        if len(uris) == 2:
+            out[key] = tuple(uris)
+    return out
+
+
+def pick_style(key):
+    st.session_state.style_choice = key
+
+
+STYLE_CHOOSER_CSS = """<style>
+.stile { position: relative; aspect-ratio: 1; border-radius: 10px; overflow: visible; margin-bottom: 4px; }
+.stile img.t, .stile .t { width: 100%; height: 100%; object-fit: cover; border-radius: 10px; display: block;
+  border: 3px solid rgba(128,128,128,.25); box-sizing: border-box; background: #fff; }
+.stile.sel img.t, .stile.sel .t { border-color: #ff4b4b; }
+.stile .t.own { display: flex; align-items: center; justify-content: center; font-size: 2rem;
+  border-style: dashed; background: transparent; }
+/* The bigger picture: fixed, just right of the sidebar, so the sidebar's scroll box can't clip it. */
+.stile img.big { display: none; position: fixed; left: 22rem; top: 6rem; width: 360px; height: 360px;
+  border-radius: 14px; box-shadow: 0 10px 40px rgba(0,0,0,.35); z-index: 100000; background: #fff; pointer-events: none; }
+.stile:hover img.big { display: block; }
+@media (hover: none) { .stile img.big { display: none !important; } }
+/* Keep the 3×3 grid on phones too: Streamlit stacks columns below ~640px, which would make
+   nine full-width tiles. The chooser is the sidebar's only st.columns use. */
+section[data-testid="stSidebar"] [data-testid="stHorizontalBlock"] { flex-wrap: nowrap !important; flex-direction: row !important; gap: .5rem; }
+section[data-testid="stSidebar"] [data-testid="stHorizontalBlock"] > div { min-width: 0 !important; width: auto !important; flex: 1 1 0 !important; }
+/* The tiles' buttons: one short line each, so the grid stays even. */
+section[data-testid="stSidebar"] [data-testid="stHorizontalBlock"] button { padding: 2px 1px; min-height: 0; }
+section[data-testid="stSidebar"] [data-testid="stHorizontalBlock"] button p {
+  font-size: .72rem; letter-spacing: -.01em; font-weight: 400 !important; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+</style>"""
+
+
+def style_chooser():
+    """3×3 grid of style tiles in the sidebar: picture (hover = bigger picture) + a button
+    to choose it. The last tile is "Your own"."""
+    st.session_state.setdefault("style_choice", STYLE_OPTIONS[0])
+    choice = st.session_state.style_choice
+    previews = style_previews()
+    st.markdown(f"**Style:** {STYLE_NAMES.get(choice, choice)}")
+    st.markdown(STYLE_CHOOSER_CSS, unsafe_allow_html=True)
+    for row in range(0, len(STYLE_OPTIONS), 3):
+        for col, key in zip(st.columns(3), STYLE_OPTIONS[row:row + 3]):
+            with col:
+                sel = " sel" if key == choice else ""
+                if key in previews:
+                    thumb, big = previews[key]
+                    tile = f'<img class="t" src="{thumb}" alt="{STYLE_LABELS[key]}"><img class="big" src="{big}" alt="">'
+                else:
+                    tile = f'<div class="t own">{"✏️" if key == CUSTOM_STYLE else "🎨"}</div>'
+                st.markdown(f'<div class="stile{sel}">{tile}</div>', unsafe_allow_html=True)
+                st.button(STYLE_LABELS.get(key, key), key=f"style_{key}", on_click=pick_style, args=(key,),
+                          type="primary" if key == choice else "secondary", **BTN_FILL)
+    return st.session_state.style_choice
+
+
 def _md(s):
     # Model text in markdown: "$" would start LaTeX (see esc(), defined further down).
     return str(s).replace("$", "\\$")
@@ -1053,8 +1132,7 @@ with st.sidebar:
     if DEMO:
         st.info("**Demo mode** — replaying a recorded run, no GCP. Put `MAXRETRY`, `FAIL` or `DECLINE` in the problem text to see those paths.", icon="🧪")
     env_choice = st.selectbox("Environment", ["Production", "Development (Test)"])
-    style_choice = st.selectbox("Style", STYLE_OPTIONS,
-                                format_func=lambda k: "✏️ Describe your own…" if k == CUSTOM_STYLE else k)
+    style_choice = style_chooser()
     if style_choice == CUSTOM_STYLE:
         custom_text = st.text_area("Your style", key="custom_style_text", max_chars=600, height=90,
                                    placeholder="e.g. chalk drawing, 16-bit pixel art, vintage botanical engraving")
