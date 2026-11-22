@@ -63,6 +63,7 @@ const settings = {
         style_preference: config.style_preference ?? null,
         max_text_tier: config.maximum_text_tier ?? null,
         max_image_tier: config.maximum_image_tier ?? null,
+        custom_style: config.custom_style ?? null,
     }) }],
     timestamp: now,
     model: "none",

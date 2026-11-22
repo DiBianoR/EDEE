@@ -7,7 +7,7 @@
 //
 //   POST /webhook/resume-final-gate
 //   { source_job_id, mode: "overwrite" | "new", target_job_id (new mode only),
-//     max_text_tier, max_image_tier, style_preference (fallback only) }
+//     max_text_tier, max_image_tier, style_preference + custom_style (fallback only) }
 //
 // This node only gathers what Load Config needs to BUILD a config. The state rebuild,
 // images and job-doc setup happen in "Resume: Rebuild State", after Load Config, because
@@ -23,6 +23,9 @@
 //      distinctive phrase of each description identifies it. Those jobs can only have used
 //      the five styles below, so STYLE_SIGNATURES never needs new entries.
 //   3. Otherwise the frontend's style_preference.
+// A typed-in style (style_preference "custom") is only its key plus custom_style, the two
+// strings the converter produced; since 2026-11-22 run_settings records both, and they go
+// to Load Config together. Jobs before that never used a custom style.
 //
 // Refuses (throws, and the webhook answers with the error) when the source has no
 // finished result to review, or when the source or target job is busy.
@@ -80,10 +83,14 @@ const transcript = (await get(`/transcript/${sourceId}`))
     .sort((a, b) => String(a.timestamp || "").localeCompare(String(b.timestamp || "")));
 
 // Style, 1: the last run_settings record.
-let recordedStyle = null;
+let recordedStyle = null, recordedCustom = null;
 const settingsEvent = [...transcript].reverse().find(e => e.author === "run_settings");
 if (settingsEvent) {
-    try { recordedStyle = JSON.parse(settingsEvent.parts[0].text).style_preference || null; }
+    try {
+        const rs = JSON.parse(settingsEvent.parts[0].text);
+        recordedStyle = rs.style_preference || null;
+        recordedCustom = rs.custom_style || null;
+    }
     catch (e) { /* malformed record: fall through to inference */ }
 }
 
@@ -107,6 +114,8 @@ return [{ json: {
     job_id: targetId,
     original_query: summary.original_query ?? null,
     style_preference: style,
+    // Load Config re-checks it and falls back to the default preset if it's missing.
+    custom_style: style !== "custom" ? null : (recordedStyle ? recordedCustom : body.custom_style) || null,
     max_text_tier: body.max_text_tier || "slow",
     max_image_tier: body.max_image_tier || "slow",
     human_review_mode: "wait",          // a resumed gate always waits for the human

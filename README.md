@@ -9,7 +9,7 @@ Give EDEE a word problem ("A farmer's rectangular field is 12 m by 8 m...") and 
 Image generation models are bad at math, and matplotlib is bad at art. EDEE uses both, in sequence:
 
 1. **Scaffolding pass** — A team of LLM agents plans the diagram, designs a barebones geometric blueprint, writes Python/matplotlib code for it, and executes that code in a sandboxed cloud function. The result is a mathematically precise "skeleton" image.
-2. **Artistic pass** — The skeleton is handed to an image-to-image model, which paints the final illustration *over* the scaffolding — preserving the underlying geometry while adding a chosen art style (storybook watercolor, casual mobile game, cel-shaded anime, claymation diorama, or mid-century modern).
+2. **Artistic pass** — The skeleton is handed to an image-to-image model, which paints the final illustration *over* the scaffolding — preserving the underlying geometry while adding a chosen art style (storybook watercolor, casual mobile game, cel-shaded anime, claymation diorama, mid-century modern, emoji, paper cut-out or colored pencil), or one the user describes in their own words. A small separate n8n workflow, **EDEE - Style Convert** (`style_convert_workflow.js`), turns that description into the same two strings a preset has.
 
 ## The agent pipeline
 

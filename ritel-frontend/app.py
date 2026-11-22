@@ -64,7 +64,13 @@ HUMAN_GRACE_SECONDS = 90     # extra slack past a human-review deadline before t
 TERMINAL = ("completed", "failed")
 HERE = os.path.dirname(os.path.abspath(__file__))
 
-STYLE_OPTIONS = ["casual_mobile", "storybook", "cel_shaded_anime", "claymation_diorama", "mid_century_modern"]
+STYLE_OPTIONS = ["casual_mobile", "storybook", "cel_shaded_anime", "claymation_diorama", "mid_century_modern",
+                 "emoji", "paper_cutout", "colored_pencil", "custom"]
+# "custom": the user types a style; n8n's "EDEE - Style Convert" workflow turns it into the
+# same two strings a config.js preset has, and they travel in the launch payload as
+# custom_style. The strings themselves are never shown, only the label and any notes.
+CUSTOM_STYLE = "custom"
+STYLE_CONVERT_URL = os.environ.get("STYLE_CONVERT_URL", "https://edee.app.n8n.cloud/webhook/style-convert")
 REVIEW_MODES = {
     "automatic": ("Automatic", "Never pause. The pipeline carries on as soon as its own reviewers approve each stage."),
     # Typing now holds the gate open: the workflow's decision switches route the "extend"
@@ -331,6 +337,15 @@ class GcpBackend:
             raise
         return r.json() if r.text else {}
 
+    def convert_style(self, text):
+        """Typed-in style -> {ok, usable, label, notes, custom_style, error?} (n8n "EDEE - Style
+        Convert"). Always the published webhook, whatever the Environment toggle says: it is
+        a standalone helper, and the test URL only listens while someone has the editor open."""
+        r = requests.post(STYLE_CONVERT_URL, json={"text": text}, headers={"x-api-key": API_KEY}, timeout=90)
+        if r.status_code != 200:
+            raise RuntimeError(f"n8n returned HTTP {r.status_code}: {r.text[:200]}")
+        return r.json()
+
     def human_decision(self, job_id, action, message=""):
         r = requests.post(f"{STATE_MANAGER_URL}/human-decision/{job_id}",
                           json={"action": action, "message": message}, timeout=30)
@@ -576,6 +591,22 @@ class DemoBackend:
             self.images[job_id] = {}
             self.gates[job_id] = {"event": threading.Event(), "decision": None}
         threading.Thread(target=self._simulate, args=(job_id, payload), daemon=True).start()
+
+    def convert_style(self, text):
+        """Canned stand-in for the style converter. "blood"/"gore" shows a refusal,
+        "ERROR" a failed call; anything else becomes a usable style named after the text."""
+        time.sleep(1.0)
+        if "ERROR" in text:
+            raise RuntimeError("n8n returned HTTP 500: demo error")
+        if re.search(r"blood|gore", text, re.I):
+            return {"ok": True, "usable": False, "label": "Horror Poster", "custom_style": None,
+                    "notes": "Gore and blood aren't suitable for children's textbooks, so this style can't be used."}
+        label = " ".join(text.split()[:4]).title()
+        return {"ok": True, "usable": True, "label": label,
+                "notes": "Kept the look for the objects but drew it on a clean white background." if re.search(r"chalk|night|dark", text, re.I) else "",
+                "custom_style": {"label": label,
+                                 "description": f"a demo illustration in the style of {text.strip()}. It keeps shapes and spatial relationships easy to read.",
+                                 "aesthetic": "Define a demo aesthetic (e.g., 'demo', 'clean outlines')."}}
 
     def human_decision(self, job_id, action, message=""):
         with self.lock:
@@ -826,8 +857,50 @@ st.set_page_config(page_title="EDEE Gen", layout="wide", page_icon="📐", initi
 
 for key, default in [("job_id", None), ("is_running", False), ("trigger_job", False), ("carousel_idx", 1),
                      ("pending_action", None), ("img_cache", None), ("job_started_at", None), ("notice", None),
-                     ("resume_request", None)]:
+                     ("resume_request", None), ("custom_style_result", None)]:
     st.session_state.setdefault(key, default)
+
+
+def convert_custom_style(text):
+    """Convert the typed style and keep the result keyed by its text, so the launch can
+    tell whether what's in the box has already been converted. Pressing Create again
+    with the same text simply converts it again."""
+    text = text.strip()
+    try:
+        res = get_backend().convert_style(text) if text else {"ok": False, "error": "Type a style first."}
+    except Exception as e:  # noqa: BLE001
+        res = {"ok": False, "error": f"Could not reach the style converter: {e}"}
+    st.session_state.custom_style_result = {**res, "text": text}
+    return st.session_state.custom_style_result
+
+
+def custom_style_ready(text):
+    """The converted style for exactly this text, or None."""
+    res = st.session_state.custom_style_result
+    if res and res.get("text") == text.strip() and res.get("ok") and res.get("usable") and res.get("custom_style"):
+        return res["custom_style"]
+    return None
+
+
+def _md(s):
+    # Model text in markdown: "$" would start LaTeX (see esc(), defined further down).
+    return str(s).replace("$", "\\$")
+
+
+def show_custom_style_result(text):
+    """Only the result for what's in the box now; an edited box shows nothing until it's
+    created again (Generate also creates it)."""
+    res = st.session_state.custom_style_result
+    if not res or res.get("text") != text.strip():
+        return
+    if not res.get("ok"):
+        st.error(res.get("error") or "The style could not be converted.")
+    elif not res.get("usable"):
+        st.warning(f"**Can't use this style.** {_md(res.get('notes', ''))}")
+    else:
+        st.success(f"Style ready: **{_md(res.get('label', 'Custom style'))}**")
+        if res.get("notes"):
+            st.caption(_md(res["notes"]))
 
 # --- SURVIVING A LOST SESSION ---------------------------------------------------------
 # The running job id also lives in the URL. Streamlit state is per-session and per-server
@@ -980,7 +1053,17 @@ with st.sidebar:
     if DEMO:
         st.info("**Demo mode** — replaying a recorded run, no GCP. Put `MAXRETRY`, `FAIL` or `DECLINE` in the problem text to see those paths.", icon="🧪")
     env_choice = st.selectbox("Environment", ["Production", "Development (Test)"])
-    style_choice = st.selectbox("Style", STYLE_OPTIONS)
+    style_choice = st.selectbox("Style", STYLE_OPTIONS,
+                                format_func=lambda k: "✏️ Describe your own…" if k == CUSTOM_STYLE else k)
+    if style_choice == CUSTOM_STYLE:
+        custom_text = st.text_area("Your style", key="custom_style_text", max_chars=600, height=90,
+                                   placeholder="e.g. chalk drawing, 16-bit pixel art, vintage botanical engraving")
+        if st.button("Create style", **BTN_FILL):
+            with st.spinner("Creating your style…"):
+                convert_custom_style(custom_text)
+        show_custom_style_result(custom_text)
+    else:
+        custom_text = ""
     review_mode = st.radio("Human review", list(REVIEW_MODES), index=list(REVIEW_MODES).index(DEFAULT_REVIEW_MODE),
                            format_func=lambda k: REVIEW_MODES[k][0],
                            help="You get two chances to steer the result. First the scaffolding, the mathematically exact base diagram, once the AI inspectors approve it and before the artist paints over it. Then the finished illustration, once the AI reviewers approve it and before it's released. This one setting covers both, for the whole run. Both waiting modes watch for typing and clicks, so you are never cut off mid-sentence. If the AI gives up on either stage, any mode other than Automatic asks you instead of failing.")
@@ -1894,6 +1977,21 @@ if st.session_state.trigger_job:
         st.session_state.is_running = False
         st.warning("Please enter a math problem or illustration request first.")
         st.stop()
+    custom_style = None
+    if style_choice == CUSTOM_STYLE:
+        # Typed but never converted (or edited since): convert now rather than make the
+        # user go back for the button.
+        custom_style = custom_style_ready(custom_text)
+        if custom_style is None:
+            with st.spinner("Creating your style…"):
+                convert_custom_style(custom_text)
+            custom_style = custom_style_ready(custom_text)
+        if custom_style is None:
+            # Rerun rather than stop, so the sidebar (drawn before this conversion) shows
+            # why, and the Generate button comes back enabled.
+            st.session_state.is_running = False
+            st.session_state.notice = "Your custom style isn't ready, so the run was not started. See Style in the sidebar."
+            st.rerun()
     st.session_state.job_id = str(uuid.uuid4())
     st.query_params["job"] = st.session_state.job_id   # so a dropped session can find it again
     st.session_state.job_started_at = time.time()
@@ -1903,6 +2001,8 @@ if st.session_state.trigger_job:
     st.session_state.archived_cache = None
     payload = {"query": user_query, "job_id": st.session_state.job_id, "style_preference": style_choice,
                "human_review_mode": review_mode, "max_text_tier": max_text_tier, "max_image_tier": max_image_tier}
+    if custom_style:
+        payload["custom_style"] = custom_style
     try:
         backend.start_job(payload, env_choice)
     except Exception as e:  # noqa: BLE001
@@ -1919,7 +2019,8 @@ if st.session_state.resume_request:
     try:
         with st.spinner("Reopening the final review…"):
             backend.resume_job(source_id, mode, target_id, {"max_text_tier": max_text_tier,
-                               "max_image_tier": max_image_tier, "style_preference": style_choice}, env_choice)
+                               "max_image_tier": max_image_tier, "style_preference": style_choice,
+                               "custom_style": custom_style_ready(custom_text)}, env_choice)
     except Exception as e:  # noqa: BLE001
         st.error(f"Could not resume the job: {e}")
     else:

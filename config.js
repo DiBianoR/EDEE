@@ -33,7 +33,10 @@
 
 
 // === 🎨 STYLE DICTIONARY ===
-//storybook, casual_mobile, cel_shaded_anime, claymation_diorama, mid_century_modern
+//storybook, casual_mobile, cel_shaded_anime, claymation_diorama, mid_century_modern, emoji, paper_cutout, colored_pencil
+// (plus "custom": see customStyle below). Each description completes "...is best described as ___"
+// (lower-case "a"/"an" noun phrase); each aesthetic is followed by "No photorealism, draw on a clean
+// white background." in plan_finishing. A new key also goes in STYLE_OPTIONS in ritel-frontend/app.py.
 const styleLibrary = {
   "storybook": {
     // The style you should normally use is best described as
@@ -64,13 +67,46 @@ const styleLibrary = {
     description: "a highly stylized, minimalist digital illustration heavily inspired by 1950s and 1960s educational posters. It features bold, flat geometric shapes, clean vector-style edges, and a limited but vibrant retro color palette. This clutter-free approach is visually striking while keeping the focus entirely on shape, proportion, and clear spatial relationships.",
     // THE STYLE (Aesthetics):
     aesthetic: "Define a minimalist, geometric aesthetic (e.g., 'mid-century modern flat vector', '1960s educational poster style', 'bold geometric shapes', 'limited retro color palette', 'clean vector edges', 'minimalist and clutter-free', 'vintage screen print feel', 'highly stylized but readable')."
+  },
+  "emoji": {
+    // The style you should normally use is best described as
+    description: "a bright, friendly flat illustration heavily inspired by modern emoji and app icon design. It uses simple rounded shapes, thick soft outlines, glossy highlights, and a cheerful, saturated color palette, so every object reads instantly as a clear, recognizable icon. Each item stays separate and uncluttered, making counts, groupings, and arrangements exceptionally easy to see.",
+    // THE STYLE (Aesthetics):
+    aesthetic: "Define a friendly, bold, and instantly readable aesthetic (e.g., 'emoji style', 'flat icon design', 'rounded simple shapes', 'thick soft outlines', 'glossy highlights', 'saturated cheerful colors', 'sticker-like objects', 'clean and uncluttered', 'playful but clear')."
+  },
+  "paper_cutout": {
+    // The style you should normally use is best described as
+    description: "a layered paper cut-out illustration resembling a handcrafted collage of colored cardstock. It features clean, scissor-cut edges, subtle paper grain, and soft drop shadows between layers that add gentle depth without changing the flat, front-on view. The bold, distinct paper shapes keep each object separate, so outlines, sizes, and spatial relationships stay easy to read.",
+    // THE STYLE (Aesthetics):
+    aesthetic: "Define a handcrafted, tactile, and cheerful aesthetic (e.g., 'layered paper cut-out', 'paper collage', 'colored cardstock', 'clean cut edges', 'subtle paper grain texture', 'soft drop shadows between layers', 'flat front-on composition', 'warm and playful', 'craft-inspired but precise')."
+  },
+  "colored_pencil": {
+    // The style you should normally use is best described as
+    description: "a warm, hand-drawn colored pencil illustration, heavily inspired by modern picture books and nature journals. It combines visible, even pencil strokes and gentle cross-hatched shading with clean, confident outlines and a soft, natural palette. The careful line work keeps edges precise and textures light, so shapes, proportions, and spatial relationships remain clear and easy to read.",
+    // THE STYLE (Aesthetics):
+    aesthetic: "Define a warm, hand-crafted yet precise aesthetic (e.g., 'colored pencil illustration', 'visible pencil strokes', 'light cross-hatching', 'clean confident outlines', 'soft natural palette', 'nature journal sketch', 'picture book art', 'gentle and inviting', 'tidy and readable')."
   }
 };
-//add emoji style
 
 // Grab the requested style from the input data (defaults to "casual_mobile" if empty)
 const selectedStyle = items[0].json.style_preference || "casual_mobile";
-const activeStyle = styleLibrary[selectedStyle] || styleLibrary["casual_mobile"];
+
+// "custom": a style the user typed in, already converted into the same two strings by the
+// "EDEE - Style Convert" workflow (the frontend calls it before launching). It arrives as
+// custom_style {label, description, aesthetic}: top-level from Resume: Load Job, inside
+// the webhook body for a normal launch (Set Job keeps body). Anything malformed falls back
+// to the default preset, the same as an unknown key.
+const customStyle = (() => {
+  if (selectedStyle !== "custom") return null;
+  const c = items[0].json.custom_style || items[0].json.body?.custom_style;
+  const ok = c && typeof c.description === "string" && typeof c.aesthetic === "string"
+    && /^an? /i.test(c.description.trim()) && /^Define /.test(c.aesthetic.trim())
+    && c.description.length <= 1500 && c.aesthetic.length <= 1500;
+  return ok ? { label: String(c.label || "Custom style").slice(0, 60),
+                description: c.description.trim(), aesthetic: c.aesthetic.trim() } : null;
+})();
+const activeStyleKey = customStyle ? "custom" : styleLibrary[selectedStyle] ? selectedStyle : "casual_mobile";
+const activeStyle = customStyle || styleLibrary[activeStyleKey];
 
 
 // === 🎚️ FEATURE FLAGS ===
@@ -2643,7 +2679,10 @@ const config = {
   // The style key actually baked into the instructions above (after the fallback). Nothing
   // else keeps it: Send Final Broadcast records it in the transcript as a run_settings
   // event, which is how "Resume final review" rebuilds the config with the same style.
-  "style_preference": styleLibrary[selectedStyle] ? selectedStyle : "casual_mobile",
+  "style_preference": activeStyleKey,
+  // A typed-in style's two strings (null for presets). Recorded next to style_preference
+  // in run_settings, because the key "custom" alone can't rebuild the style on resume.
+  "custom_style": customStyle,
 
   // === 📡 GUI BROADCAST SETTINGS ===
   "enable_gui_logging": true,

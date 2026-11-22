@@ -21,7 +21,9 @@ NODE = "Load Config"
 
 def main():
     with open(os.path.join(HERE, "config.js"), encoding="utf-8") as f:
-        code = f.read()
+        # n8n stores LF; a Windows checkout has CRLF. Without this the "already matches"
+        # check never fires and every push rewrites every line ending.
+        code = f.read().replace("\r\n", "\n")
     before = api("GET", f"/workflows/{WORKFLOW_ID}")
     node = next((n for n in before["nodes"] if n["name"] == NODE), None)
     if node is None:
