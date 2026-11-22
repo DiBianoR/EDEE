@@ -85,7 +85,7 @@ def check_endpoint():
     """The deployed state manager must have /archive. A missing route and a missing job
     both answer 404, so tell them apart by the message."""
     try:
-        r = requests.post(f"{STATE_MANAGER_URL}/archive/__backfill_probe__", timeout=30)
+        r = requests.post(f"{STATE_MANAGER_URL}/archive/backfill-probe-no-such-job", timeout=30)
     except requests.RequestException as e:
         sys.exit(f"Can't reach the state manager at {STATE_MANAGER_URL}: {e}")
     detail = ""

@@ -225,6 +225,9 @@ Experiment with coteach
   - (1) is written: `py -3 firestore_backfill.py` (dry run), then `--go`, AFTER the push deploys /archive
     (the script checks and refuses otherwise). Skips unfinished jobs updated in the last 24h; rerunnable.
     Needs `pip install google-cloud-firestore google-cloud-storage` locally.
+  - Future crashes nobody was watching: /update-state sweeps for unfinished docs with no broadcast for 6h and
+    archives them (at most once an hour per instance, 5 per sweep, one small-field query; no timer, so nothing
+    runs while idle). Gap: a crash is lost if no job runs anywhere in the ~6.75 days before its doc expires.
   - Note: with Firestore scrubbed, the bucket is the only record, and its lifecycle rule deletes after 360 days.
   - TTL is currently OFF; bucket lifetime extended to 360 days, and the Google Sheet
     tracks failed runs, so no data is at risk today

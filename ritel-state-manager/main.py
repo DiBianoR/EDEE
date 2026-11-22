@@ -40,6 +40,17 @@ bucket = storage_client.bucket(BUCKET_NAME)
 FINISHED_DOC_TTL = timedelta(days=1)
 LIVE_DOC_TTL = timedelta(days=7)    # what the frontend stamps at start; restored docs get it too
 
+# A run that crashes sends nothing more, so nothing above ever archives it, and if no one
+# had the page open (the frontend's watchdog calls /archive) its transcript would exist
+# only in a doc due to expire. So the broadcasts of LATER jobs sweep for such runs: there
+# is no timer and nothing runs while the system is idle. Bounded on every axis: at most
+# once per SWEEP_EVERY per instance, one query that returns only unfinished docs (crashes
+# are rare, and the TTL keeps at most a week of them), at most SWEEP_MAX archived per sweep.
+STALE_AFTER = timedelta(hours=6)     # no broadcast for this long = dead (a human gate caps at 30 min)
+SWEEP_EVERY = timedelta(hours=1)
+SWEEP_MAX = 5
+_last_sweep = None
+
 
 # =====================================================================================
 # IMAGE VERSIONS
@@ -457,6 +468,7 @@ async def update_state(request: Request):
             _write_job_record(job_id, state)
             doc_ref.update({"ttl_expiry": datetime.now(timezone.utc) + FINISHED_DOC_TTL})
 
+        _sweep_stale_runs()
         return {"status": "success", "message": f"Updated job {job_id}"}
 
     except HTTPException:
@@ -673,7 +685,11 @@ def archive_job(job_id: str):
     snap = doc_ref.get()
     if not snap.exists:
         raise HTTPException(status_code=404, detail=f"No live state for job {job_id}")
-    state = snap.to_dict() or {}
+    return {"job_id": job_id, "archived": _archive(doc_ref, snap.to_dict() or {})}
+
+
+def _archive(doc_ref, state):
+    job_id = doc_ref.id
     _write_job_record(job_id, state)
     archived = ["job.json"]
     transcript = state.get("session_events_incremental")
@@ -682,8 +698,49 @@ def archive_job(job_id: str):
             json.dumps(sorted(transcript, key=lambda e: e.get("timestamp") or ""), indent=2, default=str),
             content_type="application/json")
         archived.append("session_events_incremental.json")
-    doc_ref.update({"ttl_expiry": datetime.now(timezone.utc) + FINISHED_DOC_TTL})
-    return {"job_id": job_id, "archived": archived}
+    # archived_at lets the sweep skip this doc until the run broadcasts again.
+    now = datetime.now(timezone.utc)
+    doc_ref.update({"ttl_expiry": now + FINISHED_DOC_TTL, "archived_at": now.isoformat()})
+    return archived
+
+
+def _aware(value):
+    """A doc time as an aware datetime: Firestore gives datetimes, broadcasts ISO strings."""
+    d = value if isinstance(value, datetime) else _parse_iso(value) if value else None
+    return d.replace(tzinfo=timezone.utc) if d and d.tzinfo is None else d
+
+
+def _sweep_stale_runs():
+    """Archive unfinished runs that have gone quiet (see STALE_AFTER). Called from
+    /update-state; never raises, so a sweep problem can't fail a broadcast."""
+    global _last_sweep
+    now = datetime.now(timezone.utc)
+    if _last_sweep and now - _last_sweep < SWEEP_EVERY:
+        return
+    _last_sweep = now
+    try:
+        # Only the small fields of only the unfinished docs (not-in skips docs with no status).
+        snaps = (db.collection("job_states").where("status", "not-in", ["completed", "failed"])
+                 .select(["status", "timestamp", "archived_at", "ttl_expiry"]).limit(200).stream())
+        stale = []
+        for s in snaps:
+            d = s.to_dict() or {}
+            last = _aware(d.get("timestamp"))
+            if last is None and _aware(d.get("ttl_expiry")):
+                last = _aware(d["ttl_expiry"]) - LIVE_DOC_TTL   # a start stub that never broadcast
+            if last is None or now - last < STALE_AFTER:
+                continue
+            archived_at = _aware(d.get("archived_at"))
+            if archived_at and archived_at >= last:
+                continue
+            stale.append(s.id)
+        for job_id in stale[:SWEEP_MAX]:
+            ref = db.collection("job_states").document(job_id)
+            snap = ref.get()
+            if snap.exists:
+                print(f"SWEEP archived stale run {job_id}: {_archive(ref, snap.to_dict() or {})}")
+    except Exception as e:  # noqa: BLE001
+        print(f"SWEEP failed: {type(e).__name__}: {e}")
 
 
 @app.post("/restore/{job_id}")
