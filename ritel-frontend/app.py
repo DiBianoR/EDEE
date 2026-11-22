@@ -12,6 +12,7 @@ Run offline on dummy data:   streamlit run app.py -- --demo
 Environment: N8N_START_URL, API_KEY, STATE_MANAGER_URL, FIRESTORE_KEY_JSON (optional)
 """
 import base64
+import hashlib
 import html
 import io
 import json
@@ -249,6 +250,40 @@ class GcpBackend:
                 return None
         return self._asset_cache[name]
 
+    def get_manifest(self, job_id):
+        """{job_id}/images.json: every image version of the job (state manager, IMAGE
+        VERSIONS). None for a job that finished before versions were kept."""
+        data = self.get_blob(f"{job_id}/images.json")
+        try:
+            return json.loads(data) if data else None
+        except ValueError:
+            return None
+
+    def get_archived_state(self, job_id):
+        """The job as the bucket remembers it, shaped like the Firestore doc, for a job
+        whose doc has expired (a finished job keeps its doc for a day). The state manager
+        does the reading, including the legacy path for jobs older than job.json."""
+        try:
+            r = requests.get(f"{STATE_MANAGER_URL}/summary/{job_id}", timeout=30)
+            if r.status_code != 200:
+                return None
+            state = r.json()
+            t = requests.get(f"{STATE_MANAGER_URL}/transcript/{job_id}", timeout=60)
+            state["session_events_incremental"] = t.json() if t.status_code == 200 else []
+        except (requests.RequestException, ValueError):
+            return None
+        state.pop("artifacts", None)
+        state["_archived"] = True
+        return state
+
+    def archive_job(self, job_id):
+        """Best effort: write a run the watchdog gave up on to the bucket (state manager
+        /archive), so it stays readable once its doc expires."""
+        try:
+            requests.post(f"{STATE_MANAGER_URL}/archive/{job_id}", timeout=30)
+        except requests.RequestException:
+            pass
+
     def start_job(self, payload, env_choice):
         # 7-day TTL stub, written before the pipeline's first broadcast
         try:
@@ -271,6 +306,13 @@ class GcpBackend:
         workflow writes "running". If n8n refuses (job busy, nothing to review…), the
         stamp is rolled back so an overwrite target still reads as completed.
         """
+        if mode == "overwrite":
+            # A finished job's doc expires after a day. Put it back from the bucket first,
+            # so the live log shows the job's history and not only the new round.
+            try:
+                requests.post(f"{STATE_MANAGER_URL}/restore/{source_job_id}", timeout=60)
+            except requests.RequestException:
+                pass   # n8n reads the bucket itself; only the live log would be shorter
         ref = self.db.collection("job_states").document(target_job_id)
         before = (ref.get().to_dict() or {}).get("status")
         ref.set({"ttl_expiry": datetime.now(timezone.utc) + timedelta(days=7), "status": "starting"}, merge=True)
@@ -317,7 +359,7 @@ class DemoBackend:
         with open(os.path.join(HERE, "demo", "sample_scaffolding.png"), "rb") as f:
             self.scaffold = f.read()
         self.final = self._make_final(self.scaffold)
-        self.docs, self.images, self.gates, self.written = {}, {}, {}, {}
+        self.docs, self.images, self.gates, self.written, self.manifests = {}, {}, {}, {}, {}
         self.lock = threading.Lock()
         self.activity_url = self._serve_activity()
 
@@ -381,18 +423,63 @@ class DemoBackend:
             hr.update({"last_activity": now.isoformat(), "deadline": deadline.isoformat(), "beacon_ok": True})
             doc["human_review"] = hr
 
-    def _set_live(self, job_id, name, data):
-        """Write an image and stamp `live_image` on the doc, as the state manager does.
+    # Image versions, kept as the state manager keeps them (IMAGE VERSIONS in its main.py):
+    # each distinct image once under images/NNN-<source>.png, and the version holding a
+    # role MOVES to scaffolding.png / final_illustration.png (and back when it loses it).
+    SOURCES = {"scaffolding_generator": "scaffold", "artist": "artist", "image_editor": "edit"}
+    ROLES = {"scaffolding": "scaffolding.png", "final": "final_illustration.png"}
+
+    def _move(self, job_id, src, dst):
+        imgs = self.images[job_id]
+        imgs[dst] = imgs.pop(src)
+        self.written.setdefault(job_id, {})[dst] = datetime.now(timezone.utc)
+
+    def _version(self, job_id, data, agent, pin=None):
+        with self.lock:
+            m = self.manifests.setdefault(job_id, {"version": 1, "next": 1, "images": [], "scaffolding": None, "final": None})
+            md5 = hashlib.md5(data).hexdigest()
+            e = next((x for x in m["images"] if x["md5"] == md5), None)
+            if not e:
+                e = {"n": m["next"], "source": self.SOURCES.get(agent, "image"), "agent": agent,
+                     "mime": "image/png", "md5": md5, "size": len(data), "created": _now_iso()}
+                e["file"] = f"images/{e['n']:03d}-{e['source']}.png"
+                m["next"] += 1
+                m["images"].append(e)
+                self._put(job_id, e["file"], data)
+            if pin and m.get(pin) != e["n"]:
+                target = self.ROLES[pin]
+                cur = next((x for x in m["images"] if x["n"] == m.get(pin)), None)
+                if cur:
+                    cur["file"] = f"images/{cur['n']:03d}-{cur['source']}.png"
+                    self._move(job_id, target, cur["file"])
+                self._move(job_id, e["file"], target)
+                e["file"] = target
+                m[pin] = e["n"]
+            return e
+
+    def _pin_newest(self, job_id, role, sources):
+        """Give a role to the newest version from `sources` (as Archive Scaffolding and the
+        completion broadcast do, by re-sending those exact bytes)."""
+        with self.lock:
+            m = self.manifests.get(job_id) or {"images": []}
+            e = next((x for x in reversed(m["images"]) if x["source"] in sources), None)
+            data = self.images[job_id].get(e["file"]) if e else None
+        return self._version(job_id, data, e["agent"], pin=role) if data else None
+
+    def _set_live(self, job_id, agent, data, pin=None):
+        """Store an image as a version and stamp `live_image` on the doc, as the state
+        manager does.
 
         Deliberately does NOT touch the doc's `timestamp`. The real broadcast that carries
         an image usually does bump it, but proving the panel follows `live_image` on its
         own — with no doc change to ride along on — is the stricter test, and the one
         that matches a render landing between two turns.
         """
-        self._put(job_id, name, data)
+        e = self._version(job_id, data, agent, pin=pin)
         with self.lock:
-            self.docs[job_id]["live_image"] = {"name": name, "version": f"{len(data)}:{hash(data)}",
-                                               "updated": _now_iso()}
+            self.docs[job_id]["live_image"] = {"name": e["file"], "version": f"{len(data)}:{hash(data)}",
+                                               "updated": _now_iso(), "n": e["n"]}
+        return e
 
     def _put(self, job_id, name, data):
         self.images[job_id][name] = data
@@ -434,9 +521,28 @@ class DemoBackend:
 
     # -- interface --------------------------------------------------------------
     def get_doc(self, job_id):
+        # ?expired=1 plays a finished job whose Firestore doc has expired, so the page
+        # has to read it back from the bucket (get_archived_state).
+        if st.query_params.get("expired") == "1":
+            with self.lock:
+                if (self.docs.get(job_id) or {}).get("status") in TERMINAL:
+                    return None
         with self.lock:
             d = self.docs.get(job_id)
             return json.loads(json.dumps(d)) if d else None
+
+    def get_manifest(self, job_id):
+        with self.lock:
+            m = self.manifests.get(job_id)
+            return json.loads(json.dumps(m)) if m else None
+
+    def get_archived_state(self, job_id):
+        with self.lock:
+            d = self.docs.get(job_id)
+            return dict(json.loads(json.dumps(d)), _archived=True) if d else None
+
+    def archive_job(self, job_id):
+        pass
 
     def get_blob(self, path, version=None):
         job_id, _, name = path.partition("/")
@@ -569,11 +675,11 @@ class DemoBackend:
                 return True
             time.sleep(max(self.DELAY * 4, 1.5))
             if gate_key == "final":
-                self._set_live(job_id, "latest.png", self._marked(self.final, f"REPAINTED #{n}", (30, 110, 200)))
+                self._set_live(job_id, "artist", self._marked(self.final, f"REPAINTED #{n}", (30, 110, 200)))
                 self._push(job_id, {"author": "artist", "task": "render_final", "status": "ok", "model": "gpt-image-2", "cost": 0.053,
                                     "parts": [{"text": f"Repainted the illustration with the human's corrections (pass {n})."}]})
             else:
-                self._set_live(job_id, "latest.png", self._marked(self.scaffold, f"REDRAWN #{n}", (200, 30, 30)))
+                self._set_live(job_id, "scaffolding_generator", self._marked(self.scaffold, f"REDRAWN #{n}", (200, 30, 30)))
                 self._push(job_id, {"author": "scaffolding_generator", "task": "render", "status": "ok", "model": "none", "cost": 0,
                                     "parts": [{"text": f"Re-rendered the scaffolding with the human's corrections (pass {n})."}]})
             reason = "review"
@@ -634,10 +740,19 @@ class DemoBackend:
         q = payload.get("query", "").upper()
         want_max_retries, want_fail, want_decline = "MAXRETRY" in q, "FAIL" in q, "DECLINE" in q
         scaffold_done = final_done = False
+        attempts = {"scaffold": 0, "artist": 0}
+
+        def attempt(kind, base, colour):
+            # The recorded run renders each picture twice (the first is rejected); make the
+            # attempts different images so the run leaves several versions to page through.
+            attempts[kind] += 1
+            k = attempts[kind]
+            return base if k == 1 else self._marked(base, f"ATTEMPT {k}", colour)
+
         for i, ev in enumerate(self.events):
             time.sleep(self.DELAY)
             if ev["task"] == "verify_adherence" and ev["author"] == "system":
-                self._set_live(job_id, "latest.png", self.scaffold)
+                self._set_live(job_id, "scaffolding_generator", attempt("scaffold", self.scaffold, (120, 60, 160)))
                 self._push(job_id, {"author": "scaffolding_generator", "task": "render", "status": "ok",
                                     "parts": [{"text": "Rendered the scaffolding (see image panel)."}], "model": "none", "cost": 0})
             if want_fail and ev["task"] == "plan_finishing":
@@ -662,16 +777,16 @@ class DemoBackend:
             if ev["author"] == "inspection_manager" and ev["task"] == "consolidate_inspection" and not scaffold_done:
                 verdict = json.loads(ev["parts"][0]["text"])
                 if verdict.get("passed_inspection"):
-                    self._put(job_id, "scaffolding.png", self.scaffold)   # Archive Scaffolding, end of Phase 3
+                    self._pin_newest(job_id, "scaffolding", ("scaffold",))   # Archive Scaffolding, end of Phase 3
                 reason = ("max_retries" if (want_max_retries and not verdict.get("passed_inspection"))
                           else "review" if verdict.get("passed_inspection") else None)
                 if reason and mode != "automatic":
                     scaffold_done = True
-                    self._put(job_id, "scaffolding.png", self.scaffold)
+                    self._pin_newest(job_id, "scaffolding", ("scaffold",))
                     if not self._run_gate(job_id, "scaffold", reason, mode):
                         return
             if ev["author"] == "artist" and ev["task"] == "render_final":
-                self._set_live(job_id, "latest.png", self.final)
+                self._set_live(job_id, "artist", attempt("artist", self.final, (30, 140, 90)))
             # The second review: the Final Gatekeeper's verdict on the finished picture.
             # The recorded transcript rejects its first render and passes the second, so
             # this opens after a realistic retry, exactly where the real gate sits.
@@ -680,9 +795,11 @@ class DemoBackend:
                     final_done = True
                     if not self._run_gate(job_id, "final", "review", mode):
                         return
-        self._set_live(job_id, "final_illustration.png", self.images[job_id].get("latest.png", self.final))
-        self._put(job_id, "scaffolding.png", self.scaffold)
-        self.images[job_id].pop("latest.png", None)
+        if not self._pin_newest(job_id, "final", ("artist", "edit")):
+            self._set_live(job_id, "artist", self.final, pin="final")
+        self._pin_newest(job_id, "scaffolding", ("scaffold",))
+        with self.lock:
+            self.docs[job_id]["live_image"] = {"name": "final_illustration.png", "version": "final", "updated": _now_iso()}
         doc = self.get_doc(job_id)
         ss = {}
         for ev in reversed(doc["session_events_incremental"]):
@@ -852,6 +969,8 @@ def open_job_callback():
         st.session_state.job_started_at = time.time()
         st.session_state.carousel_idx = 1
         st.session_state.img_cache = None
+        st.session_state.show_versions = False
+        st.session_state.archived_cache = None
         st.session_state.stalled_job = None
 
 
@@ -1366,12 +1485,11 @@ def show_image(state, check=True):
     instant repaint at the top of a rerun, where the priority is that the page is never
     blank, not that the image is one poll fresher.
 
-    WHY THIS IS SUBTLE: every render mid-run — each scaffold attempt, each artist attempt
-    — overwrites the SAME object, latest.png. A new image is a new generation of an
-    existing file, never a new file, and only at completion does the picture get its own
-    name. So "has a file appeared?" catches the first scaffold and nothing after it, and
-    "which agent just ran?" is one doc field that every broadcast overwrites, so a render
-    followed by another turn inside one poll interval is never seen.
+    WHY THIS IS SUBTLE: "which agent just ran?" is one doc field that every broadcast
+    overwrites, so a render followed by another turn inside one poll interval is never
+    seen, and the file names alone don't say which image is current. (Until 2026-11-21
+    every render overwrote the same object, latest.png; now each is its own version,
+    images/NNN-<source>.png, and the role images move to fixed names.)
 
     SOURCE OF TRUTH, best first:
       1. `live_image` on the job doc — {name, version, updated}, stamped by the state
@@ -1389,6 +1507,7 @@ def show_image(state, check=True):
         if live.get("name") and live.get("version"):
             path, version, updated = f"{job_id}/{live['name']}", live["version"], live.get("updated")
         else:
+            # An older state manager that doesn't stamp live_image (LEGACY): latest.png.
             path = f"{job_id}/final_illustration.png" if status == "completed" else f"{job_id}/latest.png"
             version, updated = backend.get_blob_version(path), None
         if version and (not cached or cached[0] != path or cached[1] != version):
@@ -1436,8 +1555,8 @@ def show_image(state, check=True):
         _painted["carousel"] = False
         carousel_ui.empty()
 
-    # A missing object (latest.png is deleted on completion) leaves the last good image
-    # up rather than blanking the panel.
+    # A missing object (a version that just moved to its role name) leaves the last good
+    # image up rather than blanking the panel.
     if cached:
         when = fmt_time(cached[3]) if len(cached) > 3 and cached[3] else ""
         # The time is shown on purpose: it is the difference between "nothing changed"
@@ -1447,11 +1566,19 @@ def show_image(state, check=True):
         paint_image(cached[2], (cached[0], cached[1]), caption=caption)
 
 
-def render_carousel(slots):
-    """Scaffolding ❮ ❯ final, for a run that has ended. `slots` is [(tag, fetch, caption)];
-    only the slot on screen is fetched."""
-    st.session_state.carousel_idx = max(0, min(st.session_state.carousel_idx, len(slots) - 1))
-    tag, fetch, caption = slots[st.session_state.carousel_idx]
+def render_carousel(slots, versions=None):
+    """Scaffolding ❮ ❯ final, for a run that has ended. `slots` is
+    [(tag, fetch, caption, download_name)]; only the slot on screen is fetched.
+
+    `versions` (from version_slots) adds a "Show all versions" toggle that swaps the two
+    slots for every image the job made, so a teacher can page back to an earlier one and
+    download it. Off by default, and absent when there is nothing more to show."""
+    show_all = bool(versions) and st.session_state.get("show_versions")
+    use = versions["slots"] if show_all else slots
+    if show_all and st.session_state.pop("versions_jump", False):
+        st.session_state.carousel_idx = versions["start"]
+    st.session_state.carousel_idx = max(0, min(st.session_state.carousel_idx, len(use) - 1))
+    tag, fetch, caption, dl_name = use[st.session_state.carousel_idx]
     data = fetch()
     if data:
         paint_image(data, (tag, "carousel"), caption=caption)
@@ -1461,7 +1588,109 @@ def render_carousel(slots):
     with carousel_ui.container():
         c1, c2, c3, c4 = st.columns([3, 1, 1, 3])
         c2.button("❮", on_click=prev_image, disabled=st.session_state.carousel_idx == 0, **BTN_FILL)
-        c3.button("❯", on_click=next_image, disabled=st.session_state.carousel_idx == len(slots) - 1, **BTN_FILL)
+        c3.button("❯", on_click=next_image, disabled=st.session_state.carousel_idx == len(use) - 1, **BTN_FILL)
+        if versions or (data and dl_name):
+            t1, t2 = st.columns([1, 1])
+            if versions:
+                t1.toggle(f"Show all versions ({len(versions['slots'])})", key="show_versions",
+                          on_change=_versions_toggled,
+                          help="Every image this job made, scaffolds first, then illustrations, oldest first.")
+            if data and dl_name:
+                t2.download_button("⬇ Download this image", data, file_name=dl_name,
+                                   mime="image/jpeg" if data[:3] == b"\xff\xd8\xff" else "image/png",
+                                   key=f"dl_{tag}", **BTN_FILL)
+
+
+def _versions_toggled():
+    if st.session_state.get("show_versions"):
+        st.session_state.versions_jump = True     # open on the version currently in use
+    else:
+        st.session_state.carousel_idx = 1
+
+
+# --- IMAGE VERSIONS (state manager images.json) ----------------------------------------
+# Scaffold versions come first, then the illustration versions; each group is oldest
+# first. Verdicts are read from the transcript: the review that came after a version and
+# before the next image is the one that judged it.
+SOURCE_LABELS = {"scaffold": "Scaffold", "artist": "Illustration", "edit": "Spot edit",
+                 "resumed": "Illustration", "image": "Image"}
+PICTURE_SOURCES = ("artist", "edit", "resumed", "image")
+VERDICT_KEYS = {"scaffold": ("inspection_manager", "consolidate_inspection", "passed_inspection",
+                             "passed inspection", "rejected by the inspectors"),
+                "artist": ("issue_aggregator", "aggregate_feedback", "final_pass",
+                           "approved by the reviewers", "rejected by the reviewers")}
+
+
+def version_verdicts(images, events):
+    """{n: (passed, wording)} for versions a review judged."""
+    out = {}
+    ordered = sorted(images, key=lambda e: e["n"])
+    for i, e in enumerate(ordered):
+        keys = VERDICT_KEYS.get(e.get("source"))
+        start = parse_iso(e.get("created"))
+        if not keys or not start or e.get("legacy"):
+            continue
+        end = parse_iso(ordered[i + 1].get("created")) if i + 1 < len(ordered) else None
+        author, task, flag, yes, no = keys
+        for ev in events:
+            ts = parse_iso(ev.get("timestamp"))
+            if not ts or ts < start or (end and ts >= end) or ev.get("author") != author or ev.get("task") != task:
+                continue
+            try:
+                verdict = json.loads(event_texts(ev)[0])
+            except (ValueError, IndexError, TypeError):
+                continue
+            if isinstance(verdict, dict) and flag in verdict:
+                out[e["n"]] = (bool(verdict[flag]), yes if verdict[flag] else no)
+                break
+    return out
+
+
+def version_download_name(job_id, manifest, e):
+    ext = {"image/jpeg": "jpg", "image/webp": "webp"}.get(e.get("mime"), "png")
+    if manifest.get("final") == e["n"]:
+        return f"EDEE_{job_id[:8]}_final.{ext}"
+    return f"EDEE_{job_id[:8]}_v{e['n']}_{e.get('source', 'image')}.{ext}"
+
+
+def version_slots(job_id, manifest, events, shown_files):
+    """The "Show all versions" carousel, or None when the default slots already show
+    every version (`shown_files`: the files the default slots display)."""
+    images = (manifest or {}).get("images") or []
+    if not images or all(e.get("file") in shown_files for e in images):
+        return None
+    verdicts = version_verdicts(images, events)
+    groups = [[e for e in images if e.get("source") == "scaffold"],
+              [e for e in images if e.get("source") in PICTURE_SOURCES]]
+    slots, start = [], 0
+    for group in groups:
+        group = sorted(group, key=lambda e: e["n"])
+        for k, e in enumerate(group, 1):
+            label = SOURCE_LABELS.get(e.get("source"), "Image")
+            bits = [f"{label} {k} of {len(group)}" if len(group) > 1 else label]
+            if manifest.get("final") == e["n"]:
+                bits.append("★ final")
+                start = len(slots)
+            elif manifest.get("scaffolding") == e["n"]:
+                bits.append("✓ accepted scaffold")
+            if e["n"] in verdicts:
+                bits.append(("✓ " if verdicts[e["n"]][0] else "✗ ") + verdicts[e["n"]][1])
+            if e.get("source") == "resumed":
+                bits.append("from the job this one continues")
+            if e.get("created") and not e.get("legacy"):
+                bits.append(fmt_time(e["created"]))
+            path = f"{job_id}/{e['file']}"
+            slots.append((f"{path}#v{e['n']}", lambda p=path: backend.get_blob(p), " · ".join(bits),
+                          version_download_name(job_id, manifest, e)))
+    if manifest.get("final") is None and slots:
+        start = len(slots) - 1            # unfinished run: open on the last thing made
+    return {"slots": slots, "start": start}
+
+
+def finished_slots(job_id):
+    scaff, final = f"{job_id}/scaffolding.png", f"{job_id}/final_illustration.png"
+    return [(scaff, lambda: backend.get_blob(scaff), "Scaffolding blueprint (Phase 3)", f"EDEE_{job_id[:8]}_scaffolding.png"),
+            (final, lambda: backend.get_blob(final), "Final illustration (Phase 4–5)", f"EDEE_{job_id[:8]}_final.png")]
 
 
 def image_declined(events):
@@ -1484,34 +1713,57 @@ def image_declined(events):
     return False
 
 
-def unfinished_slots(state, events):
+def unfinished_slots(state, events, manifest=None):
     """Carousel slots for a run that ended without finishing, best image first.
 
-    latest.png is whichever render came last, so its slot depends on timing: written
-    before scaffolding.png was pinned (end of Phase 3), it is a scaffold attempt; after,
-    it is an artist attempt. A stock image fills a slot only when no render of its kind
-    exists, and every caption says whether its picture is finished.
+    A stock image fills a slot only when no render of its kind exists, and every caption
+    says whether its picture is finished. With an images.json the newest version of each
+    kind is known directly; older jobs fall back to the legacy latest.png rule.
     """
     job_id = state.get("job_id") or st.session_state.job_id
-    scaff, latest = f"{job_id}/scaffolding.png", f"{job_id}/latest.png"
-    final = f"{job_id}/final_illustration.png"
-    scaff_t, latest_t = backend.get_blob_updated(scaff), backend.get_blob_updated(latest)
+    scaff, final = f"{job_id}/scaffolding.png", f"{job_id}/final_illustration.png"
+    if manifest and (manifest.get("images") or manifest.get("scaffolding_placeholder")):
+        images = sorted(manifest.get("images") or [], key=lambda e: e["n"])
+        newest = lambda sources: next((e for e in reversed(images) if e.get("source") in sources), None)
+        name = lambda e: f"{job_id}/{e['file']}"
+        dl = lambda e: version_download_name(job_id, manifest, e)
+        s_e, p_e = newest(("scaffold",)), newest(PICTURE_SOURCES)
+        if manifest.get("scaffolding") or manifest.get("scaffolding_placeholder"):
+            first = (scaff, lambda: backend.get_blob(scaff), "Scaffolding blueprint (Phase 3)", f"EDEE_{job_id[:8]}_scaffolding.png")
+        elif s_e:
+            first = (name(s_e), lambda: backend.get_blob(name(s_e)), "Scaffolding — UNFINISHED: last attempt before the run stopped", dl(s_e))
+        else:
+            first = (RENDER_FAILED_IMG, lambda: backend.get_asset(RENDER_FAILED_IMG), "No scaffolding was drawn before the run stopped", None)
+        if manifest.get("final"):
+            second = (final, lambda: backend.get_blob(final), "Final illustration (Phase 4–5)", f"EDEE_{job_id[:8]}_final.png")
+        elif p_e:
+            second = (name(p_e), lambda: backend.get_blob(name(p_e)), "Final illustration — UNFINISHED: last attempt before the run stopped", dl(p_e))
+        elif image_declined(events):
+            second = (DECLINED_IMG, lambda: backend.get_asset(DECLINED_IMG), "No final illustration — the image model declined to draw it", None)
+        else:
+            second = (RENDER_FAILED_IMG, lambda: backend.get_asset(RENDER_FAILED_IMG), "No final illustration — the run stopped before one was painted", None)
+        return [first, second]
 
+    # LEGACY (jobs from before images.json, 2026-11-21): latest.png is whichever render
+    # came last, so its slot depends on timing: written before scaffolding.png was pinned
+    # (end of Phase 3), it is a scaffold attempt; after, an artist attempt.
+    latest = f"{job_id}/latest.png"
+    scaff_t, latest_t = backend.get_blob_updated(scaff), backend.get_blob_updated(latest)
     if scaff_t:
-        first = (scaff, lambda: backend.get_blob(scaff), "Scaffolding blueprint (Phase 3)")
+        first = (scaff, lambda: backend.get_blob(scaff), "Scaffolding blueprint (Phase 3)", f"EDEE_{job_id[:8]}_scaffolding.png")
     elif latest_t:
-        first = (latest, lambda: backend.get_blob(latest), "Scaffolding — UNFINISHED: last attempt before the run stopped")
+        first = (latest, lambda: backend.get_blob(latest), "Scaffolding — UNFINISHED: last attempt before the run stopped", f"EDEE_{job_id[:8]}_unfinished.png")
     else:
-        first = (RENDER_FAILED_IMG, lambda: backend.get_asset(RENDER_FAILED_IMG), "No scaffolding was drawn before the run stopped")
+        first = (RENDER_FAILED_IMG, lambda: backend.get_asset(RENDER_FAILED_IMG), "No scaffolding was drawn before the run stopped", None)
 
     if backend.get_blob_updated(final):
-        second = (final, lambda: backend.get_blob(final), "Final illustration (Phase 4–5)")
+        second = (final, lambda: backend.get_blob(final), "Final illustration (Phase 4–5)", f"EDEE_{job_id[:8]}_final.png")
     elif scaff_t and latest_t and latest_t > scaff_t:
-        second = (latest, lambda: backend.get_blob(latest), "Final illustration — UNFINISHED: last attempt before the run stopped")
+        second = (latest, lambda: backend.get_blob(latest), "Final illustration — UNFINISHED: last attempt before the run stopped", f"EDEE_{job_id[:8]}_unfinished.png")
     elif image_declined(events):
-        second = (DECLINED_IMG, lambda: backend.get_asset(DECLINED_IMG), "No final illustration — the image model declined to draw it")
+        second = (DECLINED_IMG, lambda: backend.get_asset(DECLINED_IMG), "No final illustration — the image model declined to draw it", None)
     else:
-        second = (RENDER_FAILED_IMG, lambda: backend.get_asset(RENDER_FAILED_IMG), "No final illustration — the run stopped before one was painted")
+        second = (RENDER_FAILED_IMG, lambda: backend.get_asset(RENDER_FAILED_IMG), "No final illustration — the run stopped before one was painted", None)
     return [first, second]
 
 
@@ -1579,13 +1831,18 @@ def generate_zip_bundle(state):
             return bool(data)
         add_blob("scaffolding.png", f"{job_id}/scaffolding.png")
         if not add_blob("final_illustration.png", f"{job_id}/final_illustration.png"):
-            add_blob("latest.png", f"{job_id}/latest.png")
+            images = (backend.get_manifest(job_id) or {}).get("images") or []
+            unfinished = next((e for e in sorted(images, key=lambda e: -e["n"]) if e.get("source") in PICTURE_SOURCES), None)
+            if unfinished:
+                add_blob("unfinished_illustration.png", f"{job_id}/{unfinished['file']}")
+            else:
+                add_blob("latest.png", f"{job_id}/latest.png")   # LEGACY: jobs from before images.json
         if state.get("archival_report"):
             zf.writestr("archival_report.txt", str(state["archival_report"]))
         transcript = sorted_events(state)
         if transcript:
             zf.writestr("session_events.json", json.dumps(transcript, indent=2, default=str))
-        meta = {k: v for k, v in state.items() if k not in ("session_events_incremental", "archival_report", "ttl_expiry")}
+        meta = {k: v for k, v in state.items() if k not in ("session_events_incremental", "archival_report", "ttl_expiry", "_archived")}
         zf.writestr("metadata.json", json.dumps(meta, indent=2, default=str))
     return buf.getvalue()
 
@@ -1642,6 +1899,8 @@ if st.session_state.trigger_job:
     st.session_state.job_started_at = time.time()
     st.session_state.carousel_idx = 1
     st.session_state.img_cache = None
+    st.session_state.show_versions = False
+    st.session_state.archived_cache = None
     payload = {"query": user_query, "job_id": st.session_state.job_id, "style_preference": style_choice,
                "human_review_mode": review_mode, "max_text_tier": max_text_tier, "max_image_tier": max_image_tier}
     try:
@@ -1670,6 +1929,8 @@ if st.session_state.resume_request:
         st.session_state.job_started_at = time.time()
         st.session_state.carousel_idx = 1
         st.session_state.img_cache = None
+        st.session_state.show_versions = False
+        st.session_state.archived_cache = None
         st.session_state.stalled_job = None
 
 # --- POLL / RENDER ---------------------------------------------------------------------------
@@ -1680,9 +1941,19 @@ if st.session_state.job_id:
         if st.session_state.is_running:
             last_ts, last_update = None, time.time()
             status_ui.info("⏳ Pipeline initiated. Listening for agents…")
+            archive_checked = False
             while st.session_state.is_running:
                 state = backend.get_doc(job_id)
                 now = time.time()
+                if state is None and not archive_checked:
+                    # No live doc: a finished job's expires after a day. If the bucket has
+                    # the job, show it from there instead of listening for a run that ended.
+                    archive_checked = True
+                    archived = backend.get_archived_state(job_id)
+                    if archived:
+                        st.session_state.archived_cache = (job_id, archived)
+                        st.session_state.is_running = False
+                        st.rerun()
                 if state:
                     st.session_state.last_state = state
                 if state and state.get("timestamp") != last_ts:
@@ -1711,6 +1982,7 @@ if st.session_state.job_id:
                     st.session_state.stalled_job = job_id
                     st.session_state.stalled_for = int(now - last_update)
                     st.session_state.is_running = False
+                    backend.archive_job(job_id)   # so it stays readable once its doc expires
                     st.rerun()
                 if state and state.get("status") == "awaiting_human":
                     # Short slices while a human is being asked something. Streamlit only
@@ -1727,18 +1999,27 @@ if st.session_state.job_id:
                     time.sleep(POLL_SECONDS)
         else:
             state = backend.get_doc(job_id)
+            if not state:
+                # Expired doc: read the job back from the bucket (once per job per session).
+                cached = st.session_state.get("archived_cache")
+                state = cached[1] if cached and cached[0] == job_id else backend.get_archived_state(job_id)
+                if state:
+                    st.session_state.archived_cache = (job_id, state)
+                    st.caption("📦 Opened from the archive: this job's live record has expired.")
+                    if state.get("status") not in TERMINAL:
+                        st.session_state.stalled_job = job_id   # archived mid-run: it crashed or stalled
             if state:
                 st.session_state.last_state = state
             if not state:
-                status_ui.warning("No record of that job (it may have expired).")
+                status_ui.warning("No record of that job.")
             else:
                 events = draw_state(state)
                 status = state.get("status")
                 if status == "completed":
                     result_ui.success("✅ Generation complete!")
-                    render_carousel([(path, lambda p=path: backend.get_blob(p), label) for path, label in (
-                        (f"{job_id}/scaffolding.png", "Scaffolding blueprint (Phase 3)"),
-                        (f"{job_id}/final_illustration.png", "Final illustration (Phase 4–5)"))])
+                    manifest = backend.get_manifest(job_id)
+                    render_carousel(finished_slots(job_id), version_slots(
+                        job_id, manifest, events, {"scaffolding.png", "final_illustration.png"}))
                     if state.get("user_message"):
                         with notes_ui.container():
                             st.markdown("**📝 Notes from the pipeline**")
@@ -1760,7 +2041,10 @@ if st.session_state.job_id:
                         result_ui.error(f"⌛ No update from the pipeline for {st.session_state.get('stalled_for', IDLE_TIMEOUT)} s. "
                                         "It may have crashed — the log shows how far it got. "
                                         "Use 'Open an existing job' later to check again.")
-                    render_carousel(unfinished_slots(state, events))
+                    manifest = backend.get_manifest(job_id)
+                    slots = unfinished_slots(state, events, manifest)
+                    render_carousel(slots, version_slots(
+                        job_id, manifest, events, {t.split("/", 1)[-1] for t, *_ in slots}))
                 else:
                     result_ui.info("This job is still running elsewhere — reconnecting…")
                     show_image(state)

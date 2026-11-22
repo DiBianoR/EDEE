@@ -46,7 +46,7 @@ The sticky-note frames mark the phases from left to right: P1 x −4640…−284
 | Execution | `Hoist python_code` → `Python Execution Node` (error output) → cfg57 → log_error → `if bool_var4` → troubleshoot1 → retry_count4 → cfg18 | execution_retry_count (`$('Hoist python_code')`) | cfg58 |
 | Vision inspection | `Prepare for Vision` → 4 inspectors → consolidate_inspection → `inspections passed?` → (False) troubleshoot_visual → retry_count2 → cfg18 | inspection_retry_count (`$('cfg63')`) | cfg53 |
 
-`Prepare for Vision` also broadcasts the render to `{job_id}/latest.png`. That broadcast is what the scaffold gate shows the human.
+`Prepare for Vision` also broadcasts the render to the state manager, which stores it as a new version (`{job_id}/images/NNN-scaffold.png`) and names it in the doc's `live_image`. That is what the scaffold gate shows the human. (Image naming is the state manager's alone; see IMAGE VERSIONS in `ritel-state-manager/main.py`. Until 2026-11-21 every render overwrote `latest.png`.)
 
 **P3 SCAFFOLD GATE (human)** and **P5 FINAL GATE (human).** These are documented in `main_workflow_nodes/README.md` (§1–7 for the scaffold gate, §8 for the final gate); the Code nodes' source is in that folder. Entry: `inspections passed?` / `if final_pass` → `Human review?` / `Final review?` (on True) or `Human available?` / `Final available?` (on MaxRetries). Exits: continue → `Archive Scaffolding` / `Phase 5 - Output`; rework → reset retries → cfg18 / cfg25; fail → cfg53 / cfg61; abort → report_error7 / 8.
 
@@ -90,7 +90,7 @@ The human's choice wins. A choice that looks clearly wrong gets a warning and a 
 **The spot-edit path:** `Resume: redraw scaffold?` [false] → `Resume: spot edit?` → `Resume: Prepare Spot Edit` → `image_editor - edit_final` → `Resume: After Spot Edit` → `Final Gate: Announce`.
 - **Prepare Spot Edit** acts as the cfg for the edit. It edits the CURRENT image (the last successful artist render or edit, falling back to the image the job was resumed with) and posts a `final_gate` / `spot_edit` marker, "Spot edit N in a row since the last full repaint". The Gatekeeper uses that to remind the human about accumulating drift once two are in a row.
 - **`image_editor`** is a separate agent with no history, so the normal artist tasks never see a previous render.
-- **No Phase 5 review:** the gate reopens on the edited image, which the Universal Agent broadcast to `latest.png`. A failed edit leaves a note and the image unchanged.
+- **No Phase 5 review:** the gate reopens on the edited image, which the Universal Agent broadcast (stored as `images/NNN-edit.png`). A failed edit leaves a note and the image unchanged.
 - **Releasing:** `Resume: keep previous? (continue)` now also requires that the image editor never ran, so an edited job goes through Phase 6. Send Final Broadcast takes the last successful image turn, artist or editor; for normal runs that's the artist's, as before.
 
 **Measured drift** (2026-11-06 test): Gemini 3 Pro Image keeps size and framing. After 3 edits in a row, 1.8% of pixels had changed by more than 32/255, including the intended changes, and the untouched price sign 0.44%. The editor re-renders the edited figure and can drop small details, such as a glare highlight.
