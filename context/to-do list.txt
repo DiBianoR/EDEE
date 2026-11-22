@@ -2,11 +2,6 @@
 
 SHORT-TERM
 
-🌗[Candace 11/17] Be able to go back and use versions that have been rejected by the AI, if you really want to.
-  2026-11-21: every image version is now kept (state manager, images/NNN-<source>.png + images.json) and the
-  frontend's "Show all versions" toggle pages through them with a download button. Not done: resuming FROM a
-  chosen non-final version (see MID-TERM).
-
 [Candace 11/17] Make the chooser for art styles look nice and actually depict somehow what the art style looks like when you hover. Add a couple more options, as well as an open-ended option where you can specify the art style.
 
 [Candace 11/17] Be able to make small edits to scaffolding diagrams, without regenerating the diagrams.
@@ -212,36 +207,24 @@ Experiment with coteach
   - No information suggesting they are pursuing research into effectiveness, etc.
   - Quick development suggests lack of barriers to develop similar features
 
-🌗Automate Firestore expiry (not urgent - nothing is expiring right now)
-  - 2026-11-21: the bucket side is done. Every finished job writes {job_id}/job.json (the doc minus the
-    transcript) and its doc's `ttl_expiry` is cut to 1 day; POST /archive does the same for a crashed or
-    stalled run (the frontend calls it when its watchdog gives up); /summary, /restore and the frontend read
-    an expired job back from the bucket. `ttl_expiry` is a real datetime (Firestore Timestamp), set by the
-    frontend at start (7 days) and the state manager at the end (1 day).
-  - LEFT TO DO: (1) one-off backfill: POST /archive/{job_id} for every job_states doc, so docs that exist only
-    in Firestore (crashed runs, anything from before job.json) get their bucket copy; (2) then enable a
-    Firestore TTL policy on job_states.ttl_expiry. Older docs already carry a ttl_expiry from the frontend,
-    mostly in the past, so the policy will delete them soon after it is switched on: do (1) first.
-  - (1) is written: `py -3 firestore_backfill.py` (dry run), then `--go`, AFTER the push deploys /archive
-    (the script checks and refuses otherwise). Skips unfinished jobs updated in the last 24h; rerunnable.
-    Needs `pip install google-cloud-firestore google-cloud-storage` locally.
-  - Future crashes nobody was watching: /update-state sweeps for unfinished docs with no broadcast for 6h and
-    archives them (at most once an hour per instance, 5 per sweep, one small-field query; no timer, so nothing
-    runs while idle). Gap: a crash is lost if no job runs anywhere in the ~6.75 days before its doc expires.
-  - Note: with Firestore scrubbed, the bucket is the only record, and its lifecycle rule deletes after 360 days.
-  - TTL is currently OFF; bucket lifetime extended to 360 days, and the Google Sheet
-    tracks failed runs, so no data is at risk today
-  - TTL needs a real Firestore Timestamp field. Our `timestamp` is an ISO *string*
-    (state manager writes datetime.now(timezone.utc).isoformat()), so a TTL policy on it
-    would silently delete nothing. Would need a new `expire_at` written as a datetime
-    object, not .isoformat()
-  - A TTL policy does apply to existing docs, but only ones that already carry the field,
-    so anything already written would need a one-off backfill
-  - Alternative to raw TTL: scheduled archive-then-delete sweep (Cloud Scheduler -> Cloud
-    Run, reusing POST /archive-incremental/{job_id}), so nothing gets deleted that wasn't
-    archived first. TTL is a blind deleter; a sweep can enforce the ordering
-
 FINISHED
+
+✔ Automate Firestore expiry (done 2026-11-22; basic tests by Claude, Robert's full testing pending)
+  Every finished job writes {job_id}/job.json (the doc minus the transcript) and its doc's `ttl_expiry`
+  (a real Firestore Timestamp) is cut to 1 day; the frontend stamps 7 days at start, /restore too.
+  POST /archive does the same for a crashed or stalled run (the frontend calls it when its watchdog gives
+  up); /update-state sweeps for unfinished runs with no broadcast for 6h (at most hourly, 5 per sweep, no
+  timer). /summary, /restore and the frontend read an expired job back from the bucket.
+  One-off backfill of every existing doc: firestore_backfill.py (dry run, then --go; run from the edee
+  conda env). Then the TTL policy on job_states.ttl_expiry (database dee-data) is switched on in the console.
+  Known gap: an unwatched crash is lost if no job runs anywhere in the ~6.75 days before its doc expires.
+  The bucket is now the only record of a job, and its lifecycle rule deletes after 360 days
+  (in next meeting items.md).
+
+✔ [Candace 11/17] Be able to go back and use versions that have been rejected by the AI, if you really want to. (done 2026-11-21; basic tests by Claude, Robert's full testing pending)
+  2026-11-21: every image version is now kept (state manager, images/NNN-<source>.png + images.json) and the
+  frontend's "Show all versions" toggle pages through them with a download button. Not done: resuming FROM a
+  chosen non-final version (see MID-TERM).
 
 ✔ [Candace 11/17] Generally, throughout the whole thing, use bigger, clearer fonts. (done 2026-11-20)
 
