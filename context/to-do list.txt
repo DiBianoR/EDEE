@@ -2,12 +2,9 @@
 
 SHORT-TERM
 
-✔[Candace 11/17] Make the chooser for art styles look nice and actually depict somehow what the art style looks like when you hover. Add a couple more options, as well as an open-ended option where you can specify the art style.
-    ✔ More options: emoji, paper_cutout, colored_pencil (11/22)
-    ✔ Open-ended option: "✏️ Describe your own…" → n8n "EDEE - Style Convert" (11/22). Not yet tried in a full real run or a resume.
-    ✔ Chooser: a 3×3 grid of picture tiles (Fluffy the poodle in each style), with a bigger picture on hover (11/22). Source images in ritel-frontend/style_previews_source/.
+[Candace 11/17 - Testing] Test everything built from Candace's 11/17 requests (scaffolding diagram edits, art-style chooser & open-ended style, reuse rejected versions, bigger clearer fonts, plus Firestore expiry).
 
-[Candace 11/17] Be able to make small edits to scaffolding diagrams, without regenerating the diagrams.
+- Code edits with an editing tool, not full rewrites. Every coding pass (bug-fix retries, human corrections, a resumed job's redraw) has the coder regenerate the whole matplotlib script, even when one label moves; the rest of the diagram can drift and the reviewers have to re-read everything. Modern harnesses (Claude Code etc.) give the model the current file plus a str_replace/patch-style edit tool and apply small diffs. Do the same: template the last ACCEPTED code into the prompt, have the coder return edits (old -> new snippets), apply them in a Code node, and fall back to a full rewrite only when an edit fails to apply or the change is structural. The whole EDEE harness is behind modern ones in this respect (also: no tools, no file view, history replay instead of a working copy).
 
 need white bg or it looks like there's a square
 
@@ -211,6 +208,13 @@ Experiment with coteach
   - Quick development suggests lack of barriers to develop similar features
 
 FINISHED
+
+✔ [Candace 11/17] Be able to make small edits to scaffolding diagrams, without regenerating the diagrams. (Robert's clarification 2026-11-23: likely means small edits without regenerating the FINAL image; regenerating the scaffolding diagram or doing an AI spot edit are both fine as long as the result is correct.) (done 2026-11-23; full testing pending)
+
+✔ [Candace 11/17] Make the chooser for art styles look nice and actually depict somehow what the art style looks like when you hover. Add a couple more options, as well as an open-ended option where you can specify the art style. (done 2026-11-22)
+    ✔ More options: emoji, paper_cutout, colored_pencil (11/22)
+    ✔ Open-ended option: "✏️ Describe your own…" → n8n "EDEE - Style Convert" (11/22). Not yet tried in a full real run or a resume.
+    ✔ Chooser: a 3×3 grid of picture tiles (Fluffy the poodle in each style), with a bigger picture on hover (11/22). Source images in ritel-frontend/style_previews_source/.
 
 ✔ Automate Firestore expiry (done 2026-11-22; basic tests by Claude, Robert's full testing pending)
   Every finished job writes {job_id}/job.json (the doc minus the transcript) and its doc's `ttl_expiry`

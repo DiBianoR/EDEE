@@ -135,6 +135,10 @@ GATES = {
         "manager_title": "QA Inspection Manager",
         "approved": "The inspectors approved this scaffolding.",
         "ask": "Anything to change before the artist paints over it? What you say outranks every AI in the pipeline.",
+        # A reopened job only reaches this gate through a base-diagram redraw; its
+        # scaffold_redo marker's keep_final says which ending follows (picked where the gate box is drawn).
+        "ask_resumed": "Anything to change in the redrawn base diagram? Once you accept it, the illustration is repainted over it. What you say outranks every AI in the pipeline.",
+        "ask_resumed_keep": "Anything to change in the redrawn base diagram? Once you accept it, the job keeps it, and the finished illustration stays exactly as it was. What you say outranks every AI in the pipeline.",
         "rejected": "The inspectors rejected this scaffolding three times.",
         "empty_hint": "Leave it empty to accept the scaffolding as drawn.",
         "redo": "redraw the scaffolding",
@@ -149,7 +153,7 @@ GATES = {
         "manager_title": "Final Gatekeeper",
         "approved": "The reviewers approved the finished illustration.",
         "ask": "Anything to change before it's released? The artist repaints over the same base diagram, so its geometry and labels stay fixed; everything painted on top can change.",
-        "ask_resumed": "Anything to change? Because this job was reopened, there are three ways: a quick spot edit of one or two small details that keeps everything else, a repaint over the same base diagram, or a redraw of the base diagram itself (positions, sizes, counts, labels). The Final Gatekeeper will suggest the right one; you can also say which you want.",
+        "ask_resumed": "Anything to change? Because this job was reopened, there are three ways: a quick spot edit of one or two small details that keeps everything else, a repaint over the same base diagram, or a redraw of the base diagram itself (positions, sizes, counts, labels), which can keep the finished illustration as it is or repaint it too. The Final Gatekeeper will suggest the right one; you can also say which you want.",
         "rejected": "The reviewers rejected this illustration three times.",
         "empty_hint": "Leave it empty to release the illustration as it is.",
         "redo": "repaint the illustration",
@@ -1558,6 +1562,10 @@ def render_human_panel(state, events):
                 # A reopened job ("Resume final review") can also redraw the base diagram.
                 resumed = any(ev.get("task") == "resume_final_gate" for ev in events)
                 ask = g.get("ask_resumed", g["ask"]) if resumed else g["ask"]
+                if resumed and gate_of(hr) is GATES["scaffold"]:
+                    redo = next((ev for ev in reversed(events) if ev.get("task") == "scaffold_redo"), None)
+                    if redo and redo.get("keep_final"):
+                        ask = g["ask_resumed_keep"]
                 st.markdown(f"<div class='gatebox'>🙋 <b>{esc(g['approved'])}</b> {esc(ask)}</div>",
                             unsafe_allow_html=True)
             with st.form(key=f"form_{sig}", border=False):

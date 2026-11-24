@@ -445,6 +445,35 @@ const DIRECTIVE_INSPECTION_HUMAN = `\
 ${DIRECTIVE_HUMAN_PRIORITY}
 - This scaffold was re-drawn to satisfy corrections from the human. Judge it FIRST against those corrections (your own earlier human_review turns and fix_instructions are in your history), then against the inspector reports. An inspector objecting to something the human explicitly asked for is overruled.`;
 
+// --- Resumed job: redrawing the base diagram as a REVISION of the approved code. -----
+// Both are armed ONLY by n8n "Resume: Prepare Redraw" (never in a normal run), which
+// stores them in session_state.retry_directives / human_priority_directives.
+//   • plan_logic: the redo's FIRST plan_logic gets the revision framing. cfg19 then
+//     re-arms the ordinary retry framing, so a machine retry inside the redo reads as a
+//     normal bug fix of the revised code, and a correction at the redo's scaffold gate
+//     gets plan_logic_human as usual.
+//   • Prepare Redraw puts the code that drew the approved base diagram in place of
+//     @@APPROVED_CODE@@ by plain string replacement. Node 1 templates {var}s in ONE pass
+//     and never re-reads an inserted value, so braces in the Python are safe.
+const DIRECTIVE_PLAN_REVISION_HUMAN = `\
+
+
+- This is a revision of a base diagram the human had already approved. They reopened the finished job and asked for the changes in the scaffold_redo note in your history; the Scaffolding Image Request above has been updated with them. Everything they did not mention is approved as it is.
+- Start from the approved code below. Change only what the requested changes need, plus whatever must change to stay consistent with them (for example a label that shows a changed length). Keep every other shape, coordinate, size, colour, label, font size, figure size and axis limit exactly as it is. Where the Scaffolding Image Request differs from the approved code in something the human did not ask to change, keep the approved code.
+- Begin your reasoning by restating the requested changes in your own words. In execution_plan, list each edit to the code: what it is now and what it becomes. When you write the code, reproduce the approved code with only those edits.
+
+APPROVED CODE (it drew the approved base diagram):
+\`\`\`python
+@@APPROVED_CODE@@
+\`\`\``;
+
+const DIRECTIVE_INSPECTION_REDO = `\
+
+
+${DIRECTIVE_HUMAN_PRIORITY}
+- This base diagram is a revision of one the human had already approved. They reopened the finished job and asked for the changes in the scaffold_redo note in your history. Judge it FIRST against those changes, then against the inspector reports. An inspector objecting to something the human explicitly asked for is overruled.
+- Everything else should stay as it was in the approved version. The coder's planning turn in your history lists its edits to the approved code. If the code changed something the human did not ask for, and the change isn't needed to stay consistent with the requested ones, reject it and say what to restore.`;
+
 // --- Final-image gate: the same two directives, for the artist's loop. -------------
 // plan_finishing's {image_retry_directives} slot, when the retry came from the human.
 const DIRECTIVE_FINISHING_RETRY_HUMAN = `\
@@ -2556,7 +2585,7 @@ Walk through the problem logically:
 // are byte-for-byte what they were.
 //
 // The Gatekeeper variants are DERIVED from final_review_open / final_review_reply: the one
-// rule that says the geometry is fixed is replaced, and the schema gains the two redraw
+// rule that says the geometry is fixed is replaced, and the schema gains the redraw and spot-edit
 // fields. If a later edit changes those sentences, Load Config throws here instead of
 // silently shipping a variant that still says "geometry is fixed".
 // =============================================================================
@@ -2570,9 +2599,10 @@ const FINAL_REVIEW_RESUME_SCHEMA = (() => {
   const s = JSON.parse(JSON.stringify(FINAL_REVIEW_SCHEMA));
   s.properties.redraw_scaffold = { "type": "BOOLEAN", "description": "True ONLY when the human wants something in the base diagram itself changed (positions, sizes, counts, dimensions, the labels drawn into it) AND has explicitly agreed to the full redraw after you explained what it involves. False otherwise, including while you are still asking." };
   s.properties.scaffold_changes = { "type": "STRING", "description": "When redraw_scaffold is true: the complete list of changes to the base diagram's geometry, counts, dimensions and labels, stated as how the diagram should be, precisely enough for a planner to rewrite the diagram description. Painting-only changes do NOT go here; they stay in fix_instructions. Empty string otherwise." };
+  s.properties.keep_final = { "type": "BOOLEAN", "description": "Only meaningful when redraw_scaffold is true. True: only the base diagram is redrawn, and the finished illustration is kept exactly as it is (the default when the human asked for a change to the base diagram itself). False: after the human accepts the new base diagram, the illustration is repainted over it. Ask the human when it's unclear which they want. False when redraw_scaffold is false." };
   s.properties.spot_edit = { "type": "BOOLEAN", "description": "True when the agreed change will be made as a SPOT EDIT of the finished illustration (an image editor changes only the named details and keeps everything else as it is) instead of a repaint. Never true together with redraw_scaffold. False while you are still asking." };
   s.properties.edit_instructions = { "type": "STRING", "description": "When spot_edit is true: exactly what to change, where in the picture, and what it should look like afterwards, e.g. 'the batter's mouth: change the frown to a gentle smile'. Only the requested changes; the editor is told separately to keep everything else. Empty string otherwise." };
-  s.required = [...s.required, "redraw_scaffold", "scaffold_changes", "spot_edit", "edit_instructions"];
+  s.required = [...s.required, "redraw_scaffold", "scaffold_changes", "keep_final", "spot_edit", "edit_instructions"];
   return s;
 })();
 
@@ -2582,7 +2612,11 @@ const RESUME_CHANGE_ROUTES = `\
 2. This finished job has been reopened, so a change can be made in one of three ways. Choose the lightest one that can do the job correctly, and say which you chose:
    a) SPOT EDIT (spot_edit): an image editor changes only the named details of the finished illustration and keeps everything else as it is. Right for one or two small, local changes (an expression, a colour, a small object) that touch nothing whose shape, edges, angles, position, count or label has to be mathematically accurate. Each spot edit can drift the rest of the image a little: you get a note in your history after each one saying how many have been applied in a row. If two have already been applied in a row and the human asks for another, remind them that edits accumulate drift and suggest a repaint instead; do what they choose.
    b) REPAINT (neither flag): the Artist repaints the whole illustration over the same base diagram. Right when the change is broad (style, lighting, many details), or when objects whose edges, angles or positions must be mathematically accurate have drifted away from the base diagram. A repaint can change things the human didn't mention, so say so.
-   c) REDRAW THE BASE DIAGRAM (redraw_scaffold): the diagram's geometry itself changes (positions, sizes, counts, dimensions, the labels drawn into it). The diagram description is amended, the base diagram is planned, coded and inspected again, the human reviews it, and then the illustration is repainted from scratch, which takes several minutes and repaints everything. Explain this and get the human's explicit confirmation before setting redraw_scaffold. Diagram changes go in scaffold_changes, painting-only changes in fix_instructions; a request can need both.
+   c) REDRAW THE BASE DIAGRAM (redraw_scaffold): the diagram's geometry itself changes (positions, sizes, counts, dimensions, the labels drawn into it). The diagram description is amended, the base diagram's code is revised and inspected again, and the human reviews the new base diagram; this takes several minutes. What happens to the illustration afterwards is set by keep_final:
+      - KEEP THE ILLUSTRATION (keep_final true): the job keeps the new base diagram, and the finished illustration stays exactly as it is. This is the default when the human asks for a change to the base diagram itself (they may call it the scaffold, the scaffolding, the base diagram or the underlying diagram). Tell them once that the illustration will then no longer match the new base diagram, and that a repaint in a later round would paint over the new one. Painting changes can't be made in the same round, so if they asked for any, say so and suggest a separate round for them.
+      - REPAINT IT TOO (keep_final false): after the human accepts the new base diagram, the illustration is repainted from scratch over it, which repaints everything. Use this when the human wants the finished picture itself to show the change.
+      If a change would be made in the base diagram but the human hasn't said whether the illustration should change too (for example "the base of the triangle should be 5 cm"), ask them which they want before setting redraw_scaffold.
+      Explain what the redraw involves and get the human's explicit confirmation before setting redraw_scaffold. Diagram changes go in scaffold_changes, painting-only changes in fix_instructions; with keep_final false a request can need both.
    If the human asks for a particular route, use it. If their choice looks clearly wrong (for example a spot edit for a change to a measured length, or a full repaint for one small detail), explain why in one or two sentences and ask whether they're sure, then do what they decide. If you can't tell which route fits, ask them whether they'd like a spot edit or a repaint over the base diagram.`;
 
 tasks["final_review_open_resume"] = deriveTask("final_review_open",
@@ -2592,7 +2626,7 @@ tasks["final_review_open_resume"] = deriveTask("final_review_open",
 
 tasks["final_review_reply_resume"] = deriveTask("final_review_reply",
   "the base diagram's geometry is fixed, so say so if they ask to change it;",
-  "choose the lightest correct route (spot edit for one or two small local changes that touch nothing measured; repaint for broad changes or when accurate shapes have drifted from the base diagram; redraw the base diagram for geometry changes, only after explaining it and getting their confirmation), follow the human's choice of route but question one that looks clearly wrong, ask them if you can't tell, and remind them about accumulating drift if two spot edits have already been applied in a row (diagram changes in scaffold_changes, spot edits in edit_instructions, repaint changes in fix_instructions);",
+  "choose the lightest correct route (spot edit for one or two small local changes that touch nothing measured; repaint for broad changes or when accurate shapes have drifted from the base diagram; redraw the base diagram for geometry changes, only after explaining it and getting their confirmation, keeping the illustration as it is unless they want the picture repainted too (keep_final), and asking them if that's unclear), follow the human's choice of route but question one that looks clearly wrong, ask them if you can't tell, and remind them about accumulating drift if two spot edits have already been applied in a row (diagram changes in scaffold_changes, spot edits in edit_instructions, repaint changes in fix_instructions);",
   { schema: FINAL_REVIEW_RESUME_SCHEMA });
 
 // SPOT EDIT: a separate agent, so the normal artist tasks never see a previous render.
@@ -2721,7 +2755,11 @@ const config = {
     // plan_finishing_human replaces plan_finishing's retry framing; final_review_human
     // arms {image_human_priority_directives} for aggregate_feedback.
     "plan_finishing_human": DIRECTIVE_FINISHING_RETRY_HUMAN,
-    "final_review_human": DIRECTIVE_FINAL_REVIEW_HUMAN
+    "final_review_human": DIRECTIVE_FINAL_REVIEW_HUMAN,
+    // Resumed job, base-diagram redraw: selected by n8n "Resume: Prepare Redraw".
+    // plan_logic_revision_human contains @@APPROVED_CODE@@, which that node fills in.
+    "plan_logic_revision_human": DIRECTIVE_PLAN_REVISION_HUMAN,
+    "inspection_redo": DIRECTIVE_INSPECTION_REDO
   },
 
   // === 🙋 HUMAN IN THE LOOP ===

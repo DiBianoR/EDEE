@@ -95,6 +95,21 @@ The human's choice wins. A choice that looks clearly wrong gets a warning and a 
 
 **Measured drift** (2026-11-06 test): Gemini 3 Pro Image keeps size and framing. After 3 edits in a row, 1.8% of pixels had changed by more than 32/255, including the intended changes, and the untouched price sign 0.44%. The editor re-renders the edited figure and can drop small details, such as a glare highlight.
 
+**P5 RESUME: SCAFFOLD ONLY (resumed jobs only; draft since 2026-11-24, `patch_scaffold_only.py`).** A redraw of the base diagram can now keep the finished illustration. The Gatekeeper's route c has two outcomes, chosen with the new schema field `keep_final`:
+- **Keep the illustration** (`keep_final` true): the default when the human asks for a change to the base diagram itself.
+- **Repaint it too** (`keep_final` false): the earlier behaviour.
+
+When it can't tell which one the human wants, it asks.
+- **Routing:** after the redo's scaffold gate accepts, `Archive Scaffolding` → `Resume: scaffold only?`. On [true] (a resumed job with `keep_final`) it goes to `Resume: Restore Completed`. On [false] it goes to `Phase 3 - Output`; every normal run takes this branch.
+- **Restore Completed** in this case logs a `human_gate` / `scaffold_redo_accepted` marker, then its usual note, and completes with the previous illustration, message and report. `Archive Scaffolding` has already given the new base diagram the scaffolding role.
+- **Revision, not a fresh pass:** `Prepare Redraw` finds the code that drew the approved base diagram:
+  - In the original run, that is the last `write_code`.
+  - The code from a redo round counts only if that round was accepted, meaning an `artist` turn or `scaffold_redo_accepted` follows its `scaffold_redo` marker.
+
+  It then arms `session_state.retry_directives` with `retry_directive_library.plan_logic_revision_human`, with that code in place of `@@APPROVED_CODE@@`, and `human_priority_directives` with `inspection_redo`. Only the redo's first `plan_logic` sees the revision framing, because cfg19 re-arms the ordinary retry framing after it. If no code is found (DIRECT_IMAGE_GEN), the slots are left as they are.
+- **Painting directives** are armed only when repainting. The `scaffold_redo` marker carries `keep_final`, which the frontend reads to word the redo's scaffold gate.
+- **Known limitation:** the kept user message and archival report still describe the original job. They don't mention the redrawn base diagram.
+
 **P6 REPORT.** `generate_user_message` → `generate_archival_report` → `Phase 6 - Output` → `Send Final Broadcast`, the completion payload; if it fails, the run fails.
 
 **Failure exits.** Every `error_handler - report_error*` / `report_unknown_error*` node is a terminal no-output call (the task has `terminal_mode: failed`). Its cfg sets `error` (MaxRetriesExceeded, UserAborted or RenderFailed), and the error_handler agent explains it to the user.

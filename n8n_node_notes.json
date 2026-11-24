@@ -224,7 +224,7 @@
       },
       "ef5e63b0-95b4-4d29-bc37-fd3990cadb14": {
         "node": "Phase 3 - Output",
-        "note": "P3 EXIT · Phase output (Set). | Phase 3 exit; strips the item to the envelope. | in: Archive Scaffolding | out: Load Phase 4 Config"
+        "note": "P3 EXIT · Phase output (Set). | Phase 3 exit; strips the item to the envelope. | in: Resume: scaffold only? | out: Load Phase 4 Config"
       },
       "d5b00632-8557-4d24-b1ed-f78ac170a094": {
         "node": "Load Phase 4 Config",
@@ -752,7 +752,7 @@
       },
       "7e1dc65c-83e2-4320-aaef-e8d0cc05a991": {
         "node": "Archive Scaffolding",
-        "note": "P3 EXIT · Code. | Pins the approved scaffold (or the placeholder on DIRECT_IMAGE_GEN) to {job_id}/scaffolding.png. 3 entries. | in: Route Workflow3, Human review?, After human log | out: Phase 3 - Output"
+        "note": "P3 EXIT · Code. | Pins the approved scaffold (or the placeholder on DIRECT_IMAGE_GEN) to {job_id}/scaffolding.png. 3 entries. | in: Route Workflow3, Human review?, After human log | out: Resume: scaffold only?"
       },
       "e75f9de5-170d-4cd7-91cc-77cce48b11b7": {
         "node": "cfg65",
@@ -952,7 +952,7 @@
       },
       "35a07f8c-8456-4716-942d-7bdc700762a6": {
         "node": "Resume: Restore Completed",
-        "note": "P5 RESUME (finished job → final gate) · Code. | Marks the job completed with its previous image, message and report, plus a run_settings event (no model calls). Source: resume_restore_completed.js. | in: Resume: keep previous? (continue), Resume: keep previous? (abort), Resume: keep previous? (scaffold abort) | out: (end of run)"
+        "note": "P5 RESUME (finished job → final gate) · Code. | Marks the job completed with its previous image, message and report, plus a run_settings event (no model calls). After a scaffold-only redraw it also logs scaffold_redo_accepted. Source: resume_restore_completed.js. | in: Resume: keep previous? (continue), Resume: keep previous? (abort), Resume: keep previous? (scaffold abort), Resume: scaffold only? | out: (end of run)"
       },
       "adb2369e-d2e8-4a8f-b00f-9a6d5d7af9c5": {
         "node": "Resume: redraw scaffold?",
@@ -960,7 +960,7 @@
       },
       "fb49b0b5-7c2d-4659-b5a1-ba501a13b1c2": {
         "node": "Resume: Prepare Redraw",
-        "note": "P5 RESUME: REDRAW BASE DIAGRAM · Code. | Restores the planner's last latest_description (Phase 3 never sees Phase 4's product version), clears stale gate flags, arms the painting directives, posts a scaffold_redo marker. Source: resume_prepare_redraw.js. | in: Resume: redraw scaffold? | out: cfg amend description"
+        "note": "P5 RESUME: REDRAW BASE DIAGRAM · Code. | Restores the planner's last latest_description (Phase 3 never sees Phase 4's product version), clears stale gate flags, arms the painting directives only when repainting (keep_final false), arms the revision framing with the approved code (plan_logic_revision_human + inspection_redo), posts a scaffold_redo marker. Source: resume_prepare_redraw.js. | in: Resume: redraw scaffold? | out: cfg amend description"
       },
       "eaabeacf-561e-40f6-af6f-a3fa9b636a69": {
         "node": "cfg amend description",
@@ -989,6 +989,10 @@
       "e188cf5f-7c77-458f-9da0-017f49f2af43": {
         "node": "Resume: After Spot Edit",
         "note": "P5 RESUME: SPOT EDIT · Code. | Back to Final Gate: Announce (no Phase 5 review: the human reviews it). A failed edit leaves a final_gate note and the image unchanged. Source: resume_after_spot_edit.js. | in: image_editor - edit_final | out: Final Gate: Announce"
+      },
+      "2c799d0f-2f56-4b06-b61d-3e08923af3fa": {
+        "node": "Resume: scaffold only?",
+        "note": "P5 RESUME: REDRAW BASE DIAGRAM · IF. | Resumed job AND keep_final (the Gatekeeper's scaffold-only redraw): the accepted new base diagram is already pinned, so end the job keeping the illustration; otherwise (every normal run) on to Phase 3 - Output. | in: Archive Scaffolding | out: [true]Resume: Restore Completed, [false]Phase 3 - Output"
       }
     }
   }
