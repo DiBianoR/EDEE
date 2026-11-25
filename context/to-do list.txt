@@ -4,6 +4,36 @@ SHORT-TERM
 
 [Candace 11/17 - Testing] Test everything built from Candace's 11/17 requests (scaffolding diagram edits, art-style chooser & open-ended style, reuse rejected versions, bigger clearer fonts, plus Firestore expiry).
 
+[Candace 11/24] Settings for desired size/resolution/font size (related: Matplotlib 4:3/square size toggle; ✔ bigger, clearer fonts and ✔ large text size 12 pt+ (done 2026-11-20))
+
+[Candace 11/24] Text in images bigger by default (related: ✔ bigger, clearer fonts (done 2026-11-20); ✔ large text size 12 pt+)
+
+[Candace 11/24] Capability to make photo-Realistic images
+
+[Candace 11/24] Specific peoples names - make it so it can draw specific people without saying it violates its terms
+
+[Candace 11/24] Cut down text in agent thought log so that it is more readable for teachers
+
+[Candace 11/24] Make agents talking to each other instead of agent thought log (make this a setting?)
+
+[Candace 11/24] Allow annotating the image for editing (like you do in Gemini and ChatGPT) (related: 🌗 image-edit / spot-edit route; ✔ scaffolding small edits (done 2026-11-23))
+
+[Candace 11/24] Allow it to generate up to 3 images at once? (related: User Feedback "multiple(3) scaffolding images -> multiple final images")
+
+[Candace 11/24] Generate alt-text to accompany image (Should this be the original image query?)
+
+[Candace 11/24] Setting to automatically screen for and then edit for accessibility guidelines including RGB color blindness (related: loved color coding - but accessibility; ✔ large text size / web accessibility guidelines)
+
+[Candace 11/24] Translate labels into another language
+
+[Candace 11/24] For percent/proportion problems, have it default to making the bar instead of displaying items with a tag; or at least prompt you and ask which you'd like
+
+[Candace 11/24] Uploading a reference photo to inform image generation
+
+[Candace 11/24] Give energy/water usage of the image generation
+
+[Candace 11/24] If depicts human, check for bias, and explicitly report on this at end (related: 🔜 Blind image review / review_bias already runs)
+
 - Code edits with an editing tool, not full rewrites. Every coding pass (bug-fix retries, human corrections, a resumed job's redraw) has the coder regenerate the whole matplotlib script, even when one label moves; the rest of the diagram can drift and the reviewers have to re-read everything. Modern harnesses (Claude Code etc.) give the model the current file plus a str_replace/patch-style edit tool and apply small diffs. Do the same: template the last ACCEPTED code into the prompt, have the coder return edits (old -> new snippets), apply them in a Code node, and fall back to a full rewrite only when an edit fails to apply or the change is structural. The whole EDEE harness is behind modern ones in this respect (also: no tools, no file view, history replay instead of a working copy).
 
 need white bg or it looks like there's a square
